@@ -4,6 +4,7 @@ const { hasDatabaseConfig, query } = require('../db/pool');
 const demo = require('../data/demoData');
 const { sendInteractiveMessage, sendTextMessage } = require('./metaClient');
 const { enqueueJob } = require('./jobQueue');
+const { metaRateConfig } = require('./metaCosts');
 
 const demoProducts = [...(demo.products || [])];
 const demoOrders = [...(demo.orders || [])];
@@ -1161,13 +1162,14 @@ async function applyCommerceAutomationRulesForOrder({ businessId, orderId, sourc
   return { scheduled, skipped, order: await getOrderById(businessId, order.id) };
 }
 
-async function getCommerceAutomationInsights(businessId) {
+async function getCommerceAutomationInsights(businessId, options = {}) {
+  const attributionDays = normalizeAttributionDays(options.attributionDays);
   const [rules, events, orders] = await Promise.all([
     listCommerceAutomationRules(businessId),
     listCommerceAutomationEvents(businessId),
     listOrders(businessId)
   ]);
-  return buildCommerceAutomationInsights({ rules, events, orders });
+  return buildCommerceAutomationInsights({ rules, events, orders, attributionDays });
 }
 
 async function sendPostPurchasePrompt({ businessId, orderId, promptType = 'review', body = '', ruleId = null, source = 'manual' }) {
@@ -2119,11 +2121,13 @@ function seedDemoAutomationRules(businessId) {
   }
 }
 
-function buildCommerceAutomationInsights({ rules, events, orders = [] }) {
+function buildCommerceAutomationInsights({ rules, events, orders = [], attributionDays = 30 }) {
+  const rates = metaRateConfig();
   const stats = new Map(rules.map((rule) => [rule.ruleKey, {
     scheduled: 0,
     sent: 0,
     deduped: 0,
+    estimatedCostCents: 0,
     attributedOrders: 0,
     attributedRevenueCents: 0,
     lastScheduledAt: null,
@@ -2162,6 +2166,7 @@ function buildCommerceAutomationInsights({ rules, events, orders = [] }) {
       const sourceOrder = orderById.get(String(event.orderId));
       const ruleStats = stats.get(ruleKey);
       ruleStats.sent += 1;
+      ruleStats.estimatedCostCents += automationPromptCostCents(event.eventType, rates);
       ruleStats.lastSentAt = latestDate(ruleStats.lastSentAt, event.createdAt);
       sentPrompts.push({
         ruleKey,
@@ -2193,7 +2198,7 @@ function buildCommerceAutomationInsights({ rules, events, orders = [] }) {
     }
   }
 
-  for (const attribution of attributeAutomationRevenue({ sentPrompts, paidEvents })) {
+  for (const attribution of attributeAutomationRevenue({ sentPrompts, paidEvents, attributionDays })) {
     const ruleStats = stats.get(attribution.ruleKey);
     if (!ruleStats) continue;
     ruleStats.attributedOrders += 1;
@@ -2213,22 +2218,28 @@ function buildCommerceAutomationInsights({ rules, events, orders = [] }) {
     const ruleStats = stats.get(rule.ruleKey) || {};
     const scheduled = Number(ruleStats.scheduled || 0);
     const sent = Number(ruleStats.sent || 0);
+    const estimatedCostCents = Number(ruleStats.estimatedCostCents || 0);
     const attributedRevenueCents = Number(ruleStats.attributedRevenueCents || 0);
-    return {
+    const roi = estimatedCostCents ? Number((attributedRevenueCents / estimatedCostCents).toFixed(2)) : null;
+    const row = {
       ...rule,
       metrics: {
         scheduled,
         sent,
         deduped: Number(ruleStats.deduped || 0),
+        estimatedCostCents,
+        estimatedCost: cents(estimatedCostCents),
         attributedOrders: Number(ruleStats.attributedOrders || 0),
         attributedRevenueCents,
         attributedRevenue: cents(attributedRevenueCents),
+        roi,
         sendRate: scheduled ? Math.round((sent / scheduled) * 100) : 0,
         lastScheduledAt: ruleStats.lastScheduledAt || null,
         lastSentAt: ruleStats.lastSentAt || null,
         lastAttributedAt: ruleStats.lastAttributedAt || null
       }
     };
+    return { ...row, recommendation: automationRuleRecommendation(row) };
   });
   const summary = ruleRows.reduce((totals, rule) => {
     totals.rules += 1;
@@ -2236,24 +2247,98 @@ function buildCommerceAutomationInsights({ rules, events, orders = [] }) {
     totals.scheduled += rule.metrics.scheduled;
     totals.sent += rule.metrics.sent;
     totals.deduped += rule.metrics.deduped;
+    totals.estimatedCostCents += rule.metrics.estimatedCostCents;
     totals.attributedOrders += rule.metrics.attributedOrders;
     totals.attributedRevenueCents += rule.metrics.attributedRevenueCents;
     return totals;
-  }, { rules: 0, enabledRules: 0, scheduled: 0, sent: 0, deduped: 0, attributedOrders: 0, attributedRevenueCents: 0, attributedRevenue: '0.00', sendRate: 0 });
+  }, { rules: 0, enabledRules: 0, scheduled: 0, sent: 0, deduped: 0, estimatedCostCents: 0, estimatedCost: '0.00', attributedOrders: 0, attributedRevenueCents: 0, attributedRevenue: '0.00', roi: null, sendRate: 0 });
   summary.sendRate = summary.scheduled ? Math.round((summary.sent / summary.scheduled) * 100) : 0;
+  summary.estimatedCost = cents(summary.estimatedCostCents);
   summary.attributedRevenue = cents(summary.attributedRevenueCents);
+  summary.roi = summary.estimatedCostCents ? Number((summary.attributedRevenueCents / summary.estimatedCostCents).toFixed(2)) : null;
 
   return {
+    attribution: {
+      windowDays: attributionDays,
+      costSource: 'configured Meta rate card estimate'
+    },
     summary,
     rules: ruleRows,
+    recommendations: ruleRows
+      .map((rule) => rule.recommendation)
+      .filter((recommendation) => recommendation && recommendation.priority !== 'none')
+      .sort((a, b) => recommendationWeight(b.priority) - recommendationWeight(a.priority))
+      .slice(0, 5),
     recent: recent
       .sort((a, b) => new Date(b.occurredAt || 0) - new Date(a.occurredAt || 0))
       .slice(0, 8)
   };
 }
 
-function attributeAutomationRevenue({ sentPrompts, paidEvents }) {
-  const attributionWindowMs = Number(process.env.COMMERCE_AUTOMATION_ATTRIBUTION_DAYS || 30) * 24 * 60 * 60 * 1000;
+function automationRuleRecommendation(rule) {
+  const metrics = rule.metrics || {};
+  if (!rule.enabled) {
+    return {
+      ruleKey: rule.ruleKey,
+      priority: 'low',
+      action: 'Paused',
+      message: 'This automation is paused. Enable it when you want it to schedule prompts again.'
+    };
+  }
+  if (!metrics.scheduled && !metrics.sent) {
+    return {
+      ruleKey: rule.ruleKey,
+      priority: 'medium',
+      action: 'Watch setup',
+      message: `No matching ${rule.triggerStatus} orders have triggered this automation yet.`
+    };
+  }
+  if (metrics.scheduled > 0 && !metrics.sent) {
+    return {
+      ruleKey: rule.ruleKey,
+      priority: 'high',
+      action: 'Check worker',
+      message: 'Prompts have been scheduled but not sent yet. Check worker timing and queue health.'
+    };
+  }
+  if (metrics.sent >= 3 && !metrics.attributedOrders) {
+    return {
+      ruleKey: rule.ruleKey,
+      priority: 'high',
+      action: 'Improve copy',
+      message: 'This automation is sending but has not driven attributed orders yet. Test the message, offer, or delay.'
+    };
+  }
+  if (metrics.roi !== null && metrics.roi >= 10 && metrics.attributedOrders > 0) {
+    return {
+      ruleKey: rule.ruleKey,
+      priority: 'high',
+      action: 'Scale',
+      message: 'This automation is producing strong attributed revenue against estimated message cost.'
+    };
+  }
+  if (metrics.attributedOrders > 0) {
+    return {
+      ruleKey: rule.ruleKey,
+      priority: 'medium',
+      action: 'Keep running',
+      message: 'This automation is generating attributed orders. Keep monitoring ROI and delivery cost.'
+    };
+  }
+  return {
+    ruleKey: rule.ruleKey,
+    priority: 'low',
+    action: 'Monitor',
+    message: 'This automation is active. Let it gather more sends before changing it.'
+  };
+}
+
+function recommendationWeight(priority) {
+  return { high: 3, medium: 2, low: 1, none: 0 }[priority] || 0;
+}
+
+function attributeAutomationRevenue({ sentPrompts, paidEvents, attributionDays = 30 }) {
+  const attributionWindowMs = attributionDays * 24 * 60 * 60 * 1000;
   const sent = sentPrompts
     .filter((prompt) => prompt.customerPhone && prompt.sentAt)
     .sort((a, b) => new Date(b.sentAt || 0) - new Date(a.sentAt || 0));
@@ -2279,6 +2364,18 @@ function attributeAutomationRevenue({ sentPrompts, paidEvents }) {
   }
 
   return attributed;
+}
+
+function automationPromptCostCents(eventType, rates) {
+  const promptType = String(eventType || '').replace('post_purchase.', '').replace('.sent', '');
+  const category = promptType === 'reorder' ? 'MARKETING' : 'UTILITY';
+  return Number(rates[category] || 0);
+}
+
+function normalizeAttributionDays(value) {
+  const days = Number(value ?? process.env.COMMERCE_AUTOMATION_ATTRIBUTION_DAYS ?? 30);
+  if (!Number.isFinite(days)) return 30;
+  return Math.min(90, Math.max(1, Math.round(days)));
 }
 
 function validateReturnRequest({ businessId, order, reason, resolution, amount, amountCents, note }) {

@@ -465,6 +465,9 @@ textarea { min-height: 130px; resize: vertical; }
 .automation-rule-list span, .automation-rule-list small { color: var(--muted); }
 .automation-insight-strip { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
 .automation-insight-strip span { padding: 6px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); background: var(--panel-2); font-size: 12px; font-weight: 800; }
+.automation-recommendation-list { display: grid; gap: 8px; margin: 0 0 12px; }
+.automation-recommendation-list article { display: grid; grid-template-columns: minmax(120px, auto) auto 1fr; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel-2); }
+.automation-recommendation-list span, .automation-recommendation-list small { color: var(--muted); }
 .order-detail { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
 .order-detail article { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel-2); }
 .order-detail header { margin: 0; }

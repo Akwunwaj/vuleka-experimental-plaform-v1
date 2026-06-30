@@ -1995,9 +1995,13 @@ test('commerce automation insights attribute scheduled and sent prompts to rules
 
   assert.equal(insights.summary.scheduled >= 1, true);
   assert.equal(insights.summary.sent >= 1, true);
+  assert.equal(insights.summary.estimatedCostCents >= 0, true);
   assert.equal(followUp.metrics.scheduled, 1);
   assert.equal(followUp.metrics.sent, 1);
+  assert.equal(followUp.metrics.estimatedCostCents >= 0, true);
   assert.equal(followUp.metrics.sendRate, 100);
+  assert.equal(followUp.recommendation.action, 'Monitor');
+  assert.equal(insights.recommendations.length >= 1, true);
   assert.equal(insights.recent.some((event) => event.ruleKey === 'follow_up_after_payment' && event.type === 'sent'), true);
 });
 
@@ -2049,13 +2053,30 @@ test('commerce automation insights attribute later paid orders as rule revenue',
   });
 
   const insights = await getCommerceAutomationInsights(businessId);
+  const expiredInsights = await getCommerceAutomationInsights(businessId, { attributionDays: 0 });
   const reorder = insights.rules.find((rule) => rule.ruleKey === 'reorder_after_completion');
+  const expiredReorder = expiredInsights.rules.find((rule) => rule.ruleKey === 'reorder_after_completion');
 
   assert.equal(reorder.metrics.sent, 1);
   assert.equal(reorder.metrics.attributedOrders, 1);
   assert.equal(reorder.metrics.attributedRevenue, '1220.00');
+  assert.equal(reorder.metrics.estimatedCostCents >= 0, true);
+  assert.equal(reorder.metrics.roi === null || reorder.metrics.roi >= 0, true);
+  assert.equal(['Scale', 'Keep running'].includes(reorder.recommendation.action), true);
   assert.equal(insights.summary.attributedRevenue, '1220.00');
+  assert.equal(insights.summary.roi === null || insights.summary.roi >= 0, true);
+  assert.equal(insights.attribution.windowDays, 30);
   assert.equal(insights.recent.some((event) => event.type === 'attributed_order' && event.orderId === secondOrder.id), true);
+  assert.equal(expiredInsights.attribution.windowDays, 1);
+  assert.equal(expiredReorder.metrics.attributedOrders, 1);
+});
+
+test('commerce automation insights recommend setup checks for idle rules', async () => {
+  const insights = await getCommerceAutomationInsights(970);
+  const idleRule = insights.rules.find((rule) => rule.ruleKey === 'follow_up_after_payment');
+
+  assert.equal(idleRule.recommendation.action, 'Watch setup');
+  assert.equal(insights.recommendations.some((item) => item.action === 'Watch setup'), true);
 });
 
 test('Meta catalog sync builds readiness checks and items_batch payloads in mock mode', async () => {

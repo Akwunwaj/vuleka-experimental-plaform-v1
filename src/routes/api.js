@@ -699,7 +699,7 @@ router.get('/commerce/automation-rules', requireAuth, async (req, res, next) => 
 
 router.get('/commerce/automation-insights', requireAuth, async (req, res, next) => {
   try {
-    res.json(await getCommerceAutomationInsights(req.businessId));
+    res.json(await getCommerceAutomationInsights(req.businessId, { attributionDays: req.query.attributionDays }));
   } catch (err) {
     next(err);
   }

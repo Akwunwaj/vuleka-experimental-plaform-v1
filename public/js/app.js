@@ -659,6 +659,7 @@ if (productForm) {
   const commerceAutomationRuleList = document.getElementById('commerceAutomationRuleList');
   const commerceAutomationRuleCount = document.getElementById('commerceAutomationRuleCount');
   const commerceAutomationInsightStrip = document.getElementById('commerceAutomationInsightStrip');
+  const commerceAutomationRecommendationList = document.getElementById('commerceAutomationRecommendationList');
   const inventoryAlertList = document.getElementById('inventoryAlertList');
   const inventoryAlertCount = document.getElementById('inventoryAlertCount');
   const productSubmitBtn = document.getElementById('productSubmitBtn');
@@ -921,13 +922,21 @@ if (productForm) {
     const metricsByRule = new Map(metricRules.map((rule) => [rule.ruleKey, rule.metrics || {}]));
     if (commerceAutomationInsightStrip) {
       const summary = insights?.summary || {};
-      commerceAutomationInsightStrip.innerHTML = `<span>Scheduled ${Number(summary.scheduled || 0)}</span><span>Sent ${Number(summary.sent || 0)}</span><span>Revenue R ${htmlEscape(summary.attributedRevenue || '0.00')}</span><span>Rate ${Number(summary.sendRate || 0)}%</span>`;
+      const roi = summary.roi === null || summary.roi === undefined ? '--' : `${Number(summary.roi).toFixed(2)}x`;
+      commerceAutomationInsightStrip.innerHTML = `<span>Scheduled ${Number(summary.scheduled || 0)}</span><span>Sent ${Number(summary.sent || 0)}</span><span>Revenue R ${htmlEscape(summary.attributedRevenue || '0.00')}</span><span>Cost R ${htmlEscape(summary.estimatedCost || '0.00')}</span><span>ROI ${htmlEscape(roi)}</span><span>Rate ${Number(summary.sendRate || 0)}%</span>`;
+    }
+    if (commerceAutomationRecommendationList) {
+      const recommendations = insights?.recommendations || [];
+      commerceAutomationRecommendationList.innerHTML = recommendations.length
+        ? recommendations.map((item) => `<article><strong>${htmlEscape(item.action)}</strong><span>${htmlEscape(item.priority || 'low')}</span><small>${htmlEscape(item.message || '')}</small></article>`).join('')
+        : '<p class="muted-copy">Automation recommendations will appear after activity.</p>';
     }
     if (!commerceAutomationRuleList) return;
     commerceAutomationRuleList.innerHTML = rules.length
       ? rules.map((rule) => {
         const metrics = metricsByRule.get(rule.ruleKey) || {};
-        return `<article><div><strong>${htmlEscape(rule.name)}</strong><span>${htmlEscape(rule.triggerStatus)} · ${htmlEscape(rule.promptType)}</span><small>${htmlEscape(rule.description || '')}</small><small>${Number(rule.delayValue || 0)} ${htmlEscape(rule.delayUnit || 'hours')} delay · ${rule.enabled ? 'enabled' : 'paused'}</small><small>${Number(metrics.scheduled || 0)} scheduled · ${Number(metrics.sent || 0)} sent · ${Number(metrics.attributedOrders || 0)} order(s)</small><small>R ${htmlEscape(metrics.attributedRevenue || '0.00')} attributed · ${Number(metrics.sendRate || 0)}%</small></div><div class="commerce-row-actions"><button class="link-button" data-automation-toggle="${htmlEscape(rule.ruleKey)}" data-enabled="${rule.enabled ? 'true' : 'false'}" type="button">${rule.enabled ? 'Pause' : 'Enable'}</button><button class="link-button" data-automation-delay="${htmlEscape(rule.ruleKey)}" data-delay-value="${htmlEscape(rule.delayValue)}" data-delay-unit="${htmlEscape(rule.delayUnit)}" type="button">Tune</button></div></article>`;
+        const roi = metrics.roi === null || metrics.roi === undefined ? '--' : `${Number(metrics.roi).toFixed(2)}x`;
+        return `<article><div><strong>${htmlEscape(rule.name)}</strong><span>${htmlEscape(rule.triggerStatus)} · ${htmlEscape(rule.promptType)}</span><small>${htmlEscape(rule.description || '')}</small><small>${Number(rule.delayValue || 0)} ${htmlEscape(rule.delayUnit || 'hours')} delay · ${rule.enabled ? 'enabled' : 'paused'}</small><small>${Number(metrics.scheduled || 0)} scheduled · ${Number(metrics.sent || 0)} sent · ${Number(metrics.attributedOrders || 0)} order(s)</small><small>R ${htmlEscape(metrics.attributedRevenue || '0.00')} revenue · R ${htmlEscape(metrics.estimatedCost || '0.00')} cost · ROI ${htmlEscape(roi)}</small><small>${htmlEscape(rule.recommendation?.action || 'Monitor')}: ${htmlEscape(rule.recommendation?.message || 'Let this automation gather more activity.')}</small></div><div class="commerce-row-actions"><button class="link-button" data-automation-toggle="${htmlEscape(rule.ruleKey)}" data-enabled="${rule.enabled ? 'true' : 'false'}" type="button">${rule.enabled ? 'Pause' : 'Enable'}</button><button class="link-button" data-automation-delay="${htmlEscape(rule.ruleKey)}" data-delay-value="${htmlEscape(rule.delayValue)}" data-delay-unit="${htmlEscape(rule.delayUnit)}" type="button">Tune</button></div></article>`;
       }).join('')
       : '<p class="muted-copy">Post-purchase automation rules will appear here.</p>';
     commerceAutomationRuleList.querySelectorAll('[data-automation-toggle]').forEach((button) => {
