@@ -992,11 +992,18 @@ if (productForm) {
     const response = await fetch(`/api/commerce/automation-rules/${encodeURIComponent(ruleKey)}/preview`);
     const result = await response.json().catch(() => ({}));
     if (!response.ok) return showToast(result.error || 'Automation preview could not load');
-    const orders = (result.orders || []).slice(0, 5).map((order) => `#${order.id} ${order.customerName} R ${order.total}${order.alreadyScheduled ? ' already scheduled' : ''}`);
+    const orders = (result.orders || []).slice(0, 5).map((order) => {
+      const status = order.sendable ? 'sendable' : order.suppressionLabel || (order.alreadyScheduled ? 'already scheduled' : 'not sendable');
+      return `#${order.id} ${order.customerName} R ${order.total} ${status}`;
+    });
+    const sendableToSchedule = result.summary?.sendableToSchedule ?? result.summary?.readyToSchedule ?? 0;
     window.alert([
       `${result.rule?.name || ruleKey}`,
-      `${Number(result.summary?.readyToSchedule || 0)} ready to schedule`,
+      `${Number(sendableToSchedule)} sendable now`,
+      `${Number(result.summary?.readyToSchedule || 0)} matching unscheduled`,
       `${Number(result.summary?.alreadyScheduled || 0)} already scheduled`,
+      `${Number(result.summary?.suppressedByConsent || 0)} opted out`,
+      `${Number(result.summary?.suppressedByCooldown || 0)} in cooldown`,
       `${Number(result.summary?.matchingOrders || 0)} matching order(s)`,
       ...orders
     ].join('\n'));

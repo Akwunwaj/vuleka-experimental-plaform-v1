@@ -1184,7 +1184,7 @@ async function previewCommerceAutomationRule({ businessId, ruleId, limit = 10 })
       scheduledOrderIds.add(String(event.orderId));
     }
   }
-  const matchingOrders = orders
+  const candidateOrders = orders
     .filter((order) => order.status === rule.triggerStatus)
     .filter((order) => isPromptEligibleForOrder(order, rule.promptType))
     .map((order) => ({
@@ -1196,10 +1196,15 @@ async function previewCommerceAutomationRule({ businessId, ruleId, limit = 10 })
       totalCents: order.totalCents,
       createdAt: order.createdAt,
       alreadyScheduled: scheduledOrderIds.has(String(order.id))
-    }))
+    }));
+  const matchingOrders = await Promise.all(candidateOrders.map((order) => automationRulePreviewOrder({ businessId, order, rule })));
+  matchingOrders
     .sort((a, b) => Number(a.alreadyScheduled) - Number(b.alreadyScheduled) || new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 
   const alreadyScheduled = matchingOrders.filter((order) => order.alreadyScheduled).length;
+  const suppressedByConsent = matchingOrders.filter((order) => order.suppressionReason === 'customer_opted_out').length;
+  const suppressedByCooldown = matchingOrders.filter((order) => order.suppressionReason === 'automation_cooldown').length;
+  const sendableToSchedule = matchingOrders.filter((order) => order.sendable).length;
   const orderLimit = Math.max(0, Number(limit ?? 10));
   return {
     rule,
@@ -1207,12 +1212,35 @@ async function previewCommerceAutomationRule({ businessId, ruleId, limit = 10 })
       matchingOrders: matchingOrders.length,
       alreadyScheduled,
       readyToSchedule: matchingOrders.length - alreadyScheduled,
+      sendableToSchedule,
+      suppressedByConsent,
+      suppressedByCooldown,
       enabled: rule.enabled,
       delayValue: rule.delayValue,
       delayUnit: rule.delayUnit
     },
     orders: matchingOrders.slice(0, Number.isFinite(orderLimit) ? orderLimit : 10)
   };
+}
+
+async function automationRulePreviewOrder({ businessId, order, rule }) {
+  if (order.alreadyScheduled) return { ...order, sendable: false, suppressionReason: 'already_scheduled', suppressionLabel: 'Already scheduled' };
+  const consent = await getContactConsentState({ businessId, phone: order.customerPhone });
+  if (consent.suppressed) {
+    return { ...order, sendable: false, suppressionReason: 'customer_opted_out', suppressionLabel: 'Customer opted out' };
+  }
+  const recentSend = await findRecentPostPurchaseSend({ businessId, customerPhone: order.customerPhone, excludeOrderId: order.id });
+  if (recentSend) {
+    return {
+      ...order,
+      sendable: false,
+      suppressionReason: 'automation_cooldown',
+      suppressionLabel: `Cooldown until ${automationCustomerCooldownHours()}h window passes`,
+      previousOrderId: recentSend.event.orderId,
+      previousSentAt: recentSend.event.createdAt
+    };
+  }
+  return { ...order, sendable: Boolean(rule.enabled), suppressionReason: rule.enabled ? '' : 'disabled', suppressionLabel: rule.enabled ? '' : 'Rule paused' };
 }
 
 async function scheduleAutomationRuleForOrder({ businessId, order, rule, source }) {
@@ -1265,9 +1293,16 @@ async function applyCommerceAutomationRulesForOrder({ businessId, orderId, sourc
 async function applyCommerceAutomationRuleToReadyOrders({ businessId, ruleId, source = 'manual_rule_apply' }) {
   const preview = await previewCommerceAutomationRule({ businessId, ruleId, limit: Number.MAX_SAFE_INTEGER });
   const rule = preview.rule;
-  const readyOrders = preview.orders.filter((order) => !order.alreadyScheduled);
+  const readyOrders = preview.orders.filter((order) => order.sendable);
   const scheduled = [];
-  const skipped = [];
+  const skipped = preview.orders
+    .filter((order) => !order.sendable)
+    .map((order) => ({
+      orderId: order.id,
+      ruleKey: rule.ruleKey,
+      reason: order.suppressionReason || 'not_sendable',
+      label: order.suppressionLabel || ''
+    }));
 
   for (const order of readyOrders) {
     const result = await scheduleAutomationRuleForOrder({ businessId, order, rule, source });
@@ -1291,6 +1326,9 @@ async function applyCommerceAutomationRuleToReadyOrders({ businessId, ruleId, so
       matchingOrders: preview.summary.matchingOrders,
       alreadyScheduled: preview.summary.alreadyScheduled,
       readyToSchedule: preview.summary.readyToSchedule,
+      sendableToSchedule: preview.summary.sendableToSchedule,
+      suppressedByConsent: preview.summary.suppressedByConsent,
+      suppressedByCooldown: preview.summary.suppressedByCooldown,
       scheduled: scheduled.length,
       skipped: skipped.length
     },

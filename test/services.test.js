@@ -2179,6 +2179,111 @@ test('commerce automation cooldown suppresses repeat buyer prompts', async () =>
   assert.equal(followUp.recommendation.action, 'Check frequency');
 });
 
+test('commerce automation preview and bulk apply skip non-sendable orders', async () => {
+  const businessId = 965;
+  const cooldownPhone = '+27821230016';
+  const optedOutPhone = '+27821230017';
+  const product = await createProduct(businessId, {
+    name: 'Preflight Automation Product',
+    sku: 'preflight-automation-product',
+    price: 330,
+    inventoryCount: 6,
+    metaCatalogId: 'catalog_965',
+    metaProductRetailerId: 'preflight-automation-product'
+  });
+  await updateCommerceAutomationRule({
+    businessId,
+    ruleId: 'follow_up_after_payment',
+    enabled: true,
+    delayValue: 0,
+    delayUnit: 'minutes'
+  });
+  const firstOrder = await createOrder(businessId, {
+    customerName: 'Preflight Cooldown Buyer',
+    customerPhone: cooldownPhone,
+    items: [{ productId: product.id, quantity: 1 }]
+  });
+  await reconcileOrderPayment({
+    businessId,
+    orderId: firstOrder.id,
+    provider: 'payfast',
+    providerPaymentId: 'automation_preflight_paid_1',
+    amount: '330.00',
+    paymentStatus: 'COMPLETE'
+  });
+  await runOnce({ limit: 10 });
+  await updateCommerceAutomationRule({
+    businessId,
+    ruleId: 'follow_up_after_payment',
+    enabled: false,
+    delayValue: 0,
+    delayUnit: 'minutes'
+  });
+  const optedOutOrder = await createOrder(businessId, {
+    customerName: 'Preflight Opted Out Buyer',
+    customerPhone: optedOutPhone,
+    items: [{ productId: product.id, quantity: 1 }]
+  });
+  await suppressContactByPhone({
+    businessId,
+    phone: optedOutPhone,
+    channel: 'WhatsApp reply',
+    source: 'STOP keyword'
+  });
+  await reconcileOrderPayment({
+    businessId,
+    orderId: optedOutOrder.id,
+    provider: 'payfast',
+    providerPaymentId: 'automation_preflight_paid_2',
+    amount: '330.00',
+    paymentStatus: 'COMPLETE'
+  });
+  const cooldownOrder = await createOrder(businessId, {
+    customerName: 'Preflight Cooldown Buyer',
+    customerPhone: cooldownPhone,
+    items: [{ productId: product.id, quantity: 1 }]
+  });
+  await reconcileOrderPayment({
+    businessId,
+    orderId: cooldownOrder.id,
+    provider: 'payfast',
+    providerPaymentId: 'automation_preflight_paid_3',
+    amount: '330.00',
+    paymentStatus: 'COMPLETE'
+  });
+  await updateCommerceAutomationRule({
+    businessId,
+    ruleId: 'follow_up_after_payment',
+    enabled: true,
+    delayValue: 0,
+    delayUnit: 'minutes'
+  });
+
+  const preview = await previewCommerceAutomationRule({ businessId, ruleId: 'follow_up_after_payment' });
+  const applied = await applyCommerceAutomationRuleToReadyOrders({
+    businessId,
+    ruleId: 'follow_up_after_payment',
+    source: 'test_preflight_bulk'
+  });
+  const optedOutDetail = await getOrderById(businessId, optedOutOrder.id);
+  const cooldownDetail = await getOrderById(businessId, cooldownOrder.id);
+
+  assert.equal(preview.summary.matchingOrders, 3);
+  assert.equal(preview.summary.alreadyScheduled, 1);
+  assert.equal(preview.summary.readyToSchedule, 2);
+  assert.equal(preview.summary.sendableToSchedule, 0);
+  assert.equal(preview.summary.suppressedByConsent, 1);
+  assert.equal(preview.summary.suppressedByCooldown, 1);
+  assert.equal(preview.orders.some((order) => order.id === optedOutOrder.id && order.suppressionReason === 'customer_opted_out'), true);
+  assert.equal(preview.orders.some((order) => order.id === cooldownOrder.id && order.suppressionReason === 'automation_cooldown'), true);
+  assert.equal(applied.summary.scheduled, 0);
+  assert.equal(applied.summary.skipped, 3);
+  assert.equal(applied.skipped.some((item) => item.orderId === optedOutOrder.id && item.reason === 'customer_opted_out'), true);
+  assert.equal(applied.skipped.some((item) => item.orderId === cooldownOrder.id && item.reason === 'automation_cooldown'), true);
+  assert.equal(optedOutDetail.events.some((event) => event.eventType === 'automation.rules_applied'), false);
+  assert.equal(cooldownDetail.events.some((event) => event.eventType === 'automation.rules_applied'), false);
+});
+
 test('commerce automation insights attribute scheduled and sent prompts to rules', async () => {
   const businessId = 972;
   const product = await createProduct(businessId, {
