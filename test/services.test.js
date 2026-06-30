@@ -2001,6 +2001,63 @@ test('commerce automation insights attribute scheduled and sent prompts to rules
   assert.equal(insights.recent.some((event) => event.ruleKey === 'follow_up_after_payment' && event.type === 'sent'), true);
 });
 
+test('commerce automation insights attribute later paid orders as rule revenue', async () => {
+  const businessId = 971;
+  const product = await createProduct(businessId, {
+    name: 'Automation Revenue Product',
+    sku: 'automation-revenue-product',
+    price: 610,
+    inventoryCount: 8,
+    metaCatalogId: 'catalog_971',
+    metaProductRetailerId: 'automation-revenue-product'
+  });
+  await updateCommerceAutomationRule({
+    businessId,
+    ruleId: 'reorder_after_completion',
+    enabled: true,
+    delayValue: 0,
+    delayUnit: 'minutes'
+  });
+  const firstOrder = await createOrder(businessId, {
+    customerName: 'Revenue Buyer',
+    customerPhone: '+27821230011',
+    items: [{ productId: product.id, quantity: 1 }]
+  });
+  await reconcileOrderPayment({
+    businessId,
+    orderId: firstOrder.id,
+    provider: 'payfast',
+    providerPaymentId: 'automation_revenue_paid_1',
+    amount: '610.00',
+    paymentStatus: 'COMPLETE'
+  });
+  await updateOrderStatus({ businessId, orderId: firstOrder.id, status: 'completed' });
+  await runOnce({ limit: 10 });
+
+  const secondOrder = await createOrder(businessId, {
+    customerName: 'Revenue Buyer',
+    customerPhone: '+27821230011',
+    items: [{ productId: product.id, quantity: 2 }]
+  });
+  await reconcileOrderPayment({
+    businessId,
+    orderId: secondOrder.id,
+    provider: 'payfast',
+    providerPaymentId: 'automation_revenue_paid_2',
+    amount: '1220.00',
+    paymentStatus: 'COMPLETE'
+  });
+
+  const insights = await getCommerceAutomationInsights(businessId);
+  const reorder = insights.rules.find((rule) => rule.ruleKey === 'reorder_after_completion');
+
+  assert.equal(reorder.metrics.sent, 1);
+  assert.equal(reorder.metrics.attributedOrders, 1);
+  assert.equal(reorder.metrics.attributedRevenue, '1220.00');
+  assert.equal(insights.summary.attributedRevenue, '1220.00');
+  assert.equal(insights.recent.some((event) => event.type === 'attributed_order' && event.orderId === secondOrder.id), true);
+});
+
 test('Meta catalog sync builds readiness checks and items_batch payloads in mock mode', async () => {
   const businessId = 984;
   const product = await createProduct(businessId, {

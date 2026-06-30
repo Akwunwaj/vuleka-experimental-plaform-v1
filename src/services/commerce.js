@@ -1047,6 +1047,7 @@ async function getCommerceCustomerSegments(businessId) {
 async function listCommerceAutomationEvents(businessId) {
   const relevantTypes = new Set([
     'automation.rules_applied',
+    'payment.reconciled',
     'post_purchase.review.sent',
     'post_purchase.reorder.sent',
     'post_purchase.follow_up.sent'
@@ -1061,7 +1062,7 @@ async function listCommerceAutomationEvents(businessId) {
   const rows = await query(
     `select * from commerce_order_events
      where business_id = :businessId
-       and event_type in ('automation.rules_applied', 'post_purchase.review.sent', 'post_purchase.reorder.sent', 'post_purchase.follow_up.sent')
+       and event_type in ('automation.rules_applied', 'payment.reconciled', 'post_purchase.review.sent', 'post_purchase.reorder.sent', 'post_purchase.follow_up.sent')
      order by created_at desc, id desc`,
     { businessId }
   );
@@ -1161,11 +1162,12 @@ async function applyCommerceAutomationRulesForOrder({ businessId, orderId, sourc
 }
 
 async function getCommerceAutomationInsights(businessId) {
-  const [rules, events] = await Promise.all([
+  const [rules, events, orders] = await Promise.all([
     listCommerceAutomationRules(businessId),
-    listCommerceAutomationEvents(businessId)
+    listCommerceAutomationEvents(businessId),
+    listOrders(businessId)
   ]);
-  return buildCommerceAutomationInsights({ rules, events });
+  return buildCommerceAutomationInsights({ rules, events, orders });
 }
 
 async function sendPostPurchasePrompt({ businessId, orderId, promptType = 'review', body = '', ruleId = null, source = 'manual' }) {
@@ -2117,15 +2119,21 @@ function seedDemoAutomationRules(businessId) {
   }
 }
 
-function buildCommerceAutomationInsights({ rules, events }) {
+function buildCommerceAutomationInsights({ rules, events, orders = [] }) {
   const stats = new Map(rules.map((rule) => [rule.ruleKey, {
     scheduled: 0,
     sent: 0,
     deduped: 0,
+    attributedOrders: 0,
+    attributedRevenueCents: 0,
     lastScheduledAt: null,
-    lastSentAt: null
+    lastSentAt: null,
+    lastAttributedAt: null
   }]));
   const recent = [];
+  const orderById = new Map(orders.map((order) => [String(order.id), order]));
+  const sentPrompts = [];
+  const paidEvents = [];
 
   for (const event of events) {
     if (event.eventType === 'automation.rules_applied') {
@@ -2151,9 +2159,17 @@ function buildCommerceAutomationInsights({ rules, events }) {
     if (String(event.eventType || '').startsWith('post_purchase.')) {
       const ruleKey = event.metadata?.ruleId || event.metadata?.ruleKey || null;
       if (!stats.has(ruleKey)) continue;
+      const sourceOrder = orderById.get(String(event.orderId));
       const ruleStats = stats.get(ruleKey);
       ruleStats.sent += 1;
       ruleStats.lastSentAt = latestDate(ruleStats.lastSentAt, event.createdAt);
+      sentPrompts.push({
+        ruleKey,
+        orderId: event.orderId,
+        customerPhone: normalizeCustomerPhone(sourceOrder?.customerPhone),
+        promptType: event.eventType.replace('post_purchase.', '').replace('.sent', ''),
+        sentAt: event.createdAt
+      });
       recent.push({
         type: 'sent',
         ruleKey,
@@ -2162,22 +2178,55 @@ function buildCommerceAutomationInsights({ rules, events }) {
         occurredAt: event.createdAt,
         mode: event.metadata?.mode || ''
       });
+      continue;
     }
+
+    if (event.eventType === 'payment.reconciled') {
+      const paidOrder = orderById.get(String(event.orderId));
+      if (!paidOrder) continue;
+      paidEvents.push({
+        orderId: event.orderId,
+        customerPhone: normalizeCustomerPhone(paidOrder.customerPhone),
+        paidAt: event.createdAt,
+        totalCents: Number(paidOrder.totalCents || 0)
+      });
+    }
+  }
+
+  for (const attribution of attributeAutomationRevenue({ sentPrompts, paidEvents })) {
+    const ruleStats = stats.get(attribution.ruleKey);
+    if (!ruleStats) continue;
+    ruleStats.attributedOrders += 1;
+    ruleStats.attributedRevenueCents += attribution.totalCents;
+    ruleStats.lastAttributedAt = latestDate(ruleStats.lastAttributedAt, attribution.paidAt);
+    recent.push({
+      type: 'attributed_order',
+      ruleKey: attribution.ruleKey,
+      promptType: attribution.promptType,
+      orderId: attribution.orderId,
+      occurredAt: attribution.paidAt,
+      revenue: cents(attribution.totalCents)
+    });
   }
 
   const ruleRows = rules.map((rule) => {
     const ruleStats = stats.get(rule.ruleKey) || {};
     const scheduled = Number(ruleStats.scheduled || 0);
     const sent = Number(ruleStats.sent || 0);
+    const attributedRevenueCents = Number(ruleStats.attributedRevenueCents || 0);
     return {
       ...rule,
       metrics: {
         scheduled,
         sent,
         deduped: Number(ruleStats.deduped || 0),
+        attributedOrders: Number(ruleStats.attributedOrders || 0),
+        attributedRevenueCents,
+        attributedRevenue: cents(attributedRevenueCents),
         sendRate: scheduled ? Math.round((sent / scheduled) * 100) : 0,
         lastScheduledAt: ruleStats.lastScheduledAt || null,
-        lastSentAt: ruleStats.lastSentAt || null
+        lastSentAt: ruleStats.lastSentAt || null,
+        lastAttributedAt: ruleStats.lastAttributedAt || null
       }
     };
   });
@@ -2187,9 +2236,12 @@ function buildCommerceAutomationInsights({ rules, events }) {
     totals.scheduled += rule.metrics.scheduled;
     totals.sent += rule.metrics.sent;
     totals.deduped += rule.metrics.deduped;
+    totals.attributedOrders += rule.metrics.attributedOrders;
+    totals.attributedRevenueCents += rule.metrics.attributedRevenueCents;
     return totals;
-  }, { rules: 0, enabledRules: 0, scheduled: 0, sent: 0, deduped: 0, sendRate: 0 });
+  }, { rules: 0, enabledRules: 0, scheduled: 0, sent: 0, deduped: 0, attributedOrders: 0, attributedRevenueCents: 0, attributedRevenue: '0.00', sendRate: 0 });
   summary.sendRate = summary.scheduled ? Math.round((summary.sent / summary.scheduled) * 100) : 0;
+  summary.attributedRevenue = cents(summary.attributedRevenueCents);
 
   return {
     summary,
@@ -2198,6 +2250,35 @@ function buildCommerceAutomationInsights({ rules, events }) {
       .sort((a, b) => new Date(b.occurredAt || 0) - new Date(a.occurredAt || 0))
       .slice(0, 8)
   };
+}
+
+function attributeAutomationRevenue({ sentPrompts, paidEvents }) {
+  const attributionWindowMs = Number(process.env.COMMERCE_AUTOMATION_ATTRIBUTION_DAYS || 30) * 24 * 60 * 60 * 1000;
+  const sent = sentPrompts
+    .filter((prompt) => prompt.customerPhone && prompt.sentAt)
+    .sort((a, b) => new Date(b.sentAt || 0) - new Date(a.sentAt || 0));
+  const attributed = [];
+
+  for (const paidEvent of paidEvents) {
+    if (!paidEvent.customerPhone || !paidEvent.paidAt) continue;
+    const paidAt = new Date(paidEvent.paidAt).getTime();
+    const match = sent.find((prompt) => {
+      if (prompt.customerPhone !== paidEvent.customerPhone) return false;
+      if (String(prompt.orderId) === String(paidEvent.orderId)) return false;
+      const sentAt = new Date(prompt.sentAt).getTime();
+      return sentAt <= paidAt && paidAt - sentAt <= attributionWindowMs;
+    });
+    if (!match) continue;
+    attributed.push({
+      ruleKey: match.ruleKey,
+      promptType: match.promptType,
+      orderId: paidEvent.orderId,
+      paidAt: paidEvent.paidAt,
+      totalCents: paidEvent.totalCents
+    });
+  }
+
+  return attributed;
 }
 
 function validateReturnRequest({ businessId, order, reason, resolution, amount, amountCents, note }) {

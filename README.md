@@ -194,7 +194,7 @@ Backups are written to `backups/` by default and ignored by git. Use `DB_BACKUP_
 - `/api/commerce/returns`: list return and refund requests
 - `/api/commerce/customer-segments`: derived buyer segments such as first-time, repeat, VIP, follow-up, and at-risk
 - `/api/commerce/automation-rules`: list and tune subscriber post-purchase automation rules
-- `/api/commerce/automation-insights`: summarize scheduled and sent post-purchase automation performance
+- `/api/commerce/automation-insights`: summarize scheduled, sent, attributed order, and revenue performance for post-purchase automations
 - `/api/commerce/products`: manage tenant product catalogue entries for WhatsApp selling
 - `/api/commerce/products/import`: preview or commit CSV bulk product imports for WhatsApp catalogues
 - `/api/commerce/products/:id`: update product details, pricing, stock, and Meta catalog identifiers

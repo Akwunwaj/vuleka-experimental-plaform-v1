@@ -921,13 +921,13 @@ if (productForm) {
     const metricsByRule = new Map(metricRules.map((rule) => [rule.ruleKey, rule.metrics || {}]));
     if (commerceAutomationInsightStrip) {
       const summary = insights?.summary || {};
-      commerceAutomationInsightStrip.innerHTML = `<span>Scheduled ${Number(summary.scheduled || 0)}</span><span>Sent ${Number(summary.sent || 0)}</span><span>Rate ${Number(summary.sendRate || 0)}%</span>`;
+      commerceAutomationInsightStrip.innerHTML = `<span>Scheduled ${Number(summary.scheduled || 0)}</span><span>Sent ${Number(summary.sent || 0)}</span><span>Revenue R ${htmlEscape(summary.attributedRevenue || '0.00')}</span><span>Rate ${Number(summary.sendRate || 0)}%</span>`;
     }
     if (!commerceAutomationRuleList) return;
     commerceAutomationRuleList.innerHTML = rules.length
       ? rules.map((rule) => {
         const metrics = metricsByRule.get(rule.ruleKey) || {};
-        return `<article><div><strong>${htmlEscape(rule.name)}</strong><span>${htmlEscape(rule.triggerStatus)} · ${htmlEscape(rule.promptType)}</span><small>${htmlEscape(rule.description || '')}</small><small>${Number(rule.delayValue || 0)} ${htmlEscape(rule.delayUnit || 'hours')} delay · ${rule.enabled ? 'enabled' : 'paused'}</small><small>${Number(metrics.scheduled || 0)} scheduled · ${Number(metrics.sent || 0)} sent · ${Number(metrics.sendRate || 0)}%</small></div><div class="commerce-row-actions"><button class="link-button" data-automation-toggle="${htmlEscape(rule.ruleKey)}" data-enabled="${rule.enabled ? 'true' : 'false'}" type="button">${rule.enabled ? 'Pause' : 'Enable'}</button><button class="link-button" data-automation-delay="${htmlEscape(rule.ruleKey)}" data-delay-value="${htmlEscape(rule.delayValue)}" data-delay-unit="${htmlEscape(rule.delayUnit)}" type="button">Tune</button></div></article>`;
+        return `<article><div><strong>${htmlEscape(rule.name)}</strong><span>${htmlEscape(rule.triggerStatus)} · ${htmlEscape(rule.promptType)}</span><small>${htmlEscape(rule.description || '')}</small><small>${Number(rule.delayValue || 0)} ${htmlEscape(rule.delayUnit || 'hours')} delay · ${rule.enabled ? 'enabled' : 'paused'}</small><small>${Number(metrics.scheduled || 0)} scheduled · ${Number(metrics.sent || 0)} sent · ${Number(metrics.attributedOrders || 0)} order(s)</small><small>R ${htmlEscape(metrics.attributedRevenue || '0.00')} attributed · ${Number(metrics.sendRate || 0)}%</small></div><div class="commerce-row-actions"><button class="link-button" data-automation-toggle="${htmlEscape(rule.ruleKey)}" data-enabled="${rule.enabled ? 'true' : 'false'}" type="button">${rule.enabled ? 'Pause' : 'Enable'}</button><button class="link-button" data-automation-delay="${htmlEscape(rule.ruleKey)}" data-delay-value="${htmlEscape(rule.delayValue)}" data-delay-unit="${htmlEscape(rule.delayUnit)}" type="button">Tune</button></div></article>`;
       }).join('')
       : '<p class="muted-copy">Post-purchase automation rules will appear here.</p>';
     commerceAutomationRuleList.querySelectorAll('[data-automation-toggle]').forEach((button) => {
