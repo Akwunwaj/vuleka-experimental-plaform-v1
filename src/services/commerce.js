@@ -1044,6 +1044,30 @@ async function getCommerceCustomerSegments(businessId) {
   };
 }
 
+async function listCommerceAutomationEvents(businessId) {
+  const relevantTypes = new Set([
+    'automation.rules_applied',
+    'post_purchase.review.sent',
+    'post_purchase.reorder.sent',
+    'post_purchase.follow_up.sent'
+  ]);
+  if (!hasDatabaseConfig()) {
+    return demoOrderEvents
+      .filter((event) => Number(event.businessId || event.business_id) === Number(businessId))
+      .filter((event) => relevantTypes.has(event.eventType || event.event_type))
+      .map(normalizeOrderEvent);
+  }
+
+  const rows = await query(
+    `select * from commerce_order_events
+     where business_id = :businessId
+       and event_type in ('automation.rules_applied', 'post_purchase.review.sent', 'post_purchase.reorder.sent', 'post_purchase.follow_up.sent')
+     order by created_at desc, id desc`,
+    { businessId }
+  );
+  return rows.map(normalizeOrderEvent);
+}
+
 async function listCommerceAutomationRules(businessId) {
   if (!hasDatabaseConfig()) {
     seedDemoAutomationRules(businessId);
@@ -1136,7 +1160,15 @@ async function applyCommerceAutomationRulesForOrder({ businessId, orderId, sourc
   return { scheduled, skipped, order: await getOrderById(businessId, order.id) };
 }
 
-async function sendPostPurchasePrompt({ businessId, orderId, promptType = 'review', body = '' }) {
+async function getCommerceAutomationInsights(businessId) {
+  const [rules, events] = await Promise.all([
+    listCommerceAutomationRules(businessId),
+    listCommerceAutomationEvents(businessId)
+  ]);
+  return buildCommerceAutomationInsights({ rules, events });
+}
+
+async function sendPostPurchasePrompt({ businessId, orderId, promptType = 'review', body = '', ruleId = null, source = 'manual' }) {
   const order = await getOrderById(businessId, orderId);
   if (!['paid', 'packed', 'out_for_delivery', 'completed'].includes(order.status)) {
     const error = new Error('Post-purchase prompts require a paid or fulfilled order');
@@ -1152,7 +1184,7 @@ async function sendPostPurchasePrompt({ businessId, orderId, promptType = 'revie
     eventType: `post_purchase.${normalizedType}.sent`,
     status: order.status,
     note: `Post-purchase ${normalizedType} prompt sent on WhatsApp`,
-    metadata: { providerMessageId: result.messageId, mode: result.mode, body: text }
+    metadata: { providerMessageId: result.messageId, mode: result.mode, body: text, ruleId, source }
   });
   return { ...result, promptType: normalizedType, body: text, order: await getOrderById(businessId, orderId) };
 }
@@ -2085,6 +2117,89 @@ function seedDemoAutomationRules(businessId) {
   }
 }
 
+function buildCommerceAutomationInsights({ rules, events }) {
+  const stats = new Map(rules.map((rule) => [rule.ruleKey, {
+    scheduled: 0,
+    sent: 0,
+    deduped: 0,
+    lastScheduledAt: null,
+    lastSentAt: null
+  }]));
+  const recent = [];
+
+  for (const event of events) {
+    if (event.eventType === 'automation.rules_applied') {
+      for (const scheduled of event.metadata?.scheduled || []) {
+        const ruleKey = scheduled.ruleKey || scheduled.ruleId;
+        if (!stats.has(ruleKey)) continue;
+        const ruleStats = stats.get(ruleKey);
+        if (scheduled.deduped) ruleStats.deduped += 1;
+        else ruleStats.scheduled += 1;
+        ruleStats.lastScheduledAt = latestDate(ruleStats.lastScheduledAt, event.createdAt);
+        recent.push({
+          type: 'scheduled',
+          ruleKey,
+          promptType: scheduled.promptType,
+          orderId: event.orderId,
+          occurredAt: event.createdAt,
+          deduped: Boolean(scheduled.deduped)
+        });
+      }
+      continue;
+    }
+
+    if (String(event.eventType || '').startsWith('post_purchase.')) {
+      const ruleKey = event.metadata?.ruleId || event.metadata?.ruleKey || null;
+      if (!stats.has(ruleKey)) continue;
+      const ruleStats = stats.get(ruleKey);
+      ruleStats.sent += 1;
+      ruleStats.lastSentAt = latestDate(ruleStats.lastSentAt, event.createdAt);
+      recent.push({
+        type: 'sent',
+        ruleKey,
+        promptType: event.eventType.replace('post_purchase.', '').replace('.sent', ''),
+        orderId: event.orderId,
+        occurredAt: event.createdAt,
+        mode: event.metadata?.mode || ''
+      });
+    }
+  }
+
+  const ruleRows = rules.map((rule) => {
+    const ruleStats = stats.get(rule.ruleKey) || {};
+    const scheduled = Number(ruleStats.scheduled || 0);
+    const sent = Number(ruleStats.sent || 0);
+    return {
+      ...rule,
+      metrics: {
+        scheduled,
+        sent,
+        deduped: Number(ruleStats.deduped || 0),
+        sendRate: scheduled ? Math.round((sent / scheduled) * 100) : 0,
+        lastScheduledAt: ruleStats.lastScheduledAt || null,
+        lastSentAt: ruleStats.lastSentAt || null
+      }
+    };
+  });
+  const summary = ruleRows.reduce((totals, rule) => {
+    totals.rules += 1;
+    if (rule.enabled) totals.enabledRules += 1;
+    totals.scheduled += rule.metrics.scheduled;
+    totals.sent += rule.metrics.sent;
+    totals.deduped += rule.metrics.deduped;
+    return totals;
+  }, { rules: 0, enabledRules: 0, scheduled: 0, sent: 0, deduped: 0, sendRate: 0 });
+  summary.sendRate = summary.scheduled ? Math.round((summary.sent / summary.scheduled) * 100) : 0;
+
+  return {
+    summary,
+    rules: ruleRows,
+    recent: recent
+      .sort((a, b) => new Date(b.occurredAt || 0) - new Date(a.occurredAt || 0))
+      .slice(0, 8)
+  };
+}
+
 function validateReturnRequest({ businessId, order, reason, resolution, amount, amountCents, note }) {
   const normalizedReason = String(reason || '').trim();
   const normalizedResolution = String(resolution || 'refund').trim().toLowerCase();
@@ -2317,6 +2432,7 @@ module.exports = {
   createProductVariant,
   createReturnRequest,
   getCommerceAnalytics,
+  getCommerceAutomationInsights,
   listCommerceAutomationRules,
   getCommerceCustomerSegments,
   getInventoryAlerts,

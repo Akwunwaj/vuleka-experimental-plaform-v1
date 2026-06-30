@@ -45,7 +45,9 @@ async function processJob(job) {
       businessId: payload.businessId,
       orderId: payload.orderId,
       promptType: payload.promptType,
-      body: payload.body
+      body: payload.body,
+      ruleId: payload.ruleId,
+      source: payload.source || 'worker'
     });
   }
 

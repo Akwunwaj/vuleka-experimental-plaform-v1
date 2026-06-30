@@ -165,6 +165,7 @@ const {
   createProductVariant,
   createReturnRequest,
   getCommerceAnalytics,
+  getCommerceAutomationInsights,
   getCommerceCustomerSegments,
   getInventoryAlerts,
   getOrderById,
@@ -530,6 +531,7 @@ test('critical campaign and contact write routes require owner or admin role', (
     /router\.get\('\/commerce\/returns', requireAuth/,
     /router\.get\('\/commerce\/customer-segments', requireAuth/,
     /router\.get\('\/commerce\/automation-rules', requireAuth/,
+    /router\.get\('\/commerce\/automation-insights', requireAuth/,
     /router\.patch\('\/commerce\/automation-rules\/:id', requireRole\(\['owner', 'admin'\]\)/,
     /router\.patch\('\/commerce\/orders\/:id\/status', requireRole\(\['owner', 'admin', 'agent'\]\)/,
     /router\.patch\('\/commerce\/orders\/:id\/fulfilment', requireRole\(\['owner', 'admin', 'agent'\]\)/,
@@ -1954,6 +1956,49 @@ test('commerce automation rules tune automatic post-purchase scheduling', async 
   assert.equal(worker.processed >= 1, true);
   assert.equal(detail.events.some((event) => event.eventType === 'automation.rules_applied'), true);
   assert.equal(detail.events.some((event) => event.eventType === 'post_purchase.follow_up.sent'), true);
+});
+
+test('commerce automation insights attribute scheduled and sent prompts to rules', async () => {
+  const businessId = 972;
+  const product = await createProduct(businessId, {
+    name: 'Automation Insight Product',
+    sku: 'automation-insight-product',
+    price: 410,
+    inventoryCount: 6,
+    metaCatalogId: 'catalog_972',
+    metaProductRetailerId: 'automation-insight-product'
+  });
+  await updateCommerceAutomationRule({
+    businessId,
+    ruleId: 'follow_up_after_payment',
+    enabled: true,
+    delayValue: 0,
+    delayUnit: 'minutes'
+  });
+  const order = await createOrder(businessId, {
+    customerName: 'Insight Buyer',
+    customerPhone: '+27821230010',
+    items: [{ productId: product.id, quantity: 1 }]
+  });
+  await reconcileOrderPayment({
+    businessId,
+    orderId: order.id,
+    provider: 'payfast',
+    providerPaymentId: 'automation_insight_paid_1',
+    amount: '410.00',
+    paymentStatus: 'COMPLETE'
+  });
+  await runOnce({ limit: 10 });
+
+  const insights = await getCommerceAutomationInsights(businessId);
+  const followUp = insights.rules.find((rule) => rule.ruleKey === 'follow_up_after_payment');
+
+  assert.equal(insights.summary.scheduled >= 1, true);
+  assert.equal(insights.summary.sent >= 1, true);
+  assert.equal(followUp.metrics.scheduled, 1);
+  assert.equal(followUp.metrics.sent, 1);
+  assert.equal(followUp.metrics.sendRate, 100);
+  assert.equal(insights.recent.some((event) => event.ruleKey === 'follow_up_after_payment' && event.type === 'sent'), true);
 });
 
 test('Meta catalog sync builds readiness checks and items_batch payloads in mock mode', async () => {

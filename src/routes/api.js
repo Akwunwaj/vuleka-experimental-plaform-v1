@@ -67,6 +67,7 @@ const {
   createReturnRequest,
   applyCommerceAutomationRulesForOrder,
   getCommerceAnalytics,
+  getCommerceAutomationInsights,
   getCommerceCustomerSegments,
   getInventoryAlerts,
   getOrderById,
@@ -691,6 +692,14 @@ router.get('/commerce/customer-segments', requireAuth, async (req, res, next) =>
 router.get('/commerce/automation-rules', requireAuth, async (req, res, next) => {
   try {
     res.json({ rules: await listCommerceAutomationRules(req.businessId) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/commerce/automation-insights', requireAuth, async (req, res, next) => {
+  try {
+    res.json(await getCommerceAutomationInsights(req.businessId));
   } catch (err) {
     next(err);
   }

@@ -658,6 +658,7 @@ if (productForm) {
   const customerSegmentCount = document.getElementById('customerSegmentCount');
   const commerceAutomationRuleList = document.getElementById('commerceAutomationRuleList');
   const commerceAutomationRuleCount = document.getElementById('commerceAutomationRuleCount');
+  const commerceAutomationInsightStrip = document.getElementById('commerceAutomationInsightStrip');
   const inventoryAlertList = document.getElementById('inventoryAlertList');
   const inventoryAlertCount = document.getElementById('inventoryAlertCount');
   const productSubmitBtn = document.getElementById('productSubmitBtn');
@@ -667,7 +668,7 @@ if (productForm) {
   let currentProducts = [];
 
   async function loadCommerce() {
-    const [productsResponse, ordersResponse, analyticsResponse, collectionsResponse, inventoryAlertsResponse, couponsResponse, abandonedCartsResponse, returnsResponse, segmentsResponse, automationRulesResponse] = await Promise.all([
+    const [productsResponse, ordersResponse, analyticsResponse, collectionsResponse, inventoryAlertsResponse, couponsResponse, abandonedCartsResponse, returnsResponse, segmentsResponse, automationRulesResponse, automationInsightsResponse] = await Promise.all([
       fetch('/api/commerce/products'),
       fetch('/api/commerce/orders'),
       fetch('/api/commerce/analytics'),
@@ -677,7 +678,8 @@ if (productForm) {
       fetch('/api/commerce/abandoned-carts'),
       fetch('/api/commerce/returns'),
       fetch('/api/commerce/customer-segments'),
-      fetch('/api/commerce/automation-rules')
+      fetch('/api/commerce/automation-rules'),
+      fetch('/api/commerce/automation-insights')
     ]);
     const products = await productsResponse.json().catch(() => ({ products: [] }));
     const orders = await ordersResponse.json().catch(() => ({ orders: [] }));
@@ -689,6 +691,7 @@ if (productForm) {
     const returns = await returnsResponse.json().catch(() => ({ returns: [] }));
     const segments = await segmentsResponse.json().catch(() => ({ segments: [] }));
     const automationRules = await automationRulesResponse.json().catch(() => ({ rules: [] }));
+    const automationInsights = await automationInsightsResponse.json().catch(() => null);
     if (productsResponse.ok) {
       currentProducts = products.products || [];
       productGrid.innerHTML = products.products.length
@@ -723,7 +726,7 @@ if (productForm) {
       renderCustomerSegments(segments);
     }
     if (automationRulesResponse.ok) {
-      renderAutomationRules(automationRules.rules || []);
+      renderAutomationRules(automationRules.rules || [], automationInsights);
     }
     loadCatalogSyncPreview();
   }
@@ -912,11 +915,20 @@ if (productForm) {
       : '<p class="muted-copy">Buyer segments will appear after orders are created.</p>';
   }
 
-  function renderAutomationRules(rules) {
+  function renderAutomationRules(rules, insights = null) {
     if (commerceAutomationRuleCount) commerceAutomationRuleCount.textContent = rules.filter((rule) => rule.enabled).length;
+    const metricRules = insights?.rules || [];
+    const metricsByRule = new Map(metricRules.map((rule) => [rule.ruleKey, rule.metrics || {}]));
+    if (commerceAutomationInsightStrip) {
+      const summary = insights?.summary || {};
+      commerceAutomationInsightStrip.innerHTML = `<span>Scheduled ${Number(summary.scheduled || 0)}</span><span>Sent ${Number(summary.sent || 0)}</span><span>Rate ${Number(summary.sendRate || 0)}%</span>`;
+    }
     if (!commerceAutomationRuleList) return;
     commerceAutomationRuleList.innerHTML = rules.length
-      ? rules.map((rule) => `<article><div><strong>${htmlEscape(rule.name)}</strong><span>${htmlEscape(rule.triggerStatus)} · ${htmlEscape(rule.promptType)}</span><small>${htmlEscape(rule.description || '')}</small><small>${Number(rule.delayValue || 0)} ${htmlEscape(rule.delayUnit || 'hours')} delay · ${rule.enabled ? 'enabled' : 'paused'}</small></div><div class="commerce-row-actions"><button class="link-button" data-automation-toggle="${htmlEscape(rule.ruleKey)}" data-enabled="${rule.enabled ? 'true' : 'false'}" type="button">${rule.enabled ? 'Pause' : 'Enable'}</button><button class="link-button" data-automation-delay="${htmlEscape(rule.ruleKey)}" data-delay-value="${htmlEscape(rule.delayValue)}" data-delay-unit="${htmlEscape(rule.delayUnit)}" type="button">Tune</button></div></article>`).join('')
+      ? rules.map((rule) => {
+        const metrics = metricsByRule.get(rule.ruleKey) || {};
+        return `<article><div><strong>${htmlEscape(rule.name)}</strong><span>${htmlEscape(rule.triggerStatus)} · ${htmlEscape(rule.promptType)}</span><small>${htmlEscape(rule.description || '')}</small><small>${Number(rule.delayValue || 0)} ${htmlEscape(rule.delayUnit || 'hours')} delay · ${rule.enabled ? 'enabled' : 'paused'}</small><small>${Number(metrics.scheduled || 0)} scheduled · ${Number(metrics.sent || 0)} sent · ${Number(metrics.sendRate || 0)}%</small></div><div class="commerce-row-actions"><button class="link-button" data-automation-toggle="${htmlEscape(rule.ruleKey)}" data-enabled="${rule.enabled ? 'true' : 'false'}" type="button">${rule.enabled ? 'Pause' : 'Enable'}</button><button class="link-button" data-automation-delay="${htmlEscape(rule.ruleKey)}" data-delay-value="${htmlEscape(rule.delayValue)}" data-delay-unit="${htmlEscape(rule.delayUnit)}" type="button">Tune</button></div></article>`;
+      }).join('')
       : '<p class="muted-copy">Post-purchase automation rules will appear here.</p>';
     commerceAutomationRuleList.querySelectorAll('[data-automation-toggle]').forEach((button) => {
       button.addEventListener('click', () => updateAutomationRule(button.dataset.automationToggle, {
