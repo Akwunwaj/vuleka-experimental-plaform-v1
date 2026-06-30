@@ -359,6 +359,7 @@ Classic Tee,classic-tee,199,25,https://example.co.za/classic-tee.jpg,demo_catalo
           <header><h3>Automation rules</h3><span class="status" id="commerceAutomationRuleCount">0</span></header>
           <div class="automation-insight-strip" id="commerceAutomationInsightStrip"><span>Scheduled 0</span><span>Sent 0</span><span>Revenue R 0.00</span><span>Cost R 0.00</span><span>ROI --</span><span>Rate 0%</span></div>
           <div class="automation-recommendation-list" id="commerceAutomationRecommendationList"><p class="muted-copy">Automation recommendations will appear after activity.</p></div>
+          <div class="automation-activity-list" id="commerceAutomationActivityList"><p class="muted-copy">Automation activity will appear here.</p></div>
           <div class="automation-rule-list" id="commerceAutomationRuleList"><p class="muted-copy">Post-purchase automation rules will appear here.</p></div>
         </article>
         <article class="panel">

@@ -507,6 +507,17 @@ test('Insights page renders live analytics hydration targets', () => {
   assert.doesNotMatch(page, /Mon','Tue','Wed'/);
 });
 
+test('Commerce page renders automation insight hydration targets', () => {
+  const page = renderPage(repository.getPublicPreviewData(), { authenticated: true });
+  const appSource = fs.readFileSync(require.resolve('../public/js/app'), 'utf8');
+
+  assert.match(page, /id="commerceAutomationInsightStrip"/);
+  assert.match(page, /id="commerceAutomationRecommendationList"/);
+  assert.match(page, /id="commerceAutomationActivityList"/);
+  assert.match(appSource, /function renderAutomationActivity/);
+  assert.match(appSource, /automationActivityLabel/);
+});
+
 test('critical campaign and contact write routes require owner or admin role', () => {
   const apiSource = fs.readFileSync(require.resolve('../src/routes/api'), 'utf8');
   const protectedRoutePatterns = [

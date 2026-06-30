@@ -468,6 +468,9 @@ textarea { min-height: 130px; resize: vertical; }
 .automation-recommendation-list { display: grid; gap: 8px; margin: 0 0 12px; }
 .automation-recommendation-list article { display: grid; grid-template-columns: minmax(120px, auto) auto 1fr; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel-2); }
 .automation-recommendation-list span, .automation-recommendation-list small { color: var(--muted); }
+.automation-activity-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 0 0 12px; }
+.automation-activity-list article { display: grid; gap: 4px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel-2); }
+.automation-activity-list span, .automation-activity-list small { color: var(--muted); }
 .order-detail { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
 .order-detail article { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel-2); }
 .order-detail header { margin: 0; }
@@ -522,7 +525,7 @@ code { display: block; padding: 12px; margin: 10px 0; border-radius: var(--radiu
   .topbar-actions, .page-heading { align-items: stretch; flex-direction: column; width: 100%; }
   .account-menu { justify-content: center; padding-right: 10px; }
   .suite-hero h1 { font-size: 28px; }
-  .stats-strip, .features-grid, .pricing-grid, .metric-grid, .template-grid, .provider-grid, .flows-grid, .commerce-grid, .product-grid, .flow-template-grid, .flow-sim-grid, .setup-steps, .signup-plan-grid, .social-auth > div, .customer-segment-list, .automation-rule-list { grid-template-columns: 1fr; }
+  .stats-strip, .features-grid, .pricing-grid, .metric-grid, .template-grid, .provider-grid, .flows-grid, .commerce-grid, .product-grid, .flow-template-grid, .flow-sim-grid, .setup-steps, .signup-plan-grid, .social-auth > div, .customer-segment-list, .automation-rule-list, .automation-activity-list { grid-template-columns: 1fr; }
   .features, .pricing, .cta-banner { padding-left: 20px; padding-right: 20px; }
   .footer { align-items: flex-start; flex-direction: column; padding: 32px 20px 96px; }
 }

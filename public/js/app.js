@@ -660,6 +660,7 @@ if (productForm) {
   const commerceAutomationRuleCount = document.getElementById('commerceAutomationRuleCount');
   const commerceAutomationInsightStrip = document.getElementById('commerceAutomationInsightStrip');
   const commerceAutomationRecommendationList = document.getElementById('commerceAutomationRecommendationList');
+  const commerceAutomationActivityList = document.getElementById('commerceAutomationActivityList');
   const inventoryAlertList = document.getElementById('inventoryAlertList');
   const inventoryAlertCount = document.getElementById('inventoryAlertCount');
   const productSubmitBtn = document.getElementById('productSubmitBtn');
@@ -931,6 +932,9 @@ if (productForm) {
         ? recommendations.map((item) => `<article><strong>${htmlEscape(item.action)}</strong><span>${htmlEscape(item.priority || 'low')}</span><small>${htmlEscape(item.message || '')}</small></article>`).join('')
         : '<p class="muted-copy">Automation recommendations will appear after activity.</p>';
     }
+    if (commerceAutomationActivityList) {
+      renderAutomationActivity(insights?.recent || []);
+    }
     if (!commerceAutomationRuleList) return;
     commerceAutomationRuleList.innerHTML = rules.length
       ? rules.map((rule) => {
@@ -947,6 +951,33 @@ if (productForm) {
     commerceAutomationRuleList.querySelectorAll('[data-automation-delay]').forEach((button) => {
       button.addEventListener('click', () => tuneAutomationRule(button));
     });
+  }
+
+  function renderAutomationActivity(events) {
+    commerceAutomationActivityList.innerHTML = events.length
+      ? events.map((event) => {
+        const label = automationActivityLabel(event);
+        const detail = automationActivityDetail(event);
+        return `<article><strong>${htmlEscape(label)}</strong><span>${htmlEscape(event.ruleKey || '')}</span><small>${htmlEscape(detail)}</small></article>`;
+      }).join('')
+      : '<p class="muted-copy">Automation activity will appear here.</p>';
+  }
+
+  function automationActivityLabel(event) {
+    if (event.type === 'attributed_order') return `Attributed order #${event.orderId}`;
+    if (event.type === 'sent') return `${event.promptType || 'Prompt'} sent`;
+    if (event.type === 'scheduled') return `${event.promptType || 'Prompt'} scheduled`;
+    return event.type || 'Automation event';
+  }
+
+  function automationActivityDetail(event) {
+    const parts = [
+      event.occurredAt ? formatShortDate(event.occurredAt) : '',
+      event.revenue ? `R ${event.revenue}` : '',
+      event.deduped ? 'deduped' : '',
+      event.mode ? event.mode : ''
+    ].filter(Boolean);
+    return parts.join(' · ') || `Order #${event.orderId || '-'}`;
   }
 
   async function tuneAutomationRule(button) {
