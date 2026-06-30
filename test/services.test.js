@@ -180,6 +180,7 @@ const {
   listProducts,
   listProductVariants,
   listReturnRequests,
+  previewCommerceAutomationRule,
   reconcileOrderPayment,
   sendAbandonedCartRecovery,
   sendOrderPaymentLink,
@@ -543,6 +544,7 @@ test('critical campaign and contact write routes require owner or admin role', (
     /router\.get\('\/commerce\/customer-segments', requireAuth/,
     /router\.get\('\/commerce\/automation-rules', requireAuth/,
     /router\.get\('\/commerce\/automation-insights', requireAuth/,
+    /router\.get\('\/commerce\/automation-rules\/:id\/preview', requireAuth/,
     /router\.patch\('\/commerce\/automation-rules\/:id', requireRole\(\['owner', 'admin'\]\)/,
     /router\.patch\('\/commerce\/orders\/:id\/status', requireRole\(\['owner', 'admin', 'agent'\]\)/,
     /router\.patch\('\/commerce\/orders\/:id\/fulfilment', requireRole\(\['owner', 'admin', 'agent'\]\)/,
@@ -1967,6 +1969,39 @@ test('commerce automation rules tune automatic post-purchase scheduling', async 
   assert.equal(worker.processed >= 1, true);
   assert.equal(detail.events.some((event) => event.eventType === 'automation.rules_applied'), true);
   assert.equal(detail.events.some((event) => event.eventType === 'post_purchase.follow_up.sent'), true);
+});
+
+test('commerce automation rule preview shows ready and already scheduled orders', async () => {
+  const businessId = 969;
+  const product = await createProduct(businessId, {
+    name: 'Automation Preview Product',
+    sku: 'automation-preview-product',
+    price: 380,
+    inventoryCount: 5,
+    metaCatalogId: 'catalog_969',
+    metaProductRetailerId: 'automation-preview-product'
+  });
+  const order = await createOrder(businessId, {
+    customerName: 'Preview Buyer',
+    customerPhone: '+27821230012',
+    items: [{ productId: product.id, quantity: 1 }]
+  });
+  await reconcileOrderPayment({
+    businessId,
+    orderId: order.id,
+    provider: 'payfast',
+    providerPaymentId: 'automation_preview_paid_1',
+    amount: '380.00',
+    paymentStatus: 'COMPLETE'
+  });
+
+  const preview = await previewCommerceAutomationRule({ businessId, ruleId: 'follow_up_after_payment' });
+
+  assert.equal(preview.rule.ruleKey, 'follow_up_after_payment');
+  assert.equal(preview.summary.matchingOrders, 1);
+  assert.equal(preview.summary.alreadyScheduled, 1);
+  assert.equal(preview.summary.readyToSchedule, 0);
+  assert.equal(preview.orders[0].alreadyScheduled, true);
 });
 
 test('commerce automation insights attribute scheduled and sent prompts to rules', async () => {

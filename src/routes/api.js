@@ -81,6 +81,7 @@ const {
   listProducts,
   listProductVariants,
   listReturnRequests,
+  previewCommerceAutomationRule,
   reconcileOrderPayment,
   sendAbandonedCartRecovery,
   sendOrderPaymentLink,
@@ -700,6 +701,14 @@ router.get('/commerce/automation-rules', requireAuth, async (req, res, next) => 
 router.get('/commerce/automation-insights', requireAuth, async (req, res, next) => {
   try {
     res.json(await getCommerceAutomationInsights(req.businessId, { attributionDays: req.query.attributionDays }));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/commerce/automation-rules/:id/preview', requireAuth, async (req, res, next) => {
+  try {
+    res.json(await previewCommerceAutomationRule({ businessId: req.businessId, ruleId: req.params.id }));
   } catch (err) {
     next(err);
   }

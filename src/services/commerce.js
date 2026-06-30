@@ -1119,6 +1119,53 @@ async function updateCommerceAutomationRule({ businessId, ruleId, enabled, delay
   return normalizeAutomationRule(demoAutomationRules.find((item) => Number(item.businessId) === Number(businessId) && item.ruleKey === rule.ruleKey));
 }
 
+async function previewCommerceAutomationRule({ businessId, ruleId }) {
+  const rules = await listCommerceAutomationRules(businessId);
+  const rule = rules.find((item) => item.ruleKey === String(ruleId || '').trim());
+  if (!rule) throw notFound('Automation rule not found');
+
+  const [orders, events] = await Promise.all([
+    listOrders(businessId),
+    listCommerceAutomationEvents(businessId)
+  ]);
+  const scheduledOrderIds = new Set();
+  for (const event of events) {
+    if (event.eventType !== 'automation.rules_applied') continue;
+    const scheduled = event.metadata?.scheduled || [];
+    if (scheduled.some((item) => (item.ruleKey || item.ruleId) === rule.ruleKey)) {
+      scheduledOrderIds.add(String(event.orderId));
+    }
+  }
+  const matchingOrders = orders
+    .filter((order) => order.status === rule.triggerStatus)
+    .filter((order) => isPromptEligibleForOrder(order, rule.promptType))
+    .map((order) => ({
+      id: order.id,
+      customerName: order.customerName,
+      customerPhone: order.customerPhone,
+      status: order.status,
+      total: order.total,
+      totalCents: order.totalCents,
+      createdAt: order.createdAt,
+      alreadyScheduled: scheduledOrderIds.has(String(order.id))
+    }))
+    .sort((a, b) => Number(a.alreadyScheduled) - Number(b.alreadyScheduled) || new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
+  const alreadyScheduled = matchingOrders.filter((order) => order.alreadyScheduled).length;
+  return {
+    rule,
+    summary: {
+      matchingOrders: matchingOrders.length,
+      alreadyScheduled,
+      readyToSchedule: matchingOrders.length - alreadyScheduled,
+      enabled: rule.enabled,
+      delayValue: rule.delayValue,
+      delayUnit: rule.delayUnit
+    },
+    orders: matchingOrders.slice(0, 10)
+  };
+}
+
 async function applyCommerceAutomationRulesForOrder({ businessId, orderId, source = 'manual' }) {
   const order = await getOrderById(businessId, orderId);
   const rules = await listCommerceAutomationRules(businessId);
@@ -2624,6 +2671,7 @@ module.exports = {
   listProducts,
   listProductVariants,
   listReturnRequests,
+  previewCommerceAutomationRule,
   recordOrderFromMetaEvent,
   reconcileOrderPayment,
   sendAbandonedCartRecovery,
