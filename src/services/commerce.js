@@ -47,6 +47,16 @@ const returnStatuses = new Set([
 ]);
 
 const automationDelayUnits = new Set(['minutes', 'hours', 'days']);
+const postPurchaseSentEventTypes = [
+  'post_purchase.review.sent',
+  'post_purchase.reorder.sent',
+  'post_purchase.follow_up.sent'
+];
+const postPurchaseSuppressedEventTypes = [
+  'post_purchase.review.suppressed',
+  'post_purchase.reorder.suppressed',
+  'post_purchase.follow_up.suppressed'
+];
 const commerceAutomationRuleDefinitions = [
   {
     ruleKey: 'follow_up_after_payment',
@@ -651,6 +661,44 @@ async function getOrderById(businessId, orderId) {
   return { ...normalizeOrder(rows[0]), items: items.map(normalizeOrderItem), events: events.map(normalizeOrderEvent) };
 }
 
+async function findRecentPostPurchaseSend({ businessId, customerPhone, excludeOrderId = null }) {
+  const normalizedPhone = normalizeCustomerPhone(customerPhone);
+  if (!normalizedPhone) return null;
+  const cutoff = new Date(Date.now() - automationCustomerCooldownMs());
+
+  if (!hasDatabaseConfig()) {
+    const ordersById = new Map(
+      demoOrders
+        .filter((order) => Number(order.businessId || order.business_id || 1) === Number(businessId))
+        .map((order) => [String(order.id), normalizeOrder(order)])
+    );
+    return demoOrderEvents
+      .filter((event) => Number(event.businessId || event.business_id) === Number(businessId))
+      .filter((event) => postPurchaseSentEventTypes.includes(event.eventType || event.event_type))
+      .filter((event) => !excludeOrderId || String(event.orderId || event.order_id) !== String(excludeOrderId))
+      .map((event) => ({ event: normalizeOrderEvent(event), order: ordersById.get(String(event.orderId || event.order_id)) }))
+      .filter((item) => item.order && normalizeCustomerPhone(item.order.customerPhone) === normalizedPhone)
+      .filter((item) => new Date(item.event.createdAt || 0).getTime() >= cutoff.getTime())
+      .sort((a, b) => new Date(b.event.createdAt || 0) - new Date(a.event.createdAt || 0))[0] || null;
+  }
+
+  const rows = await query(
+    `select e.*, o.customer_phone as customerPhone
+     from commerce_order_events e
+     join commerce_orders o on o.id = e.order_id and o.business_id = e.business_id
+     where e.business_id = :businessId
+       and o.customer_phone = :customerPhone
+       and (:excludeOrderId is null or e.order_id <> :excludeOrderId)
+       and e.event_type in ('post_purchase.review.sent', 'post_purchase.reorder.sent', 'post_purchase.follow_up.sent')
+       and e.created_at >= :cutoffAt
+     order by e.created_at desc, e.id desc
+     limit 1`,
+    { businessId, customerPhone, excludeOrderId, cutoffAt: cutoff.toISOString() }
+  );
+  if (!rows[0]) return null;
+  return { event: normalizeOrderEvent(rows[0]), order: { customerPhone } };
+}
+
 async function updateOrderStatus({ businessId, orderId, status, note, sendWhatsApp = false }) {
   const normalizedStatus = normalizeOrderStatus(status);
   const order = await getOrderById(businessId, orderId);
@@ -1050,12 +1098,8 @@ async function listCommerceAutomationEvents(businessId) {
   const relevantTypes = new Set([
     'automation.rules_applied',
     'payment.reconciled',
-    'post_purchase.review.sent',
-    'post_purchase.reorder.sent',
-    'post_purchase.follow_up.sent',
-    'post_purchase.review.suppressed',
-    'post_purchase.reorder.suppressed',
-    'post_purchase.follow_up.suppressed'
+    ...postPurchaseSentEventTypes,
+    ...postPurchaseSuppressedEventTypes
   ]);
   if (!hasDatabaseConfig()) {
     return demoOrderEvents
@@ -1287,6 +1331,32 @@ async function sendPostPurchasePrompt({ businessId, orderId, promptType = 'revie
       suppressed: true,
       reason: 'customer_opted_out',
       promptType: normalizedType,
+      order: await getOrderById(businessId, orderId)
+    };
+  }
+  const recentSend = await findRecentPostPurchaseSend({ businessId, customerPhone: order.customerPhone, excludeOrderId: order.id });
+  if (recentSend) {
+    await recordOrderEvent({
+      businessId,
+      orderId,
+      eventType: `post_purchase.${normalizedType}.suppressed`,
+      status: order.status,
+      note: `Post-purchase ${normalizedType} prompt suppressed by customer cooldown`,
+      metadata: {
+        ruleId,
+        source,
+        reason: 'automation_cooldown',
+        cooldownHours: automationCustomerCooldownHours(),
+        previousOrderId: recentSend.event.orderId,
+        previousEventId: recentSend.event.id,
+        previousSentAt: recentSend.event.createdAt
+      }
+    });
+    return {
+      suppressed: true,
+      reason: 'automation_cooldown',
+      promptType: normalizedType,
+      cooldownHours: automationCustomerCooldownHours(),
       order: await getOrderById(businessId, orderId)
     };
   }
@@ -2218,6 +2288,15 @@ function automationRuleDelayMs(rule) {
   return Math.max(0, Number(rule.delayValue || 0) * multipliers[normalizeAutomationDelayUnit(rule.delayUnit)]);
 }
 
+function automationCustomerCooldownHours() {
+  const value = Number(process.env.COMMERCE_AUTOMATION_CUSTOMER_COOLDOWN_HOURS ?? 24);
+  return Number.isFinite(value) ? Math.max(0, value) : 24;
+}
+
+function automationCustomerCooldownMs() {
+  return automationCustomerCooldownHours() * 60 * 60 * 1000;
+}
+
 function seedDemoAutomationRules(businessId) {
   for (const definition of commerceAutomationRuleDefinitions) {
     const exists = demoAutomationRules.some((rule) => Number(rule.businessId) === Number(businessId) && rule.ruleKey === definition.ruleKey);
@@ -2237,6 +2316,7 @@ function buildCommerceAutomationInsights({ rules, events, orders = [], attributi
     scheduled: 0,
     sent: 0,
     suppressed: 0,
+    suppressedReasons: {},
     deduped: 0,
     estimatedCostCents: 0,
     attributedOrders: 0,
@@ -2275,14 +2355,16 @@ function buildCommerceAutomationInsights({ rules, events, orders = [], attributi
       const ruleKey = event.metadata?.ruleId || event.metadata?.ruleKey || null;
       if (!stats.has(ruleKey)) continue;
       const ruleStats = stats.get(ruleKey);
+      const reason = event.metadata?.reason || 'suppressed';
       ruleStats.suppressed += 1;
+      ruleStats.suppressedReasons[reason] = Number(ruleStats.suppressedReasons[reason] || 0) + 1;
       recent.push({
         type: 'suppressed',
         ruleKey,
         promptType: event.eventType.replace('post_purchase.', '').replace('.suppressed', ''),
         orderId: event.orderId,
         occurredAt: event.createdAt,
-        reason: event.metadata?.reason || 'suppressed'
+        reason
       });
       continue;
     }
@@ -2354,6 +2436,7 @@ function buildCommerceAutomationInsights({ rules, events, orders = [], attributi
         scheduled,
         sent,
         suppressed: Number(ruleStats.suppressed || 0),
+        suppressedReasons: { ...(ruleStats.suppressedReasons || {}) },
         deduped: Number(ruleStats.deduped || 0),
         estimatedCostCents,
         estimatedCost: cents(estimatedCostCents),
@@ -2422,12 +2505,20 @@ function automationRuleRecommendation(rule) {
       message: `No matching ${rule.triggerStatus} orders have triggered this automation yet.`
     };
   }
-  if (metrics.suppressed && metrics.suppressed >= metrics.sent) {
+  if (metrics.suppressedReasons?.customer_opted_out && metrics.suppressedReasons.customer_opted_out >= metrics.sent) {
     return {
       ruleKey: rule.ruleKey,
       priority: 'high',
       action: 'Check consent',
-      message: `${metrics.suppressed} prompt(s) were suppressed because customers are opted out. Review opt-in capture before scaling this rule.`
+      message: `${metrics.suppressedReasons.customer_opted_out} prompt(s) were suppressed because customers are opted out. Review opt-in capture before scaling this rule.`
+    };
+  }
+  if (metrics.suppressedReasons?.automation_cooldown && metrics.suppressedReasons.automation_cooldown >= metrics.sent) {
+    return {
+      ruleKey: rule.ruleKey,
+      priority: 'medium',
+      action: 'Check frequency',
+      message: `${metrics.suppressedReasons.automation_cooldown} prompt(s) were held back by the customer cooldown. Keep the cooldown if you want a quieter buyer experience.`
     };
   }
   if (metrics.scheduled > 0 && !metrics.sent) {

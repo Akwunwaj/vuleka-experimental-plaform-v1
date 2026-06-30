@@ -2117,6 +2117,68 @@ test('commerce automation suppresses opted-out post-purchase prompts', async () 
   assert.equal(insights.recent.some((event) => event.type === 'suppressed' && event.ruleKey === 'follow_up_after_payment'), true);
 });
 
+test('commerce automation cooldown suppresses repeat buyer prompts', async () => {
+  const businessId = 966;
+  const phone = '+27821230015';
+  const product = await createProduct(businessId, {
+    name: 'Cooldown Automation Product',
+    sku: 'cooldown-automation-product',
+    price: 265,
+    inventoryCount: 5,
+    metaCatalogId: 'catalog_966',
+    metaProductRetailerId: 'cooldown-automation-product'
+  });
+  await updateCommerceAutomationRule({
+    businessId,
+    ruleId: 'follow_up_after_payment',
+    enabled: true,
+    delayValue: 0,
+    delayUnit: 'minutes'
+  });
+  const firstOrder = await createOrder(businessId, {
+    customerName: 'Cooldown Buyer',
+    customerPhone: phone,
+    items: [{ productId: product.id, quantity: 1 }]
+  });
+  await reconcileOrderPayment({
+    businessId,
+    orderId: firstOrder.id,
+    provider: 'payfast',
+    providerPaymentId: 'automation_cooldown_paid_1',
+    amount: '265.00',
+    paymentStatus: 'COMPLETE'
+  });
+  await runOnce({ limit: 10 });
+
+  const secondOrder = await createOrder(businessId, {
+    customerName: 'Cooldown Buyer',
+    customerPhone: phone,
+    items: [{ productId: product.id, quantity: 1 }]
+  });
+  await reconcileOrderPayment({
+    businessId,
+    orderId: secondOrder.id,
+    provider: 'payfast',
+    providerPaymentId: 'automation_cooldown_paid_2',
+    amount: '265.00',
+    paymentStatus: 'COMPLETE'
+  });
+  await runOnce({ limit: 10 });
+
+  const firstDetail = await getOrderById(businessId, firstOrder.id);
+  const secondDetail = await getOrderById(businessId, secondOrder.id);
+  const insights = await getCommerceAutomationInsights(businessId);
+  const followUp = insights.rules.find((rule) => rule.ruleKey === 'follow_up_after_payment');
+
+  assert.equal(firstDetail.events.some((event) => event.eventType === 'post_purchase.follow_up.sent'), true);
+  assert.equal(secondDetail.events.some((event) => event.eventType === 'post_purchase.follow_up.suppressed' && event.metadata.reason === 'automation_cooldown'), true);
+  assert.equal(secondDetail.events.some((event) => event.eventType === 'post_purchase.follow_up.sent'), false);
+  assert.equal(insights.summary.sent, 1);
+  assert.equal(insights.summary.suppressed, 1);
+  assert.equal(followUp.metrics.suppressedReasons.automation_cooldown, 1);
+  assert.equal(followUp.recommendation.action, 'Check frequency');
+});
+
 test('commerce automation insights attribute scheduled and sent prompts to rules', async () => {
   const businessId = 972;
   const product = await createProduct(businessId, {
