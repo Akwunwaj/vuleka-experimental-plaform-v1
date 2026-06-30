@@ -82,6 +82,35 @@ async function suppressContactByPhone({ businessId, phone, channel = 'WhatsApp r
   return { suppressed: true, contact };
 }
 
+async function getContactConsentState({ businessId, phone }) {
+  const normalizedPhone = normalizeWhatsAppPhone(phone);
+
+  if (!hasDatabaseConfig()) {
+    const contact = demoContacts.get(`${businessId}:phone:${normalizedPhone}`);
+    if (!contact) return { suppressed: false, reason: 'contact_not_found', phone: normalizedPhone };
+    return {
+      suppressed: contact.optedIn === false || Boolean(contact.optedOutAt),
+      contact,
+      phone: normalizedPhone
+    };
+  }
+
+  const rows = await query(
+    `select id, phone, opted_in as optedIn, opted_out_at as optedOutAt
+     from contacts
+     where business_id = :businessId and phone = :phone
+     limit 1`,
+    { businessId, phone: normalizedPhone }
+  );
+  if (!rows?.length) return { suppressed: false, reason: 'contact_not_found', phone: normalizedPhone };
+  const contact = rows[0];
+  return {
+    suppressed: !Boolean(Number(contact.optedIn)) || Boolean(contact.optedOutAt),
+    contact,
+    phone: normalizedPhone
+  };
+}
+
 async function listConsentEvents(businessId, { contactId } = {}) {
   if (!hasDatabaseConfig()) {
     return demoEvents.filter((event) => {
@@ -167,6 +196,7 @@ function csvRow(values) {
 
 module.exports = {
   exportConsentEventsCsv,
+  getContactConsentState,
   isStopMessage,
   listConsentEvents,
   maskPhone,

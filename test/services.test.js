@@ -514,6 +514,7 @@ test('Commerce page renders automation insight hydration targets', () => {
   const appSource = fs.readFileSync(require.resolve('../public/js/app'), 'utf8');
 
   assert.match(page, /id="commerceAutomationInsightStrip"/);
+  assert.match(page, /Suppressed 0/);
   assert.match(page, /id="commerceAutomationRecommendationList"/);
   assert.match(page, /id="commerceAutomationActivityList"/);
   assert.match(appSource, /function renderAutomationActivity/);
@@ -2062,6 +2063,58 @@ test('commerce automation rules can bulk apply to ready orders', async () => {
   assert.equal(worker.processed >= 1, true);
   assert.equal(detail.events.some((event) => event.eventType === 'automation.rules_applied'), true);
   assert.equal(detail.events.some((event) => event.eventType === 'post_purchase.follow_up.sent'), true);
+});
+
+test('commerce automation suppresses opted-out post-purchase prompts', async () => {
+  const businessId = 967;
+  const phone = '+27821230014';
+  const product = await createProduct(businessId, {
+    name: 'Suppressed Automation Product',
+    sku: 'suppressed-automation-product',
+    price: 515,
+    inventoryCount: 5,
+    metaCatalogId: 'catalog_967',
+    metaProductRetailerId: 'suppressed-automation-product'
+  });
+  await updateCommerceAutomationRule({
+    businessId,
+    ruleId: 'follow_up_after_payment',
+    enabled: true,
+    delayValue: 0,
+    delayUnit: 'minutes'
+  });
+  const order = await createOrder(businessId, {
+    customerName: 'Suppressed Buyer',
+    customerPhone: phone,
+    items: [{ productId: product.id, quantity: 1 }]
+  });
+  await suppressContactByPhone({
+    businessId,
+    phone,
+    channel: 'WhatsApp reply',
+    source: 'STOP keyword'
+  });
+  await reconcileOrderPayment({
+    businessId,
+    orderId: order.id,
+    provider: 'payfast',
+    providerPaymentId: 'automation_suppressed_paid_1',
+    amount: '515.00',
+    paymentStatus: 'COMPLETE'
+  });
+
+  const worker = await runOnce({ limit: 10 });
+  const detail = await getOrderById(businessId, order.id);
+  const insights = await getCommerceAutomationInsights(businessId);
+  const followUp = insights.rules.find((rule) => rule.ruleKey === 'follow_up_after_payment');
+
+  assert.equal(worker.processed >= 1, true);
+  assert.equal(detail.events.some((event) => event.eventType === 'post_purchase.follow_up.suppressed'), true);
+  assert.equal(detail.events.some((event) => event.eventType === 'post_purchase.follow_up.sent'), false);
+  assert.equal(insights.summary.suppressed, 1);
+  assert.equal(followUp.metrics.suppressed, 1);
+  assert.equal(followUp.recommendation.action, 'Check consent');
+  assert.equal(insights.recent.some((event) => event.type === 'suppressed' && event.ruleKey === 'follow_up_after_payment'), true);
 });
 
 test('commerce automation insights attribute scheduled and sent prompts to rules', async () => {

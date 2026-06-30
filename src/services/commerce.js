@@ -5,6 +5,7 @@ const demo = require('../data/demoData');
 const { sendInteractiveMessage, sendTextMessage } = require('./metaClient');
 const { enqueueJob } = require('./jobQueue');
 const { metaRateConfig } = require('./metaCosts');
+const { getContactConsentState } = require('./consent');
 
 const demoProducts = [...(demo.products || [])];
 const demoOrders = [...(demo.orders || [])];
@@ -1051,7 +1052,10 @@ async function listCommerceAutomationEvents(businessId) {
     'payment.reconciled',
     'post_purchase.review.sent',
     'post_purchase.reorder.sent',
-    'post_purchase.follow_up.sent'
+    'post_purchase.follow_up.sent',
+    'post_purchase.review.suppressed',
+    'post_purchase.reorder.suppressed',
+    'post_purchase.follow_up.suppressed'
   ]);
   if (!hasDatabaseConfig()) {
     return demoOrderEvents
@@ -1063,7 +1067,7 @@ async function listCommerceAutomationEvents(businessId) {
   const rows = await query(
     `select * from commerce_order_events
      where business_id = :businessId
-       and event_type in ('automation.rules_applied', 'payment.reconciled', 'post_purchase.review.sent', 'post_purchase.reorder.sent', 'post_purchase.follow_up.sent')
+       and event_type in ('automation.rules_applied', 'payment.reconciled', 'post_purchase.review.sent', 'post_purchase.reorder.sent', 'post_purchase.follow_up.sent', 'post_purchase.review.suppressed', 'post_purchase.reorder.suppressed', 'post_purchase.follow_up.suppressed')
      order by created_at desc, id desc`,
     { businessId }
   );
@@ -1269,6 +1273,23 @@ async function sendPostPurchasePrompt({ businessId, orderId, promptType = 'revie
     throw error;
   }
   const normalizedType = normalizePostPurchasePromptType(promptType);
+  const consent = await getContactConsentState({ businessId, phone: order.customerPhone });
+  if (consent.suppressed) {
+    await recordOrderEvent({
+      businessId,
+      orderId,
+      eventType: `post_purchase.${normalizedType}.suppressed`,
+      status: order.status,
+      note: `Post-purchase ${normalizedType} prompt suppressed because the customer is opted out`,
+      metadata: { ruleId, source, reason: 'customer_opted_out', phone: consent.phone }
+    });
+    return {
+      suppressed: true,
+      reason: 'customer_opted_out',
+      promptType: normalizedType,
+      order: await getOrderById(businessId, orderId)
+    };
+  }
   const text = String(body || postPurchasePromptText(order, normalizedType)).slice(0, 1024);
   const result = await sendTextMessage({ businessId, to: order.customerPhone, text });
   await recordOrderEvent({
@@ -2215,6 +2236,7 @@ function buildCommerceAutomationInsights({ rules, events, orders = [], attributi
   const stats = new Map(rules.map((rule) => [rule.ruleKey, {
     scheduled: 0,
     sent: 0,
+    suppressed: 0,
     deduped: 0,
     estimatedCostCents: 0,
     attributedOrders: 0,
@@ -2249,7 +2271,23 @@ function buildCommerceAutomationInsights({ rules, events, orders = [], attributi
       continue;
     }
 
-    if (String(event.eventType || '').startsWith('post_purchase.')) {
+    if (String(event.eventType || '').startsWith('post_purchase.') && String(event.eventType || '').endsWith('.suppressed')) {
+      const ruleKey = event.metadata?.ruleId || event.metadata?.ruleKey || null;
+      if (!stats.has(ruleKey)) continue;
+      const ruleStats = stats.get(ruleKey);
+      ruleStats.suppressed += 1;
+      recent.push({
+        type: 'suppressed',
+        ruleKey,
+        promptType: event.eventType.replace('post_purchase.', '').replace('.suppressed', ''),
+        orderId: event.orderId,
+        occurredAt: event.createdAt,
+        reason: event.metadata?.reason || 'suppressed'
+      });
+      continue;
+    }
+
+    if (String(event.eventType || '').startsWith('post_purchase.') && String(event.eventType || '').endsWith('.sent')) {
       const ruleKey = event.metadata?.ruleId || event.metadata?.ruleKey || null;
       if (!stats.has(ruleKey)) continue;
       const sourceOrder = orderById.get(String(event.orderId));
@@ -2315,6 +2353,7 @@ function buildCommerceAutomationInsights({ rules, events, orders = [], attributi
       metrics: {
         scheduled,
         sent,
+        suppressed: Number(ruleStats.suppressed || 0),
         deduped: Number(ruleStats.deduped || 0),
         estimatedCostCents,
         estimatedCost: cents(estimatedCostCents),
@@ -2335,12 +2374,13 @@ function buildCommerceAutomationInsights({ rules, events, orders = [], attributi
     if (rule.enabled) totals.enabledRules += 1;
     totals.scheduled += rule.metrics.scheduled;
     totals.sent += rule.metrics.sent;
+    totals.suppressed += rule.metrics.suppressed;
     totals.deduped += rule.metrics.deduped;
     totals.estimatedCostCents += rule.metrics.estimatedCostCents;
     totals.attributedOrders += rule.metrics.attributedOrders;
     totals.attributedRevenueCents += rule.metrics.attributedRevenueCents;
     return totals;
-  }, { rules: 0, enabledRules: 0, scheduled: 0, sent: 0, deduped: 0, estimatedCostCents: 0, estimatedCost: '0.00', attributedOrders: 0, attributedRevenueCents: 0, attributedRevenue: '0.00', roi: null, sendRate: 0 });
+  }, { rules: 0, enabledRules: 0, scheduled: 0, sent: 0, suppressed: 0, deduped: 0, estimatedCostCents: 0, estimatedCost: '0.00', attributedOrders: 0, attributedRevenueCents: 0, attributedRevenue: '0.00', roi: null, sendRate: 0 });
   summary.sendRate = summary.scheduled ? Math.round((summary.sent / summary.scheduled) * 100) : 0;
   summary.estimatedCost = cents(summary.estimatedCostCents);
   summary.attributedRevenue = cents(summary.attributedRevenueCents);
@@ -2380,6 +2420,14 @@ function automationRuleRecommendation(rule) {
       priority: 'medium',
       action: 'Watch setup',
       message: `No matching ${rule.triggerStatus} orders have triggered this automation yet.`
+    };
+  }
+  if (metrics.suppressed && metrics.suppressed >= metrics.sent) {
+    return {
+      ruleKey: rule.ruleKey,
+      priority: 'high',
+      action: 'Check consent',
+      message: `${metrics.suppressed} prompt(s) were suppressed because customers are opted out. Review opt-in capture before scaling this rule.`
     };
   }
   if (metrics.scheduled > 0 && !metrics.sent) {

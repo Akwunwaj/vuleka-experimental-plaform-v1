@@ -924,7 +924,7 @@ if (productForm) {
     if (commerceAutomationInsightStrip) {
       const summary = insights?.summary || {};
       const roi = summary.roi === null || summary.roi === undefined ? '--' : `${Number(summary.roi).toFixed(2)}x`;
-      commerceAutomationInsightStrip.innerHTML = `<span>Scheduled ${Number(summary.scheduled || 0)}</span><span>Sent ${Number(summary.sent || 0)}</span><span>Revenue R ${htmlEscape(summary.attributedRevenue || '0.00')}</span><span>Cost R ${htmlEscape(summary.estimatedCost || '0.00')}</span><span>ROI ${htmlEscape(roi)}</span><span>Rate ${Number(summary.sendRate || 0)}%</span>`;
+      commerceAutomationInsightStrip.innerHTML = `<span>Scheduled ${Number(summary.scheduled || 0)}</span><span>Sent ${Number(summary.sent || 0)}</span><span>Suppressed ${Number(summary.suppressed || 0)}</span><span>Revenue R ${htmlEscape(summary.attributedRevenue || '0.00')}</span><span>Cost R ${htmlEscape(summary.estimatedCost || '0.00')}</span><span>ROI ${htmlEscape(roi)}</span><span>Rate ${Number(summary.sendRate || 0)}%</span>`;
     }
     if (commerceAutomationRecommendationList) {
       const recommendations = insights?.recommendations || [];
@@ -940,7 +940,7 @@ if (productForm) {
       ? rules.map((rule) => {
         const metrics = metricsByRule.get(rule.ruleKey) || {};
         const roi = metrics.roi === null || metrics.roi === undefined ? '--' : `${Number(metrics.roi).toFixed(2)}x`;
-        return `<article><div><strong>${htmlEscape(rule.name)}</strong><span>${htmlEscape(rule.triggerStatus)} · ${htmlEscape(rule.promptType)}</span><small>${htmlEscape(rule.description || '')}</small><small>${Number(rule.delayValue || 0)} ${htmlEscape(rule.delayUnit || 'hours')} delay · ${rule.enabled ? 'enabled' : 'paused'}</small><small>${Number(metrics.scheduled || 0)} scheduled · ${Number(metrics.sent || 0)} sent · ${Number(metrics.attributedOrders || 0)} order(s)</small><small>R ${htmlEscape(metrics.attributedRevenue || '0.00')} revenue · R ${htmlEscape(metrics.estimatedCost || '0.00')} cost · ROI ${htmlEscape(roi)}</small><small>${htmlEscape(rule.recommendation?.action || 'Monitor')}: ${htmlEscape(rule.recommendation?.message || 'Let this automation gather more activity.')}</small></div><div class="commerce-row-actions"><button class="link-button" data-automation-preview="${htmlEscape(rule.ruleKey)}" type="button">Preview</button><button class="link-button" data-automation-apply-ready="${htmlEscape(rule.ruleKey)}" type="button">Apply ready</button><button class="link-button" data-automation-toggle="${htmlEscape(rule.ruleKey)}" data-enabled="${rule.enabled ? 'true' : 'false'}" type="button">${rule.enabled ? 'Pause' : 'Enable'}</button><button class="link-button" data-automation-delay="${htmlEscape(rule.ruleKey)}" data-delay-value="${htmlEscape(rule.delayValue)}" data-delay-unit="${htmlEscape(rule.delayUnit)}" type="button">Tune</button></div></article>`;
+        return `<article><div><strong>${htmlEscape(rule.name)}</strong><span>${htmlEscape(rule.triggerStatus)} · ${htmlEscape(rule.promptType)}</span><small>${htmlEscape(rule.description || '')}</small><small>${Number(rule.delayValue || 0)} ${htmlEscape(rule.delayUnit || 'hours')} delay · ${rule.enabled ? 'enabled' : 'paused'}</small><small>${Number(metrics.scheduled || 0)} scheduled · ${Number(metrics.sent || 0)} sent · ${Number(metrics.suppressed || 0)} suppressed · ${Number(metrics.attributedOrders || 0)} order(s)</small><small>R ${htmlEscape(metrics.attributedRevenue || '0.00')} revenue · R ${htmlEscape(metrics.estimatedCost || '0.00')} cost · ROI ${htmlEscape(roi)}</small><small>${htmlEscape(rule.recommendation?.action || 'Monitor')}: ${htmlEscape(rule.recommendation?.message || 'Let this automation gather more activity.')}</small></div><div class="commerce-row-actions"><button class="link-button" data-automation-preview="${htmlEscape(rule.ruleKey)}" type="button">Preview</button><button class="link-button" data-automation-apply-ready="${htmlEscape(rule.ruleKey)}" type="button">Apply ready</button><button class="link-button" data-automation-toggle="${htmlEscape(rule.ruleKey)}" data-enabled="${rule.enabled ? 'true' : 'false'}" type="button">${rule.enabled ? 'Pause' : 'Enable'}</button><button class="link-button" data-automation-delay="${htmlEscape(rule.ruleKey)}" data-delay-value="${htmlEscape(rule.delayValue)}" data-delay-unit="${htmlEscape(rule.delayUnit)}" type="button">Tune</button></div></article>`;
       }).join('')
       : '<p class="muted-copy">Post-purchase automation rules will appear here.</p>';
     commerceAutomationRuleList.querySelectorAll('[data-automation-preview]').forEach((button) => {
@@ -971,6 +971,7 @@ if (productForm) {
 
   function automationActivityLabel(event) {
     if (event.type === 'attributed_order') return `Attributed order #${event.orderId}`;
+    if (event.type === 'suppressed') return `${event.promptType || 'Prompt'} suppressed`;
     if (event.type === 'sent') return `${event.promptType || 'Prompt'} sent`;
     if (event.type === 'scheduled') return `${event.promptType || 'Prompt'} scheduled`;
     return event.type || 'Automation event';
@@ -981,6 +982,7 @@ if (productForm) {
       event.occurredAt ? formatShortDate(event.occurredAt) : '',
       event.revenue ? `R ${event.revenue}` : '',
       event.deduped ? 'deduped' : '',
+      event.reason ? event.reason.replace(/_/g, ' ') : '',
       event.mode ? event.mode : ''
     ].filter(Boolean);
     return parts.join(' · ') || `Order #${event.orderId || '-'}`;
