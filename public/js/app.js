@@ -661,6 +661,7 @@ if (productForm) {
   const commerceAutomationInsightStrip = document.getElementById('commerceAutomationInsightStrip');
   const commerceAutomationRecommendationList = document.getElementById('commerceAutomationRecommendationList');
   const commerceAutomationActivityList = document.getElementById('commerceAutomationActivityList');
+  const commerceAutomationPreviewPanel = document.getElementById('commerceAutomationPreviewPanel');
   const inventoryAlertList = document.getElementById('inventoryAlertList');
   const inventoryAlertCount = document.getElementById('inventoryAlertCount');
   const productSubmitBtn = document.getElementById('productSubmitBtn');
@@ -940,14 +941,14 @@ if (productForm) {
       ? rules.map((rule) => {
         const metrics = metricsByRule.get(rule.ruleKey) || {};
         const roi = metrics.roi === null || metrics.roi === undefined ? '--' : `${Number(metrics.roi).toFixed(2)}x`;
-        return `<article><div><strong>${htmlEscape(rule.name)}</strong><span>${htmlEscape(rule.triggerStatus)} · ${htmlEscape(rule.promptType)}</span><small>${htmlEscape(rule.description || '')}</small><small>${Number(rule.delayValue || 0)} ${htmlEscape(rule.delayUnit || 'hours')} delay · ${rule.enabled ? 'enabled' : 'paused'}</small><small>${Number(metrics.scheduled || 0)} scheduled · ${Number(metrics.sent || 0)} sent · ${Number(metrics.suppressed || 0)} suppressed · ${Number(metrics.attributedOrders || 0)} order(s)</small><small>R ${htmlEscape(metrics.attributedRevenue || '0.00')} revenue · R ${htmlEscape(metrics.estimatedCost || '0.00')} cost · ROI ${htmlEscape(roi)}</small><small>${htmlEscape(rule.recommendation?.action || 'Monitor')}: ${htmlEscape(rule.recommendation?.message || 'Let this automation gather more activity.')}</small></div><div class="commerce-row-actions"><button class="link-button" data-automation-preview="${htmlEscape(rule.ruleKey)}" type="button">Preview</button><button class="link-button" data-automation-apply-ready="${htmlEscape(rule.ruleKey)}" type="button">Apply ready</button><button class="link-button" data-automation-toggle="${htmlEscape(rule.ruleKey)}" data-enabled="${rule.enabled ? 'true' : 'false'}" type="button">${rule.enabled ? 'Pause' : 'Enable'}</button><button class="link-button" data-automation-delay="${htmlEscape(rule.ruleKey)}" data-delay-value="${htmlEscape(rule.delayValue)}" data-delay-unit="${htmlEscape(rule.delayUnit)}" type="button">Tune</button></div></article>`;
+        return `<article><div><strong>${htmlEscape(rule.name)}</strong><span>${htmlEscape(rule.triggerStatus)} · ${htmlEscape(rule.promptType)}</span><small>${htmlEscape(rule.description || '')}</small><small>${Number(rule.delayValue || 0)} ${htmlEscape(rule.delayUnit || 'hours')} delay · ${rule.enabled ? 'enabled' : 'paused'}</small><small>${Number(metrics.scheduled || 0)} scheduled · ${Number(metrics.sent || 0)} sent · ${Number(metrics.suppressed || 0)} suppressed · ${Number(metrics.attributedOrders || 0)} order(s)</small><small>R ${htmlEscape(metrics.attributedRevenue || '0.00')} revenue · R ${htmlEscape(metrics.estimatedCost || '0.00')} cost · ROI ${htmlEscape(roi)}</small><small>${htmlEscape(rule.recommendation?.action || 'Monitor')}: ${htmlEscape(rule.recommendation?.message || 'Let this automation gather more activity.')}</small></div><div class="commerce-row-actions"><button class="link-button" data-automation-preview="${htmlEscape(rule.ruleKey)}" type="button">Preview</button><button class="link-button" data-automation-apply-ready="${htmlEscape(rule.ruleKey)}" type="button">Review apply</button><button class="link-button" data-automation-toggle="${htmlEscape(rule.ruleKey)}" data-enabled="${rule.enabled ? 'true' : 'false'}" type="button">${rule.enabled ? 'Pause' : 'Enable'}</button><button class="link-button" data-automation-delay="${htmlEscape(rule.ruleKey)}" data-delay-value="${htmlEscape(rule.delayValue)}" data-delay-unit="${htmlEscape(rule.delayUnit)}" type="button">Tune</button></div></article>`;
       }).join('')
       : '<p class="muted-copy">Post-purchase automation rules will appear here.</p>';
     commerceAutomationRuleList.querySelectorAll('[data-automation-preview]').forEach((button) => {
       button.addEventListener('click', () => previewAutomationRule(button.dataset.automationPreview));
     });
     commerceAutomationRuleList.querySelectorAll('[data-automation-apply-ready]').forEach((button) => {
-      button.addEventListener('click', () => applyReadyAutomationRule(button.dataset.automationApplyReady));
+      button.addEventListener('click', () => previewAutomationRule(button.dataset.automationApplyReady));
     });
     commerceAutomationRuleList.querySelectorAll('[data-automation-toggle]').forEach((button) => {
       button.addEventListener('click', () => updateAutomationRule(button.dataset.automationToggle, {
@@ -983,6 +984,7 @@ if (productForm) {
       event.revenue ? `R ${event.revenue}` : '',
       event.deduped ? 'deduped' : '',
       event.reason ? event.reason.replace(/_/g, ' ') : '',
+      event.retryAt ? `retry ${formatShortDate(event.retryAt)}` : '',
       event.mode ? event.mode : ''
     ].filter(Boolean);
     return parts.join(' · ') || `Order #${event.orderId || '-'}`;
@@ -992,30 +994,92 @@ if (productForm) {
     const response = await fetch(`/api/commerce/automation-rules/${encodeURIComponent(ruleKey)}/preview`);
     const result = await response.json().catch(() => ({}));
     if (!response.ok) return showToast(result.error || 'Automation preview could not load');
-    const orders = (result.orders || []).slice(0, 5).map((order) => {
-      const status = order.sendable ? 'sendable' : order.suppressionLabel || (order.alreadyScheduled ? 'already scheduled' : 'not sendable');
-      return `#${order.id} ${order.customerName} R ${order.total} ${status}`;
-    });
-    const sendableToSchedule = result.summary?.sendableToSchedule ?? result.summary?.readyToSchedule ?? 0;
-    window.alert([
-      `${result.rule?.name || ruleKey}`,
-      `${Number(sendableToSchedule)} sendable now`,
-      `${Number(result.summary?.readyToSchedule || 0)} matching unscheduled`,
-      `${Number(result.summary?.alreadyScheduled || 0)} already scheduled`,
-      `${Number(result.summary?.suppressedByConsent || 0)} opted out`,
-      `${Number(result.summary?.suppressedByCooldown || 0)} in cooldown`,
-      `${Number(result.summary?.matchingOrders || 0)} matching order(s)`,
-      ...orders
-    ].join('\n'));
+    renderAutomationPreview(result);
   }
 
-  async function applyReadyAutomationRule(ruleKey) {
-    const confirmed = window.confirm('Schedule this automation for all currently ready orders?');
-    if (!confirmed) return;
+  function renderAutomationPreview(result) {
+    if (!commerceAutomationPreviewPanel) return;
+    const summary = result.summary || {};
+    const orders = result.orders || [];
+    const sendableToSchedule = summary.sendableToSchedule ?? summary.readyToSchedule ?? 0;
+    const applyDisabled = Number(sendableToSchedule) < 1 ? ' disabled' : '';
+    commerceAutomationPreviewPanel.classList.remove('hidden');
+    commerceAutomationPreviewPanel.innerHTML = `
+      <header>
+        <div>
+          <h4>${htmlEscape(result.rule?.name || 'Automation preview')}</h4>
+          <p>${htmlEscape(result.rule?.description || 'Review which WhatsApp commerce prompts can be safely scheduled now.')}</p>
+        </div>
+        <div class="commerce-row-actions">
+          <button class="button primary" data-preview-apply="${htmlEscape(result.rule?.ruleKey || result.rule?.id || '')}" type="button"${applyDisabled}>Apply ${Number(sendableToSchedule)}</button>
+          <button class="button" data-preview-close type="button">Close</button>
+        </div>
+      </header>
+      <div class="automation-apply-result hidden" data-preview-result></div>
+      <div class="automation-preview-metrics">
+        <span><strong>${Number(sendableToSchedule)}</strong> sendable now</span>
+        <span><strong>${Number(summary.readyToSchedule || 0)}</strong> matching unscheduled</span>
+        <span><strong>${Number(summary.alreadyScheduled || 0)}</strong> already scheduled</span>
+        <span><strong>${Number(summary.suppressedByConsent || 0)}</strong> opted out</span>
+        <span><strong>${Number(summary.suppressedByCooldown || 0)}</strong> in cooldown</span>
+      </div>
+      <div class="automation-preview-orders">
+        ${orders.length ? orders.slice(0, 8).map(renderAutomationPreviewOrder).join('') : '<p class="muted-copy">No matching orders for this rule yet.</p>'}
+      </div>
+    `;
+    commerceAutomationPreviewPanel.querySelector('[data-preview-close]')?.addEventListener('click', () => {
+      commerceAutomationPreviewPanel.classList.add('hidden');
+    });
+    commerceAutomationPreviewPanel.querySelector('[data-preview-apply]')?.addEventListener('click', (event) => {
+      const ruleKey = event.currentTarget.dataset.previewApply;
+      if (ruleKey) applyReadyAutomationRule(ruleKey, { source: 'preview', button: event.currentTarget });
+    });
+  }
+
+  function renderAutomationPreviewOrder(order) {
+    const state = order.sendable ? 'sendable' : order.suppressionLabel || (order.alreadyScheduled ? 'already scheduled' : 'not sendable');
+    const cls = order.sendable ? 'ready' : order.suppressionReason === 'customer_opted_out' ? 'blocked' : 'held';
+    const extra = order.previousSentAt ? `Previous send ${formatShortDate(order.previousSentAt)}` : order.previousOrderId ? `Previous order #${order.previousOrderId}` : '';
+    return `<article class="${htmlEscape(cls)}"><div><strong>#${htmlEscape(order.id)} ${htmlEscape(order.customerName || 'WhatsApp customer')}</strong><span>${htmlEscape(order.customerPhone || '')}</span><small>R ${htmlEscape(order.total || '0.00')} · ${htmlEscape(order.status || '')}${extra ? ` · ${htmlEscape(extra)}` : ''}</small></div><em>${htmlEscape(state)}</em></article>`;
+  }
+
+  async function applyReadyAutomationRule(ruleKey, options = {}) {
+    const button = options.button || null;
+    if (button) {
+      button.disabled = true;
+      button.textContent = 'Applying...';
+    }
     const response = await fetch(`/api/commerce/automation-rules/${encodeURIComponent(ruleKey)}/apply-ready`, { method: 'POST' });
     const result = await response.json().catch(() => ({}));
+    if (options.source === 'preview') {
+      renderAutomationApplyResult(result, response.ok);
+    }
     showToast(response.ok ? `${Number(result.summary?.scheduled || 0)} automation prompt(s) scheduled` : result.error || 'Automation could not be applied');
-    if (response.ok) loadCommerce();
+    if (response.ok) {
+      await loadCommerce();
+    } else if (button) {
+      button.disabled = false;
+      button.textContent = 'Apply';
+    }
+  }
+
+  function renderAutomationApplyResult(result, ok) {
+    const target = commerceAutomationPreviewPanel?.querySelector('[data-preview-result]');
+    if (!target) return;
+    const summary = result.summary || {};
+    const skipped = result.skipped || [];
+    const skippedReasons = skipped.reduce((acc, item) => {
+      const label = item.reasonLabel || item.reason || 'Not sendable';
+      acc[label] = (acc[label] || 0) + 1;
+      return acc;
+    }, {});
+    const reasonList = Object.entries(skippedReasons)
+      .map(([label, count]) => `<li>${htmlEscape(label)} <strong>${Number(count)}</strong></li>`)
+      .join('');
+    target.className = `automation-apply-result ${ok ? 'success' : 'error'}`;
+    target.innerHTML = ok
+      ? `<strong>${Number(summary.scheduled || 0)} prompt(s) scheduled</strong><span>${Number(summary.skipped || 0)} skipped because they were already scheduled, opted out, or in cooldown.</span>${reasonList ? `<ul>${reasonList}</ul>` : ''}`
+      : `<strong>Automation could not be applied</strong><span>${htmlEscape(result.error || 'Please try again after checking this rule.')}</span>`;
   }
 
   async function tuneAutomationRule(button) {

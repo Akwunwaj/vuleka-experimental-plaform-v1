@@ -1040,7 +1040,10 @@ router.post('/commerce/orders/:id/post-purchase', requireRole(['owner', 'admin',
         businessId: req.businessId,
         orderId: req.params.id,
         promptType: req.body.promptType,
-        body: req.body.body
+        body: req.body.body,
+        templateName: req.body.templateName,
+        templateLanguage: req.body.templateLanguage,
+        templateParameters: req.body.templateParameters
       })
     );
   } catch (err) {

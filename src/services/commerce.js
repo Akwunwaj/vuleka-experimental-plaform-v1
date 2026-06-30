@@ -2,7 +2,7 @@ const crypto = require('crypto');
 const { parse } = require('csv-parse/sync');
 const { hasDatabaseConfig, query } = require('../db/pool');
 const demo = require('../data/demoData');
-const { sendInteractiveMessage, sendTextMessage } = require('./metaClient');
+const { sendInteractiveMessage, sendTemplateMessage, sendTextMessage } = require('./metaClient');
 const { enqueueJob } = require('./jobQueue');
 const { metaRateConfig } = require('./metaCosts');
 const { getContactConsentState } = require('./consent');
@@ -1347,7 +1347,17 @@ async function getCommerceAutomationInsights(businessId, options = {}) {
   return buildCommerceAutomationInsights({ rules, events, orders, attributionDays });
 }
 
-async function sendPostPurchasePrompt({ businessId, orderId, promptType = 'review', body = '', ruleId = null, source = 'manual' }) {
+async function sendPostPurchasePrompt({
+  businessId,
+  orderId,
+  promptType = 'review',
+  body = '',
+  ruleId = null,
+  source = 'manual',
+  templateName = '',
+  templateLanguage = '',
+  templateParameters = null
+}) {
   const order = await getOrderById(businessId, orderId);
   if (!['paid', 'packed', 'out_for_delivery', 'completed'].includes(order.status)) {
     const error = new Error('Post-purchase prompts require a paid or fulfilled order');
@@ -1374,6 +1384,23 @@ async function sendPostPurchasePrompt({ businessId, orderId, promptType = 'revie
   }
   const recentSend = await findRecentPostPurchaseSend({ businessId, customerPhone: order.customerPhone, excludeOrderId: order.id });
   if (recentSend) {
+    const retryAt = automationCooldownRetryAt(recentSend.event.createdAt);
+    const retry = await enqueueJob({
+      type: 'commerce.post_purchase_prompt',
+      payload: {
+        businessId,
+        orderId: order.id,
+        promptType: normalizedType,
+        body,
+        ruleId,
+        source: `${source}:cooldown_retry`,
+        templateName,
+        templateLanguage,
+        templateParameters
+      },
+      runAt: retryAt,
+      dedupeKey: `commerce.post_purchase_prompt_retry:${businessId}:${order.id}:${ruleId || normalizedType}`
+    });
     await recordOrderEvent({
       businessId,
       orderId,
@@ -1387,7 +1414,9 @@ async function sendPostPurchasePrompt({ businessId, orderId, promptType = 'revie
         cooldownHours: automationCustomerCooldownHours(),
         previousOrderId: recentSend.event.orderId,
         previousEventId: recentSend.event.id,
-        previousSentAt: recentSend.event.createdAt
+        previousSentAt: recentSend.event.createdAt,
+        retryAt: retryAt.toISOString(),
+        retry
       }
     });
     return {
@@ -1395,20 +1424,54 @@ async function sendPostPurchasePrompt({ businessId, orderId, promptType = 'revie
       reason: 'automation_cooldown',
       promptType: normalizedType,
       cooldownHours: automationCustomerCooldownHours(),
+      retryAt: retryAt.toISOString(),
+      retry,
       order: await getOrderById(businessId, orderId)
     };
   }
   const text = String(body || postPurchasePromptText(order, normalizedType)).slice(0, 1024);
-  const result = await sendTextMessage({ businessId, to: order.customerPhone, text });
+  const template = resolvePostPurchaseTemplate({
+    promptType: normalizedType,
+    order,
+    templateName,
+    templateLanguage,
+    templateParameters
+  });
+  const result = template
+    ? await sendTemplateMessage({
+      businessId,
+      to: order.customerPhone,
+      templateName: template.name,
+      language: template.language,
+      parameters: template.parameters
+    })
+    : await sendTextMessage({ businessId, to: order.customerPhone, text });
   await recordOrderEvent({
     businessId,
     orderId,
     eventType: `post_purchase.${normalizedType}.sent`,
     status: order.status,
     note: `Post-purchase ${normalizedType} prompt sent on WhatsApp`,
-    metadata: { providerMessageId: result.messageId, mode: result.mode, body: text, ruleId, source }
+    metadata: {
+      providerMessageId: result.messageId,
+      mode: result.mode,
+      body: text,
+      messageType: template ? 'template' : 'text',
+      templateName: template?.name || null,
+      templateLanguage: template?.language || null,
+      templateParameters: template?.parameters || null,
+      ruleId,
+      source
+    }
   });
-  return { ...result, promptType: normalizedType, body: text, order: await getOrderById(businessId, orderId) };
+  return {
+    ...result,
+    promptType: normalizedType,
+    body: text,
+    messageType: template ? 'template' : 'text',
+    template,
+    order: await getOrderById(businessId, orderId)
+  };
 }
 
 async function schedulePostPurchasePrompts({ businessId, orderId, triggers = ['review', 'reorder', 'follow_up'] }) {
@@ -2335,6 +2398,14 @@ function automationCustomerCooldownMs() {
   return automationCustomerCooldownHours() * 60 * 60 * 1000;
 }
 
+function automationCooldownRetryAt(previousSentAt) {
+  const previousTime = new Date(previousSentAt || 0).getTime();
+  const retryTime = Number.isFinite(previousTime) && previousTime > 0
+    ? previousTime + automationCustomerCooldownMs() + 1000
+    : Date.now() + automationCustomerCooldownMs() + 1000;
+  return new Date(Math.max(Date.now() + 1000, retryTime));
+}
+
 function seedDemoAutomationRules(businessId) {
   for (const definition of commerceAutomationRuleDefinitions) {
     const exists = demoAutomationRules.some((rule) => Number(rule.businessId) === Number(businessId) && rule.ruleKey === definition.ruleKey);
@@ -2402,7 +2473,10 @@ function buildCommerceAutomationInsights({ rules, events, orders = [], attributi
         promptType: event.eventType.replace('post_purchase.', '').replace('.suppressed', ''),
         orderId: event.orderId,
         occurredAt: event.createdAt,
-        reason
+        reason,
+        retryAt: event.metadata?.retryAt || null,
+        retryJobId: event.metadata?.retry?.jobId || null,
+        retryDeduped: Boolean(event.metadata?.retry?.deduped)
       });
       continue;
     }
@@ -2754,6 +2828,40 @@ function postPurchasePromptText(order, promptType) {
     return `Hi ${order.customerName || 'there'}, would you like to reorder from order #${order.id}? Reply REORDER and we will help you check out on WhatsApp.`;
   }
   return `Hi ${order.customerName || 'there'}, just checking in after order #${order.id}. Reply here if you need help, support, or another product recommendation.`;
+}
+
+function resolvePostPurchaseTemplate({ promptType, order, templateName = '', templateLanguage = '', templateParameters = null }) {
+  const name = String(templateName || process.env[postPurchaseTemplateEnvKey(promptType)] || process.env.COMMERCE_POST_PURCHASE_TEMPLATE_NAME || '').trim();
+  if (!name) return null;
+  return {
+    name,
+    language: String(templateLanguage || process.env.COMMERCE_POST_PURCHASE_TEMPLATE_LANGUAGE || 'en_ZA').trim() || 'en_ZA',
+    parameters: Array.isArray(templateParameters) && templateParameters.length
+      ? templateParameters
+      : defaultPostPurchaseTemplateParameters(order, promptType)
+  };
+}
+
+function postPurchaseTemplateEnvKey(promptType) {
+  const keyByType = {
+    review: 'COMMERCE_REVIEW_TEMPLATE_NAME',
+    reorder: 'COMMERCE_REORDER_TEMPLATE_NAME',
+    follow_up: 'COMMERCE_FOLLOW_UP_TEMPLATE_NAME'
+  };
+  return keyByType[promptType] || 'COMMERCE_FOLLOW_UP_TEMPLATE_NAME';
+}
+
+function defaultPostPurchaseTemplateParameters(order, promptType) {
+  const labelByType = {
+    review: 'review',
+    reorder: 'reorder',
+    follow_up: 'support'
+  };
+  return [
+    order.customerName || 'there',
+    order.id,
+    labelByType[promptType] || 'support'
+  ];
 }
 
 function isPromptEligibleForOrder(order, promptType) {

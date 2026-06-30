@@ -60,7 +60,7 @@ const {
   updateBusinessProfile,
   validateProfile
 } = require('../src/services/metaBusinessProfile');
-const { sendTextMessage } = require('../src/services/metaClient');
+const { buildTemplateMessagePayload, sendTextMessage } = require('../src/services/metaClient');
 const { importContacts, normalizePhone } = require('../src/services/contactImport');
 const {
   exportConsentEventsCsv,
@@ -512,13 +512,21 @@ test('Insights page renders live analytics hydration targets', () => {
 test('Commerce page renders automation insight hydration targets', () => {
   const page = renderPage(repository.getPublicPreviewData(), { authenticated: true });
   const appSource = fs.readFileSync(require.resolve('../public/js/app'), 'utf8');
+  const cssSource = fs.readFileSync(require.resolve('../public/css/app.css'), 'utf8');
 
   assert.match(page, /id="commerceAutomationInsightStrip"/);
   assert.match(page, /Suppressed 0/);
   assert.match(page, /id="commerceAutomationRecommendationList"/);
   assert.match(page, /id="commerceAutomationActivityList"/);
+  assert.match(page, /id="commerceAutomationPreviewPanel"/);
   assert.match(appSource, /function renderAutomationActivity/);
   assert.match(appSource, /automationActivityLabel/);
+  assert.match(appSource, /function renderAutomationPreview/);
+  assert.match(appSource, /function renderAutomationApplyResult/);
+  assert.doesNotMatch(appSource, /window\.alert\(\[/);
+  assert.doesNotMatch(appSource, /window\.confirm\('Schedule this automation/);
+  assert.match(cssSource, /\.automation-preview-panel/);
+  assert.match(cssSource, /\.automation-apply-result/);
 });
 
 test('critical campaign and contact write routes require owner or admin role', () => {
@@ -789,6 +797,12 @@ test('Meta credentials map phone number ids back to a demo business', async () =
 });
 
 test('Meta client stays in mock mode unless live sending is explicitly enabled', async () => {
+  await saveMetaCredentials(999, {
+    wabaId: 'waba_999',
+    phoneNumberId: 'phone_999',
+    accessToken: 'EAA_SECRET_TOKEN',
+    verifyToken: 'verify_999'
+  });
   const result = await sendTextMessage({
     businessId: 999,
     to: '27821234567',
@@ -797,6 +811,21 @@ test('Meta client stays in mock mode unless live sending is explicitly enabled',
 
   assert.equal(result.mode, 'mock-configured');
   assert.match(result.note, /META_SEND_MODE=live/);
+});
+
+test('Meta template payloads follow WhatsApp Cloud API message shape', () => {
+  const payload = buildTemplateMessagePayload({
+    to: '27821234567',
+    templateName: 'wazify_review_prompt',
+    language: 'en_ZA',
+    parameters: ['Nomsa', 2001, 'review']
+  });
+
+  assert.equal(payload.messaging_product, 'whatsapp');
+  assert.equal(payload.type, 'template');
+  assert.equal(payload.template.name, 'wazify_review_prompt');
+  assert.equal(payload.template.language.code, 'en_ZA');
+  assert.deepEqual(payload.template.components[0].parameters.map((item) => item.text), ['Nomsa', '2001', 'review']);
 });
 
 test('Meta onboarding exposes Embedded Signup config and saves completed signup credentials in mock mode', async () => {
@@ -1869,6 +1898,48 @@ test('commerce customer segments power post-purchase WhatsApp prompts', async ()
   assert.equal(detail.events.some((event) => event.eventType === 'post_purchase.review.sent'), true);
 });
 
+test('commerce post-purchase prompts can use approved WhatsApp templates', async () => {
+  const businessId = 967;
+  const product = await createProduct(businessId, {
+    name: 'Template Prompt Product',
+    sku: 'template-prompt-product',
+    price: 640,
+    inventoryCount: 5,
+    metaCatalogId: 'catalog_967',
+    metaProductRetailerId: 'template-prompt-product'
+  });
+  const order = await createOrder(businessId, {
+    customerName: 'Template Buyer',
+    customerPhone: '+27821230067',
+    items: [{ productId: product.id, quantity: 1 }]
+  });
+  await reconcileOrderPayment({
+    businessId,
+    orderId: order.id,
+    provider: 'payfast',
+    providerPaymentId: 'template_prompt_paid_1',
+    amount: '640.00',
+    paymentStatus: 'COMPLETE'
+  });
+
+  const prompt = await sendPostPurchasePrompt({
+    businessId,
+    orderId: order.id,
+    promptType: 'review',
+    templateName: 'wazify_review_prompt',
+    templateLanguage: 'en_ZA',
+    templateParameters: ['Template Buyer', order.id, 'review']
+  });
+  const detail = await getOrderById(businessId, order.id);
+  const sentEvent = detail.events.find((event) => event.eventType === 'post_purchase.review.sent');
+
+  assert.equal(prompt.messageType, 'template');
+  assert.equal(prompt.template.name, 'wazify_review_prompt');
+  assert.equal(sentEvent.metadata.messageType, 'template');
+  assert.equal(sentEvent.metadata.templateName, 'wazify_review_prompt');
+  assert.deepEqual(sentEvent.metadata.templateParameters, ['Template Buyer', order.id, 'review']);
+});
+
 test('commerce post-purchase prompts can be scheduled through the worker', async () => {
   const previousDelay = process.env.COMMERCE_FOLLOW_UP_PROMPT_DELAY_HOURS;
   process.env.COMMERCE_FOLLOW_UP_PROMPT_DELAY_HOURS = '0';
@@ -2173,10 +2244,18 @@ test('commerce automation cooldown suppresses repeat buyer prompts', async () =>
   assert.equal(firstDetail.events.some((event) => event.eventType === 'post_purchase.follow_up.sent'), true);
   assert.equal(secondDetail.events.some((event) => event.eventType === 'post_purchase.follow_up.suppressed' && event.metadata.reason === 'automation_cooldown'), true);
   assert.equal(secondDetail.events.some((event) => event.eventType === 'post_purchase.follow_up.sent'), false);
+  const cooldownEvent = secondDetail.events.find((event) => event.eventType === 'post_purchase.follow_up.suppressed' && event.metadata.reason === 'automation_cooldown');
+  const queuedRetry = (await listJobs({ status: 'queued', limit: 1000 }))
+    .find((job) => job.type === 'commerce.post_purchase_prompt' && Number(job.payload?.businessId) === businessId && Number(job.payload?.orderId) === Number(secondOrder.id));
+  assert.ok(cooldownEvent.metadata.retryAt);
+  assert.equal(cooldownEvent.metadata.retry?.deduped, false);
+  assert.ok(queuedRetry);
+  assert.equal(new Date(queuedRetry.runAt).getTime() > Date.now(), true);
   assert.equal(insights.summary.sent, 1);
   assert.equal(insights.summary.suppressed, 1);
   assert.equal(followUp.metrics.suppressedReasons.automation_cooldown, 1);
   assert.equal(followUp.recommendation.action, 'Check frequency');
+  assert.equal(insights.recent.some((event) => event.type === 'suppressed' && event.reason === 'automation_cooldown' && event.retryAt), true);
 });
 
 test('commerce automation preview and bulk apply skip non-sendable orders', async () => {

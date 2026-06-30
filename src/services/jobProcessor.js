@@ -47,7 +47,10 @@ async function processJob(job) {
       promptType: payload.promptType,
       body: payload.body,
       ruleId: payload.ruleId,
-      source: payload.source || 'worker'
+      source: payload.source || 'worker',
+      templateName: payload.templateName,
+      templateLanguage: payload.templateLanguage,
+      templateParameters: payload.templateParameters
     });
   }
 
