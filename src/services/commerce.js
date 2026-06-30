@@ -6,6 +6,7 @@ const { sendInteractiveMessage, sendTemplateMessage, sendTextMessage } = require
 const { enqueueJob } = require('./jobQueue');
 const { metaRateConfig } = require('./metaCosts');
 const { getContactConsentState } = require('./consent');
+const { listTemplates } = require('./templates');
 
 const demoProducts = [...(demo.products || [])];
 const demoOrders = [...(demo.orders || [])];
@@ -1119,11 +1120,13 @@ async function listCommerceAutomationEvents(businessId) {
 }
 
 async function listCommerceAutomationRules(businessId) {
+  let rules;
   if (!hasDatabaseConfig()) {
     seedDemoAutomationRules(businessId);
-    return demoAutomationRules
+    rules = demoAutomationRules
       .filter((rule) => Number(rule.businessId || rule.business_id) === Number(businessId))
       .map(normalizeAutomationRule);
+    return enrichAutomationRulesWithTemplates(businessId, rules);
   }
 
   const rows = await query(
@@ -1132,8 +1135,10 @@ async function listCommerceAutomationRules(businessId) {
      order by id`,
     { businessId }
   );
-  if (!rows.length) return commerceAutomationRuleDefinitions.map((rule) => normalizeAutomationRule({ ...rule, businessId }));
-  return rows.map(normalizeAutomationRule);
+  rules = rows.length
+    ? rows.map(normalizeAutomationRule)
+    : commerceAutomationRuleDefinitions.map((rule) => normalizeAutomationRule({ ...rule, businessId }));
+  return enrichAutomationRulesWithTemplates(businessId, rules);
 }
 
 async function updateCommerceAutomationRule({ businessId, ruleId, enabled, delayValue, delayUnit }) {
@@ -1255,7 +1260,15 @@ async function scheduleAutomationRuleForOrder({ businessId, order, rule, source 
   const runAt = new Date(Date.now() + automationRuleDelayMs(rule));
   const job = await enqueueJob({
     type: 'commerce.post_purchase_prompt',
-    payload: { businessId, orderId: order.id, promptType: rule.promptType, ruleId: rule.ruleKey, source },
+    payload: {
+      businessId,
+      orderId: order.id,
+      promptType: rule.promptType,
+      ruleId: rule.ruleKey,
+      source,
+      templateName: rule.templateReadiness?.ready ? rule.templateReadiness.templateName : undefined,
+      templateLanguage: rule.templateReadiness?.ready ? rule.templateReadiness.language : undefined
+    },
     runAt,
     dedupeKey: `commerce.post_purchase_prompt:${businessId}:${order.id}:${rule.ruleKey}`
   });
@@ -2396,6 +2409,82 @@ function automationCustomerCooldownHours() {
 
 function automationCustomerCooldownMs() {
   return automationCustomerCooldownHours() * 60 * 60 * 1000;
+}
+
+async function enrichAutomationRulesWithTemplates(businessId, rules) {
+  let templates = [];
+  try {
+    templates = await listTemplates(businessId);
+  } catch {
+    templates = [];
+  }
+  return rules.map((rule) => ({
+    ...rule,
+    templateReadiness: buildAutomationTemplateReadiness(rule, templates)
+  }));
+}
+
+function buildAutomationTemplateReadiness(rule, templates) {
+  const expectedCategory = automationTemplateCategory(rule.promptType);
+  const configuredName = postPurchaseConfiguredTemplateName(rule.promptType);
+  const language = String(process.env.COMMERCE_POST_PURCHASE_TEMPLATE_LANGUAGE || 'en_ZA').trim() || 'en_ZA';
+  const suggestedName = configuredName || `wazify_${String(rule.promptType || 'follow_up').replace(/[^a-z0-9_]+/g, '_')}_prompt`;
+  const candidates = templates
+    .filter((template) => !expectedCategory || template.category === expectedCategory)
+    .filter((template) => {
+      const templateName = String(template.slug || template.name || '').toLowerCase();
+      const normalizedConfigured = String(configuredName || '').toLowerCase();
+      if (normalizedConfigured) return templateName === normalizedConfigured || String(template.name || '').toLowerCase() === normalizedConfigured;
+      return templateName.includes(String(rule.promptType || '').toLowerCase());
+    });
+  const approved = candidates.find((template) => template.status === 'Approved');
+  const selected = approved || candidates[0] || null;
+  if (approved) {
+    return {
+      ready: true,
+      required: true,
+      templateName: approved.slug || approved.name,
+      templateLabel: approved.name,
+      language: approved.language || language,
+      status: approved.status,
+      category: approved.category,
+      message: 'Approved WhatsApp template ready for outbound automation.'
+    };
+  }
+  if (selected) {
+    return {
+      ready: false,
+      required: true,
+      templateName: selected.slug || selected.name,
+      templateLabel: selected.name,
+      language: selected.language || language,
+      status: selected.status,
+      category: selected.category,
+      reason: 'template_not_approved',
+      message: `Template exists but is ${selected.status.toLowerCase()}. Submit and approve it before live outbound automation.`
+    };
+  }
+  return {
+    ready: false,
+    required: true,
+    templateName: suggestedName,
+    templateLabel: suggestedName,
+    language,
+    status: 'Missing',
+    category: expectedCategory,
+    reason: configuredName ? 'configured_template_missing' : 'template_missing',
+    message: configuredName
+      ? 'Configured template was not found for this business.'
+      : 'Create and approve a WhatsApp template for this automation before relying on live outbound sends.'
+  };
+}
+
+function automationTemplateCategory(promptType) {
+  return promptType === 'reorder' ? 'MARKETING' : 'UTILITY';
+}
+
+function postPurchaseConfiguredTemplateName(promptType) {
+  return String(process.env[postPurchaseTemplateEnvKey(promptType)] || process.env.COMMERCE_POST_PURCHASE_TEMPLATE_NAME || '').trim();
 }
 
 function automationCooldownRetryAt(previousSentAt) {

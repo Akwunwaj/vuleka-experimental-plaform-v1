@@ -941,7 +941,10 @@ if (productForm) {
       ? rules.map((rule) => {
         const metrics = metricsByRule.get(rule.ruleKey) || {};
         const roi = metrics.roi === null || metrics.roi === undefined ? '--' : `${Number(metrics.roi).toFixed(2)}x`;
-        return `<article><div><strong>${htmlEscape(rule.name)}</strong><span>${htmlEscape(rule.triggerStatus)} · ${htmlEscape(rule.promptType)}</span><small>${htmlEscape(rule.description || '')}</small><small>${Number(rule.delayValue || 0)} ${htmlEscape(rule.delayUnit || 'hours')} delay · ${rule.enabled ? 'enabled' : 'paused'}</small><small>${Number(metrics.scheduled || 0)} scheduled · ${Number(metrics.sent || 0)} sent · ${Number(metrics.suppressed || 0)} suppressed · ${Number(metrics.attributedOrders || 0)} order(s)</small><small>R ${htmlEscape(metrics.attributedRevenue || '0.00')} revenue · R ${htmlEscape(metrics.estimatedCost || '0.00')} cost · ROI ${htmlEscape(roi)}</small><small>${htmlEscape(rule.recommendation?.action || 'Monitor')}: ${htmlEscape(rule.recommendation?.message || 'Let this automation gather more activity.')}</small></div><div class="commerce-row-actions"><button class="link-button" data-automation-preview="${htmlEscape(rule.ruleKey)}" type="button">Preview</button><button class="link-button" data-automation-apply-ready="${htmlEscape(rule.ruleKey)}" type="button">Review apply</button><button class="link-button" data-automation-toggle="${htmlEscape(rule.ruleKey)}" data-enabled="${rule.enabled ? 'true' : 'false'}" type="button">${rule.enabled ? 'Pause' : 'Enable'}</button><button class="link-button" data-automation-delay="${htmlEscape(rule.ruleKey)}" data-delay-value="${htmlEscape(rule.delayValue)}" data-delay-unit="${htmlEscape(rule.delayUnit)}" type="button">Tune</button></div></article>`;
+        const template = rule.templateReadiness || {};
+        const templateClass = template.ready ? 'ready' : 'missing';
+        const templateLabel = template.ready ? 'Template ready' : 'Template needed';
+        return `<article><div><strong>${htmlEscape(rule.name)}</strong><span>${htmlEscape(rule.triggerStatus)} · ${htmlEscape(rule.promptType)}</span><small>${htmlEscape(rule.description || '')}</small><small>${Number(rule.delayValue || 0)} ${htmlEscape(rule.delayUnit || 'hours')} delay · ${rule.enabled ? 'enabled' : 'paused'}</small><small><span class="automation-template-pill ${templateClass}">${htmlEscape(templateLabel)}</span> ${htmlEscape(template.templateName || '')} · ${htmlEscape(template.status || 'Missing')} · ${htmlEscape(template.category || '')}</small><small>${Number(metrics.scheduled || 0)} scheduled · ${Number(metrics.sent || 0)} sent · ${Number(metrics.suppressed || 0)} suppressed · ${Number(metrics.attributedOrders || 0)} order(s)</small><small>R ${htmlEscape(metrics.attributedRevenue || '0.00')} revenue · R ${htmlEscape(metrics.estimatedCost || '0.00')} cost · ROI ${htmlEscape(roi)}</small><small>${htmlEscape(rule.recommendation?.action || 'Monitor')}: ${htmlEscape(rule.recommendation?.message || 'Let this automation gather more activity.')}</small></div><div class="commerce-row-actions"><button class="link-button" data-automation-preview="${htmlEscape(rule.ruleKey)}" type="button">Preview</button><button class="link-button" data-automation-apply-ready="${htmlEscape(rule.ruleKey)}" type="button">Review apply</button><button class="link-button" data-automation-toggle="${htmlEscape(rule.ruleKey)}" data-enabled="${rule.enabled ? 'true' : 'false'}" type="button">${rule.enabled ? 'Pause' : 'Enable'}</button><button class="link-button" data-automation-delay="${htmlEscape(rule.ruleKey)}" data-delay-value="${htmlEscape(rule.delayValue)}" data-delay-unit="${htmlEscape(rule.delayUnit)}" type="button">Tune</button></div></article>`;
       }).join('')
       : '<p class="muted-copy">Post-purchase automation rules will appear here.</p>';
     commerceAutomationRuleList.querySelectorAll('[data-automation-preview]').forEach((button) => {
@@ -1002,6 +1005,7 @@ if (productForm) {
     const summary = result.summary || {};
     const orders = result.orders || [];
     const sendableToSchedule = summary.sendableToSchedule ?? summary.readyToSchedule ?? 0;
+    const template = result.rule?.templateReadiness || {};
     const applyDisabled = Number(sendableToSchedule) < 1 ? ' disabled' : '';
     commerceAutomationPreviewPanel.classList.remove('hidden');
     commerceAutomationPreviewPanel.innerHTML = `
@@ -1009,6 +1013,7 @@ if (productForm) {
         <div>
           <h4>${htmlEscape(result.rule?.name || 'Automation preview')}</h4>
           <p>${htmlEscape(result.rule?.description || 'Review which WhatsApp commerce prompts can be safely scheduled now.')}</p>
+          <p><span class="automation-template-pill ${template.ready ? 'ready' : 'missing'}">${htmlEscape(template.ready ? 'Template ready' : 'Template needed')}</span> ${htmlEscape(template.templateName || '')} · ${htmlEscape(template.status || 'Missing')} · ${htmlEscape(template.message || '')}</p>
         </div>
         <div class="commerce-row-actions">
           <button class="button primary" data-preview-apply="${htmlEscape(result.rule?.ruleKey || result.rule?.id || '')}" type="button"${applyDisabled}>Apply ${Number(sendableToSchedule)}</button>

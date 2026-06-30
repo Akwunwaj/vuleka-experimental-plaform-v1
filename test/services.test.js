@@ -523,10 +523,12 @@ test('Commerce page renders automation insight hydration targets', () => {
   assert.match(appSource, /automationActivityLabel/);
   assert.match(appSource, /function renderAutomationPreview/);
   assert.match(appSource, /function renderAutomationApplyResult/);
+  assert.match(appSource, /automation-template-pill/);
   assert.doesNotMatch(appSource, /window\.alert\(\[/);
   assert.doesNotMatch(appSource, /window\.confirm\('Schedule this automation/);
   assert.match(cssSource, /\.automation-preview-panel/);
   assert.match(cssSource, /\.automation-apply-result/);
+  assert.match(cssSource, /\.automation-template-pill/);
 });
 
 test('critical campaign and contact write routes require owner or admin role', () => {
@@ -2043,6 +2045,65 @@ test('commerce automation rules tune automatic post-purchase scheduling', async 
   assert.equal(worker.processed >= 1, true);
   assert.equal(detail.events.some((event) => event.eventType === 'automation.rules_applied'), true);
   assert.equal(detail.events.some((event) => event.eventType === 'post_purchase.follow_up.sent'), true);
+});
+
+test('commerce automation rules surface approved template readiness', async () => {
+  const previousDelay = process.env.COMMERCE_FOLLOW_UP_PROMPT_DELAY_HOURS;
+  process.env.COMMERCE_FOLLOW_UP_PROMPT_DELAY_HOURS = '0';
+  try {
+    const businessId = 964;
+    const product = await createProduct(businessId, {
+      name: 'Automation Template Product',
+      sku: 'automation-template-product',
+      price: 715,
+      inventoryCount: 4,
+      metaCatalogId: 'catalog_964',
+      metaProductRetailerId: 'automation-template-product'
+    });
+    await createTemplate(businessId, {
+      name: 'Wazify Follow Up Prompt',
+      category: 'UTILITY',
+      industry: 'ecommerce',
+      language: 'en_ZA',
+      status: 'Approved',
+      body: 'Hi {{1}}, checking in on order {{2}}. Reply {{3}} if you need help.'
+    });
+    await updateCommerceAutomationRule({
+      businessId,
+      ruleId: 'follow_up_after_payment',
+      enabled: true,
+      delayValue: 0,
+      delayUnit: 'minutes'
+    });
+
+    const rules = await listCommerceAutomationRules(businessId);
+    const followUp = rules.find((rule) => rule.ruleKey === 'follow_up_after_payment');
+    const order = await createOrder(businessId, {
+      customerName: 'Automation Template Buyer',
+      customerPhone: '+27821230066',
+      items: [{ productId: product.id, quantity: 1 }]
+    });
+    await reconcileOrderPayment({
+      businessId,
+      orderId: order.id,
+      provider: 'payfast',
+      providerPaymentId: 'automation_template_paid_1',
+      amount: '715.00',
+      paymentStatus: 'COMPLETE'
+    });
+    await runOnce({ limit: 10 });
+    const detail = await getOrderById(businessId, order.id);
+    const sentEvent = detail.events.find((event) => event.eventType === 'post_purchase.follow_up.sent');
+
+    assert.equal(followUp.templateReadiness.ready, true);
+    assert.equal(followUp.templateReadiness.templateName, 'wazify_follow_up_prompt');
+    assert.equal(followUp.templateReadiness.status, 'Approved');
+    assert.equal(sentEvent.metadata.messageType, 'template');
+    assert.equal(sentEvent.metadata.templateName, 'wazify_follow_up_prompt');
+  } finally {
+    if (previousDelay === undefined) delete process.env.COMMERCE_FOLLOW_UP_PROMPT_DELAY_HOURS;
+    else process.env.COMMERCE_FOLLOW_UP_PROMPT_DELAY_HOURS = previousDelay;
+  }
 });
 
 test('commerce automation rule preview shows ready and already scheduled orders', async () => {
