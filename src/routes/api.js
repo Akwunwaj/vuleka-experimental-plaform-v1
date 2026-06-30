@@ -65,6 +65,7 @@ const {
   createProductCollection,
   createProductVariant,
   createReturnRequest,
+  applyCommerceAutomationRuleToReadyOrders,
   applyCommerceAutomationRulesForOrder,
   getCommerceAnalytics,
   getCommerceAutomationInsights,
@@ -709,6 +710,20 @@ router.get('/commerce/automation-insights', requireAuth, async (req, res, next) 
 router.get('/commerce/automation-rules/:id/preview', requireAuth, async (req, res, next) => {
   try {
     res.json(await previewCommerceAutomationRule({ businessId: req.businessId, ruleId: req.params.id }));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/commerce/automation-rules/:id/apply-ready', requireRole(['owner', 'admin', 'agent']), async (req, res, next) => {
+  try {
+    res.status(202).json(
+      await applyCommerceAutomationRuleToReadyOrders({
+        businessId: req.businessId,
+        ruleId: req.params.id,
+        source: 'manual_rule_apply'
+      })
+    );
   } catch (err) {
     next(err);
   }

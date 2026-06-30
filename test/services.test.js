@@ -171,6 +171,7 @@ const {
   getOrderById,
   getProductCollectionById,
   importProducts,
+  applyCommerceAutomationRuleToReadyOrders,
   applyCommerceAutomationRulesForOrder,
   listCommerceAutomationRules,
   listAbandonedCarts,
@@ -545,6 +546,7 @@ test('critical campaign and contact write routes require owner or admin role', (
     /router\.get\('\/commerce\/automation-rules', requireAuth/,
     /router\.get\('\/commerce\/automation-insights', requireAuth/,
     /router\.get\('\/commerce\/automation-rules\/:id\/preview', requireAuth/,
+    /router\.post\('\/commerce\/automation-rules\/:id\/apply-ready', requireRole\(\['owner', 'admin', 'agent'\]\)/,
     /router\.patch\('\/commerce\/automation-rules\/:id', requireRole\(\['owner', 'admin'\]\)/,
     /router\.patch\('\/commerce\/orders\/:id\/status', requireRole\(\['owner', 'admin', 'agent'\]\)/,
     /router\.patch\('\/commerce\/orders\/:id\/fulfilment', requireRole\(\['owner', 'admin', 'agent'\]\)/,
@@ -2002,6 +2004,64 @@ test('commerce automation rule preview shows ready and already scheduled orders'
   assert.equal(preview.summary.alreadyScheduled, 1);
   assert.equal(preview.summary.readyToSchedule, 0);
   assert.equal(preview.orders[0].alreadyScheduled, true);
+});
+
+test('commerce automation rules can bulk apply to ready orders', async () => {
+  const businessId = 968;
+  const product = await createProduct(businessId, {
+    name: 'Automation Bulk Product',
+    sku: 'automation-bulk-product',
+    price: 445,
+    inventoryCount: 5,
+    metaCatalogId: 'catalog_968',
+    metaProductRetailerId: 'automation-bulk-product'
+  });
+  await updateCommerceAutomationRule({
+    businessId,
+    ruleId: 'follow_up_after_payment',
+    enabled: false,
+    delayValue: 0,
+    delayUnit: 'minutes'
+  });
+  const order = await createOrder(businessId, {
+    customerName: 'Bulk Automation Buyer',
+    customerPhone: '+27821230013',
+    items: [{ productId: product.id, quantity: 1 }]
+  });
+  await reconcileOrderPayment({
+    businessId,
+    orderId: order.id,
+    provider: 'payfast',
+    providerPaymentId: 'automation_bulk_paid_1',
+    amount: '445.00',
+    paymentStatus: 'COMPLETE'
+  });
+  await updateCommerceAutomationRule({
+    businessId,
+    ruleId: 'follow_up_after_payment',
+    enabled: true,
+    delayValue: 0,
+    delayUnit: 'minutes'
+  });
+
+  const before = await previewCommerceAutomationRule({ businessId, ruleId: 'follow_up_after_payment' });
+  const applied = await applyCommerceAutomationRuleToReadyOrders({
+    businessId,
+    ruleId: 'follow_up_after_payment',
+    source: 'test_bulk_rule_apply'
+  });
+  const after = await previewCommerceAutomationRule({ businessId, ruleId: 'follow_up_after_payment' });
+  const worker = await runOnce({ limit: 10 });
+  const detail = await getOrderById(businessId, order.id);
+
+  assert.equal(before.summary.readyToSchedule, 1);
+  assert.equal(applied.summary.scheduled, 1);
+  assert.equal(applied.scheduled[0].orderId, order.id);
+  assert.equal(after.summary.readyToSchedule, 0);
+  assert.equal(after.summary.alreadyScheduled, 1);
+  assert.equal(worker.processed >= 1, true);
+  assert.equal(detail.events.some((event) => event.eventType === 'automation.rules_applied'), true);
+  assert.equal(detail.events.some((event) => event.eventType === 'post_purchase.follow_up.sent'), true);
 });
 
 test('commerce automation insights attribute scheduled and sent prompts to rules', async () => {

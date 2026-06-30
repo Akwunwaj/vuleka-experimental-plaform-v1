@@ -940,11 +940,14 @@ if (productForm) {
       ? rules.map((rule) => {
         const metrics = metricsByRule.get(rule.ruleKey) || {};
         const roi = metrics.roi === null || metrics.roi === undefined ? '--' : `${Number(metrics.roi).toFixed(2)}x`;
-        return `<article><div><strong>${htmlEscape(rule.name)}</strong><span>${htmlEscape(rule.triggerStatus)} · ${htmlEscape(rule.promptType)}</span><small>${htmlEscape(rule.description || '')}</small><small>${Number(rule.delayValue || 0)} ${htmlEscape(rule.delayUnit || 'hours')} delay · ${rule.enabled ? 'enabled' : 'paused'}</small><small>${Number(metrics.scheduled || 0)} scheduled · ${Number(metrics.sent || 0)} sent · ${Number(metrics.attributedOrders || 0)} order(s)</small><small>R ${htmlEscape(metrics.attributedRevenue || '0.00')} revenue · R ${htmlEscape(metrics.estimatedCost || '0.00')} cost · ROI ${htmlEscape(roi)}</small><small>${htmlEscape(rule.recommendation?.action || 'Monitor')}: ${htmlEscape(rule.recommendation?.message || 'Let this automation gather more activity.')}</small></div><div class="commerce-row-actions"><button class="link-button" data-automation-preview="${htmlEscape(rule.ruleKey)}" type="button">Preview</button><button class="link-button" data-automation-toggle="${htmlEscape(rule.ruleKey)}" data-enabled="${rule.enabled ? 'true' : 'false'}" type="button">${rule.enabled ? 'Pause' : 'Enable'}</button><button class="link-button" data-automation-delay="${htmlEscape(rule.ruleKey)}" data-delay-value="${htmlEscape(rule.delayValue)}" data-delay-unit="${htmlEscape(rule.delayUnit)}" type="button">Tune</button></div></article>`;
+        return `<article><div><strong>${htmlEscape(rule.name)}</strong><span>${htmlEscape(rule.triggerStatus)} · ${htmlEscape(rule.promptType)}</span><small>${htmlEscape(rule.description || '')}</small><small>${Number(rule.delayValue || 0)} ${htmlEscape(rule.delayUnit || 'hours')} delay · ${rule.enabled ? 'enabled' : 'paused'}</small><small>${Number(metrics.scheduled || 0)} scheduled · ${Number(metrics.sent || 0)} sent · ${Number(metrics.attributedOrders || 0)} order(s)</small><small>R ${htmlEscape(metrics.attributedRevenue || '0.00')} revenue · R ${htmlEscape(metrics.estimatedCost || '0.00')} cost · ROI ${htmlEscape(roi)}</small><small>${htmlEscape(rule.recommendation?.action || 'Monitor')}: ${htmlEscape(rule.recommendation?.message || 'Let this automation gather more activity.')}</small></div><div class="commerce-row-actions"><button class="link-button" data-automation-preview="${htmlEscape(rule.ruleKey)}" type="button">Preview</button><button class="link-button" data-automation-apply-ready="${htmlEscape(rule.ruleKey)}" type="button">Apply ready</button><button class="link-button" data-automation-toggle="${htmlEscape(rule.ruleKey)}" data-enabled="${rule.enabled ? 'true' : 'false'}" type="button">${rule.enabled ? 'Pause' : 'Enable'}</button><button class="link-button" data-automation-delay="${htmlEscape(rule.ruleKey)}" data-delay-value="${htmlEscape(rule.delayValue)}" data-delay-unit="${htmlEscape(rule.delayUnit)}" type="button">Tune</button></div></article>`;
       }).join('')
       : '<p class="muted-copy">Post-purchase automation rules will appear here.</p>';
     commerceAutomationRuleList.querySelectorAll('[data-automation-preview]').forEach((button) => {
       button.addEventListener('click', () => previewAutomationRule(button.dataset.automationPreview));
+    });
+    commerceAutomationRuleList.querySelectorAll('[data-automation-apply-ready]').forEach((button) => {
+      button.addEventListener('click', () => applyReadyAutomationRule(button.dataset.automationApplyReady));
     });
     commerceAutomationRuleList.querySelectorAll('[data-automation-toggle]').forEach((button) => {
       button.addEventListener('click', () => updateAutomationRule(button.dataset.automationToggle, {
@@ -995,6 +998,15 @@ if (productForm) {
       `${Number(result.summary?.matchingOrders || 0)} matching order(s)`,
       ...orders
     ].join('\n'));
+  }
+
+  async function applyReadyAutomationRule(ruleKey) {
+    const confirmed = window.confirm('Schedule this automation for all currently ready orders?');
+    if (!confirmed) return;
+    const response = await fetch(`/api/commerce/automation-rules/${encodeURIComponent(ruleKey)}/apply-ready`, { method: 'POST' });
+    const result = await response.json().catch(() => ({}));
+    showToast(response.ok ? `${Number(result.summary?.scheduled || 0)} automation prompt(s) scheduled` : result.error || 'Automation could not be applied');
+    if (response.ok) loadCommerce();
   }
 
   async function tuneAutomationRule(button) {

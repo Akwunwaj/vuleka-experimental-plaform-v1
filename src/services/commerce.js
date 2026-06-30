@@ -1119,7 +1119,7 @@ async function updateCommerceAutomationRule({ businessId, ruleId, enabled, delay
   return normalizeAutomationRule(demoAutomationRules.find((item) => Number(item.businessId) === Number(businessId) && item.ruleKey === rule.ruleKey));
 }
 
-async function previewCommerceAutomationRule({ businessId, ruleId }) {
+async function previewCommerceAutomationRule({ businessId, ruleId, limit = 10 }) {
   const rules = await listCommerceAutomationRules(businessId);
   const rule = rules.find((item) => item.ruleKey === String(ruleId || '').trim());
   if (!rule) throw notFound('Automation rule not found');
@@ -1152,6 +1152,7 @@ async function previewCommerceAutomationRule({ businessId, ruleId }) {
     .sort((a, b) => Number(a.alreadyScheduled) - Number(b.alreadyScheduled) || new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 
   const alreadyScheduled = matchingOrders.filter((order) => order.alreadyScheduled).length;
+  const orderLimit = Math.max(0, Number(limit ?? 10));
   return {
     rule,
     summary: {
@@ -1162,7 +1163,28 @@ async function previewCommerceAutomationRule({ businessId, ruleId }) {
       delayValue: rule.delayValue,
       delayUnit: rule.delayUnit
     },
-    orders: matchingOrders.slice(0, 10)
+    orders: matchingOrders.slice(0, Number.isFinite(orderLimit) ? orderLimit : 10)
+  };
+}
+
+async function scheduleAutomationRuleForOrder({ businessId, order, rule, source }) {
+  if (!rule.enabled) return { skipped: { ruleKey: rule.ruleKey, reason: 'disabled' } };
+  if (rule.triggerStatus !== order.status) {
+    return { skipped: { ruleKey: rule.ruleKey, reason: `waiting for ${rule.triggerStatus}` } };
+  }
+  if (!isPromptEligibleForOrder(order, rule.promptType)) {
+    return { skipped: { ruleKey: rule.ruleKey, reason: 'order not eligible' } };
+  }
+
+  const runAt = new Date(Date.now() + automationRuleDelayMs(rule));
+  const job = await enqueueJob({
+    type: 'commerce.post_purchase_prompt',
+    payload: { businessId, orderId: order.id, promptType: rule.promptType, ruleId: rule.ruleKey, source },
+    runAt,
+    dedupeKey: `commerce.post_purchase_prompt:${businessId}:${order.id}:${rule.ruleKey}`
+  });
+  return {
+    scheduled: { ruleKey: rule.ruleKey, promptType: rule.promptType, runAt: runAt.toISOString(), ...job }
   };
 }
 
@@ -1173,26 +1195,9 @@ async function applyCommerceAutomationRulesForOrder({ businessId, orderId, sourc
   const skipped = [];
 
   for (const rule of rules) {
-    if (!rule.enabled) {
-      skipped.push({ ruleKey: rule.ruleKey, reason: 'disabled' });
-      continue;
-    }
-    if (rule.triggerStatus !== order.status) {
-      skipped.push({ ruleKey: rule.ruleKey, reason: `waiting for ${rule.triggerStatus}` });
-      continue;
-    }
-    if (!isPromptEligibleForOrder(order, rule.promptType)) {
-      skipped.push({ ruleKey: rule.ruleKey, reason: 'order not eligible' });
-      continue;
-    }
-    const runAt = new Date(Date.now() + automationRuleDelayMs(rule));
-    const job = await enqueueJob({
-      type: 'commerce.post_purchase_prompt',
-      payload: { businessId, orderId: order.id, promptType: rule.promptType, ruleId: rule.ruleKey, source },
-      runAt,
-      dedupeKey: `commerce.post_purchase_prompt:${businessId}:${order.id}:${rule.ruleKey}`
-    });
-    scheduled.push({ ruleKey: rule.ruleKey, promptType: rule.promptType, runAt: runAt.toISOString(), ...job });
+    const result = await scheduleAutomationRuleForOrder({ businessId, order, rule, source });
+    if (result.scheduled) scheduled.push(result.scheduled);
+    if (result.skipped) skipped.push(result.skipped);
   }
 
   if (scheduled.length) {
@@ -1207,6 +1212,43 @@ async function applyCommerceAutomationRulesForOrder({ businessId, orderId, sourc
   }
 
   return { scheduled, skipped, order: await getOrderById(businessId, order.id) };
+}
+
+async function applyCommerceAutomationRuleToReadyOrders({ businessId, ruleId, source = 'manual_rule_apply' }) {
+  const preview = await previewCommerceAutomationRule({ businessId, ruleId, limit: Number.MAX_SAFE_INTEGER });
+  const rule = preview.rule;
+  const readyOrders = preview.orders.filter((order) => !order.alreadyScheduled);
+  const scheduled = [];
+  const skipped = [];
+
+  for (const order of readyOrders) {
+    const result = await scheduleAutomationRuleForOrder({ businessId, order, rule, source });
+    if (result.scheduled) {
+      scheduled.push({ orderId: order.id, ...result.scheduled });
+      await recordOrderEvent({
+        businessId,
+        orderId: order.id,
+        eventType: 'automation.rules_applied',
+        status: order.status,
+        note: `Commerce automation rule ${rule.name} scheduled`,
+        metadata: { source, scheduled: [result.scheduled] }
+      });
+    }
+    if (result.skipped) skipped.push({ orderId: order.id, ...result.skipped });
+  }
+
+  return {
+    rule,
+    summary: {
+      matchingOrders: preview.summary.matchingOrders,
+      alreadyScheduled: preview.summary.alreadyScheduled,
+      readyToSchedule: preview.summary.readyToSchedule,
+      scheduled: scheduled.length,
+      skipped: skipped.length
+    },
+    scheduled,
+    skipped
+  };
 }
 
 async function getCommerceAutomationInsights(businessId, options = {}) {
@@ -2647,6 +2689,7 @@ module.exports = {
   buildOrderDetailsPayload,
   buildOrderStatusPayload,
   applyCouponToOrder,
+  applyCommerceAutomationRuleToReadyOrders,
   applyCommerceAutomationRulesForOrder,
   archiveProduct,
   createOrder,
