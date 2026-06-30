@@ -1,0 +1,1880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WhatsApp Cloud API — Chatbot Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+/* ── Reset & Variables ──────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  /* Meta / WhatsApp palette */
+  --wa:       #25D366;
+  --wa-dk:    #128C7E;
+  --wa-xdk:   #075E54;
+  --wa-lite:  #DCF8C6;
+  --meta:     #1877F2;
+  --meta-dk:  #0D5EC7;
+
+  /* Neutrals */
+  --bg:       #0A0C10;
+  --bg2:      #10141C;
+  --card:     #161B26;
+  --card2:    #1E2535;
+  --border:   rgba(255,255,255,0.07);
+  --border2:  rgba(255,255,255,0.12);
+  --text:     #E8EDF5;
+  --muted:    #6B7A99;
+  --muted2:   #8A95B0;
+
+  /* Accent */
+  --accent:   #25D366;
+  --accent2:  #00C2FF;
+  --warn:     #FF9500;
+  --danger:   #FF3B5C;
+  --purple:   #A78BFA;
+
+  /* WA chat colours */
+  --bubble-in:  #1E2535;
+  --bubble-out: #005C4B;
+  --chat-bg:    #0B1317;
+}
+
+html, body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 10px; }
+
+/* ── Top nav ── */
+.topnav {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 28px;
+  height: 56px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(10,12,16,0.92);
+  backdrop-filter: blur(14px);
+  position: sticky; top: 0; z-index: 100;
+}
+
+.nav-brand { display: flex; align-items: center; gap: 10px; }
+.brand-mark {
+  width: 32px; height: 32px; border-radius: 8px;
+  background: linear-gradient(135deg, #25D366 0%, #075E54 100%);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+}
+.brand-name { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; letter-spacing: -.3px; }
+.brand-badge {
+  font-size: 10px; font-weight: 600; padding: 2px 7px;
+  background: rgba(24,119,242,0.18); color: var(--meta);
+  border: 1px solid rgba(24,119,242,0.3); border-radius: 20px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.nav-tabs { display: flex; gap: 2px; }
+.nav-tab {
+  padding: 6px 14px; border-radius: 8px;
+  font-size: 13px; font-weight: 500;
+  cursor: pointer; border: none; background: transparent;
+  color: var(--muted); font-family: 'DM Sans', sans-serif;
+  transition: all .15s;
+}
+.nav-tab:hover { background: var(--card); color: var(--text); }
+.nav-tab.active { background: var(--card2); color: var(--accent); }
+
+.nav-right { display: flex; align-items: center; gap: 10px; }
+.api-status {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11.5px; color: var(--muted2);
+  font-family: 'JetBrains Mono', monospace;
+}
+.status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.8)} }
+
+.connect-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 14px; border-radius: 8px; border: none; cursor: pointer;
+  background: linear-gradient(135deg, #25D366, #128C7E);
+  color: white; font-size: 12.5px; font-weight: 600;
+  font-family: 'DM Sans', sans-serif;
+  box-shadow: 0 2px 12px rgba(37,211,102,0.3);
+  transition: all .15s;
+}
+.connect-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(37,211,102,0.4); }
+
+/* ── Layout ── */
+.app-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr 400px;
+  height: calc(100vh - 56px);
+  overflow: hidden;
+}
+
+/* ── Left sidebar ── */
+.sidebar {
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  overflow: hidden; background: var(--bg2);
+}
+
+.sidebar-section {
+  padding: 16px 14px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.section-label {
+  font-size: 10px; font-weight: 600; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--muted);
+  margin-bottom: 8px; padding: 0 6px;
+  display: flex; align-items: center; gap: 6px;
+}
+.section-label .lbl-badge {
+  background: var(--card2); color: var(--muted2);
+  font-size: 9px; padding: 1px 5px; border-radius: 4px;
+}
+
+.use-case-btn {
+  width: 100%; display: flex; align-items: center; gap: 10px;
+  padding: 9px 10px; border-radius: 10px; border: none;
+  background: transparent; color: var(--muted2);
+  font-size: 12.5px; font-family: 'DM Sans', sans-serif;
+  cursor: pointer; text-align: left;
+  transition: all .15s;
+  position: relative;
+}
+.use-case-btn:hover { background: var(--card); color: var(--text); }
+.use-case-btn.active {
+  background: var(--card2); color: var(--text);
+}
+.use-case-btn.active::before {
+  content: '';
+  position: absolute; left: 0; top: 20%; bottom: 20%;
+  width: 3px; border-radius: 2px;
+}
+.use-case-btn.engagement.active::before { background: var(--accent); }
+.use-case-btn.campaign.active::before { background: var(--warn); }
+
+.uc-icon {
+  width: 28px; height: 28px; border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; flex-shrink: 0;
+}
+.engagement .uc-icon { background: rgba(37,211,102,.12); }
+.campaign .uc-icon { background: rgba(255,149,0,.12); }
+.use-case-btn.active.engagement .uc-icon { background: rgba(37,211,102,.2); }
+.use-case-btn.active.campaign .uc-icon { background: rgba(255,149,0,.2); }
+
+.uc-info { flex: 1; overflow: hidden; }
+.uc-name { font-size: 12.5px; font-weight: 500; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.uc-tag {
+  font-size: 9.5px; margin-top: 2px;
+  font-family: 'JetBrains Mono', monospace;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.engagement .uc-tag { color: rgba(37,211,102,.6); }
+.campaign .uc-tag { color: rgba(255,149,0,.6); }
+
+/* ── Center panel ── */
+.center-panel {
+  display: flex; flex-direction: column; overflow: hidden;
+  background: var(--bg);
+}
+
+/* Config area */
+.config-area {
+  flex: 1; overflow-y: auto;
+  padding: 24px 28px;
+}
+
+.page-header {
+  margin-bottom: 24px;
+}
+.page-title {
+  font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 700;
+  letter-spacing: -.4px; line-height: 1.2;
+}
+.page-subtitle { font-size: 13px; color: var(--muted2); margin-top: 4px; line-height: 1.5; }
+
+/* Credentials card */
+.cred-card {
+  background: var(--card);
+  border: 1px solid var(--border2);
+  border-radius: 14px;
+  padding: 18px 20px;
+  margin-bottom: 20px;
+}
+.cred-title {
+  font-size: 11.5px; font-weight: 600; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--muted);
+  margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+}
+.cred-title svg { width: 14px; height: 14px; fill: var(--meta); }
+
+.cred-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.cred-field { display: flex; flex-direction: column; gap: 5px; }
+.field-label { font-size: 11px; color: var(--muted); font-weight: 500; }
+.field-input {
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px; color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  outline: none; transition: border-color .15s;
+  width: 100%;
+}
+.field-input:focus { border-color: var(--accent); }
+.field-input::placeholder { color: var(--muted); }
+.field-input.token { color: var(--accent); }
+
+/* API payload view */
+.payload-tabs {
+  display: flex; gap: 4px; margin-bottom: 0;
+  border-bottom: 1px solid var(--border);
+  padding: 0 0 0 0;
+}
+.payload-tab {
+  padding: 8px 14px; border-radius: 8px 8px 0 0;
+  font-size: 12px; font-weight: 500; cursor: pointer;
+  border: none; background: transparent;
+  color: var(--muted); font-family: 'DM Sans', sans-serif;
+  transition: all .15s; border: 1px solid transparent;
+  border-bottom: none; margin-bottom: -1px;
+}
+.payload-tab:hover { color: var(--text); }
+.payload-tab.active {
+  background: var(--card); color: var(--accent);
+  border-color: var(--border2); border-bottom-color: var(--card);
+}
+
+/* Flow steps */
+.flow-card {
+  background: var(--card); border: 1px solid var(--border2);
+  border-radius: 14px; overflow: hidden; margin-bottom: 20px;
+}
+.flow-card-header {
+  padding: 14px 18px;
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+}
+.flow-card-title { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+
+.flow-steps { padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; }
+.flow-step { display: flex; gap: 12px; align-items: flex-start; }
+.step-bullet {
+  width: 24px; height: 24px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; flex-shrink: 0;
+  font-family: 'JetBrains Mono', monospace;
+}
+.engagement-step .step-bullet { background: rgba(37,211,102,.15); color: var(--accent); border: 1px solid rgba(37,211,102,.3); }
+.campaign-step .step-bullet { background: rgba(255,149,0,.15); color: var(--warn); border: 1px solid rgba(255,149,0,.3); }
+
+.step-body { flex: 1; padding-top: 2px; }
+.step-name { font-size: 12.5px; font-weight: 600; margin-bottom: 2px; }
+.step-detail { font-size: 11.5px; color: var(--muted2); line-height: 1.5; }
+.step-method {
+  display: inline-flex; align-items: center; gap: 4px;
+  margin-top: 6px; padding: 3px 8px; border-radius: 5px;
+  font-size: 10.5px; font-family: 'JetBrains Mono', monospace;
+  background: var(--card2); color: var(--muted2); border: 1px solid var(--border2);
+}
+.method-post { color: var(--accent); }
+.method-get { color: var(--accent2); }
+
+/* Code block */
+.code-block-wrap {
+  background: var(--card); border: 1px solid var(--border2);
+  border-radius: 14px; overflow: hidden; margin-bottom: 20px;
+}
+.code-block-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px; border-bottom: 1px solid var(--border);
+  background: var(--card2);
+}
+.code-lang {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  color: var(--muted2); display: flex; align-items: center; gap: 6px;
+}
+.lang-dot { width: 8px; height: 8px; border-radius: 50%; }
+.copy-btn {
+  font-size: 11px; color: var(--muted); background: var(--card);
+  border: 1px solid var(--border2); border-radius: 6px; padding: 3px 10px;
+  cursor: pointer; transition: all .15s; font-family: 'DM Sans', sans-serif;
+}
+.copy-btn:hover { color: var(--text); border-color: var(--border2); }
+.copy-btn.copied { color: var(--accent); border-color: rgba(37,211,102,.3); }
+
+pre.code-block {
+  padding: 16px; margin: 0;
+  font-family: 'JetBrains Mono', monospace; font-size: 11.5px;
+  line-height: 1.7; overflow-x: auto; color: var(--text);
+  max-height: 320px; overflow-y: auto;
+}
+
+/* Syntax highlighting */
+.k { color: #FF79C6; } /* keyword */
+.s { color: #F1FA8C; } /* string */
+.n { color: var(--accent2); } /* number / key */
+.c { color: var(--muted); font-style: italic; } /* comment */
+.f { color: var(--accent); } /* function */
+.p { color: var(--muted2); } /* punctuation */
+.url { color: #BD93F9; }
+
+/* Send button */
+.send-bar {
+  padding: 16px 28px;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px; align-items: center;
+  background: var(--bg2);
+}
+.phone-input-wrap { display: flex; align-items: center; gap: 0; flex: 1; }
+.phone-prefix {
+  background: var(--card2); border: 1px solid var(--border2); border-right: none;
+  border-radius: 8px 0 0 8px; padding: 9px 10px;
+  font-size: 12px; color: var(--muted); font-family: 'JetBrains Mono', monospace;
+}
+.phone-input {
+  flex: 1; background: var(--card); border: 1px solid var(--border2);
+  border-radius: 0 8px 8px 0; padding: 9px 12px;
+  font-size: 12.5px; color: var(--text); outline: none;
+  font-family: 'JetBrains Mono', monospace;
+  transition: border-color .15s;
+}
+.phone-input:focus { border-color: var(--accent); }
+.phone-input::placeholder { color: var(--muted); }
+
+.send-btn {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 20px; border-radius: 10px; border: none; cursor: pointer;
+  background: linear-gradient(135deg, #25D366, #128C7E);
+  color: white; font-size: 13px; font-weight: 600;
+  font-family: 'DM Sans', sans-serif;
+  box-shadow: 0 2px 12px rgba(37,211,102,.25);
+  transition: all .15s;
+}
+.send-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 18px rgba(37,211,102,.35); }
+.send-btn:active { transform: translateY(0); }
+.send-btn svg { width: 16px; height: 16px; fill: white; }
+.send-btn.loading { opacity: .7; pointer-events: none; }
+
+/* ── Right panel — Phone ── */
+.phone-panel {
+  border-left: 1px solid var(--border);
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: flex-start; padding: 20px 0 20px;
+  background: var(--bg2); overflow-y: auto;
+}
+
+.phone-outer {
+  width: 310px;
+  background: #1C1C1E;
+  border-radius: 42px;
+  padding: 9px;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.1),
+    0 30px 70px rgba(0,0,0,0.7),
+    inset 0 1px 0 rgba(255,255,255,0.08);
+  flex-shrink: 0;
+}
+
+.phone-inner {
+  border-radius: 34px;
+  overflow: hidden;
+  background: var(--chat-bg);
+  height: 640px;
+  display: flex; flex-direction: column;
+}
+
+/* Status bar */
+.ph-status {
+  background: var(--wa-xdk);
+  padding: 9px 18px 5px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.ph-time { font-size: 11.5px; font-weight: 700; color: white; font-family: 'JetBrains Mono', monospace; }
+.ph-icons { display: flex; gap: 4px; align-items: center; }
+.ph-icons span { font-size: 10px; color: rgba(255,255,255,.8); }
+
+/* Chat header */
+.ph-header {
+  background: var(--wa-xdk);
+  padding: 6px 12px 10px;
+  display: flex; align-items: center; gap: 9px;
+}
+.ph-avatar {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: var(--wa-dk); display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+}
+.ph-hdr-name { font-size: 13.5px; font-weight: 600; color: white; }
+.ph-hdr-status { font-size: 10.5px; color: rgba(255,255,255,.65); }
+
+/* Chat body */
+.ph-chat {
+  flex: 1; overflow-y: auto; padding: 10px 10px 6px;
+  background: var(--chat-bg);
+  display: flex; flex-direction: column; gap: 4px;
+  scroll-behavior: smooth;
+}
+
+.msg-date {
+  text-align: center; margin: 6px 0;
+  font-size: 10.5px; color: rgba(255,255,255,.4);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Bubbles */
+.msg { display: flex; flex-direction: column; }
+.msg.bot { align-items: flex-start; }
+.msg.user { align-items: flex-end; }
+
+.bubble {
+  max-width: 80%; padding: 7px 10px 18px;
+  border-radius: 10px; position: relative;
+  font-size: 12px; line-height: 1.45; word-break: break-word;
+  box-shadow: 0 1px 3px rgba(0,0,0,.3);
+  animation: popIn .2s ease-out;
+}
+@keyframes popIn { from { opacity:0; transform:scale(.95) translateY(6px); } to { opacity:1; transform:none; } }
+
+.bubble.bot { background: var(--bubble-in); color: var(--text); border-top-left-radius: 2px; }
+.bubble.user { background: var(--bubble-out); color: white; border-top-right-radius: 2px; }
+
+.bubble b { font-weight: 600; }
+
+.bubble-meta {
+  position: absolute; bottom: 3px; right: 8px;
+  font-size: 9.5px; color: rgba(255,255,255,.4);
+  font-family: 'JetBrains Mono', monospace;
+  display: flex; align-items: center; gap: 3px;
+}
+.bubble.bot .bubble-meta { color: var(--muted); }
+
+/* Interactive buttons inside bubble */
+.bubble-buttons { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; border-top: 1px solid rgba(255,255,255,.08); padding-top: 8px; }
+.bubble-btn {
+  background: rgba(37,211,102,.1); border: 1px solid rgba(37,211,102,.25);
+  border-radius: 7px; padding: 6px 10px; text-align: center;
+  font-size: 11.5px; color: var(--accent); font-weight: 500;
+  cursor: pointer; transition: all .15s;
+  font-family: 'DM Sans', sans-serif;
+}
+.bubble-btn:hover { background: rgba(37,211,102,.2); }
+.bubble-btn.tapped { background: rgba(37,211,102,.25); border-color: var(--accent); pointer-events: none; opacity: .8; }
+
+/* Header image in bubble */
+.bubble-img {
+  width: 100%; border-radius: 7px; margin-bottom: 8px;
+  aspect-ratio: 16/9; object-fit: cover;
+  background: linear-gradient(135deg, var(--wa-dk), var(--wa-xdk));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px; overflow: hidden;
+}
+
+/* List message */
+.list-section-title { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin: 8px 0 4px; }
+.list-row {
+  display: flex; align-items: center; gap: 6px; padding: 6px 0;
+  border-bottom: 1px solid rgba(255,255,255,.07); cursor: pointer;
+  font-size: 11.5px; transition: color .15s;
+}
+.list-row:last-child { border-bottom: none; }
+.list-row:hover { color: var(--accent); }
+.list-row .lr-icon { font-size: 14px; flex-shrink: 0; }
+
+/* Typing */
+.typing { display: flex; align-items: center; gap: 4px; padding: 8px 10px; background: var(--bubble-in); border-radius: 10px; width: fit-content; border-top-left-radius: 2px; }
+.tdot { width: 5px; height: 5px; background: var(--muted); border-radius: 50%; animation: td 1s infinite; }
+.tdot:nth-child(2) { animation-delay: .2s; }
+.tdot:nth-child(3) { animation-delay: .4s; }
+@keyframes td { 0%,80%,100%{transform:scale(1);opacity:.4} 40%{transform:scale(1.3);opacity:1} }
+
+/* Input bar */
+.ph-input-bar {
+  background: #1A1F2B; padding: 6px 10px;
+  display: flex; align-items: center; gap: 8px;
+  border-top: 1px solid rgba(255,255,255,.06);
+}
+.ph-input-box {
+  flex: 1; background: var(--card2); border-radius: 22px;
+  padding: 8px 14px; font-size: 12px; color: var(--muted);
+  display: flex; align-items: center;
+}
+.ph-mic {
+  width: 38px; height: 38px; border-radius: 50%; background: var(--wa-dk);
+  display: flex; align-items: center; justify-content: center; font-size: 16px;
+}
+
+/* ── Webhook log below phone ── */
+.webhook-log {
+  width: 310px; margin-top: 12px;
+  background: var(--card); border: 1px solid var(--border2); border-radius: 14px;
+  overflow: hidden;
+}
+.wh-header {
+  padding: 10px 14px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.wh-title { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; display: flex; align-items: center; gap: 6px; }
+.wh-live { font-size: 9px; color: var(--accent); background: rgba(37,211,102,.12); padding: 2px 7px; border-radius: 10px; font-weight: 600; }
+.wh-body { padding: 8px 12px; max-height: 200px; overflow-y: auto; }
+.wh-entry {
+  border-bottom: 1px solid var(--border);
+  padding: 7px 0; font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 1.6;
+}
+.wh-entry:last-child { border-bottom: none; }
+.wh-method { color: var(--accent); }
+.wh-path { color: var(--muted2); }
+.wh-status { color: #50FA7B; }
+.wh-time { color: var(--muted); float: right; }
+
+/* ── Modals / overlays ── */
+.overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.7);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 200; opacity: 0; pointer-events: none; transition: opacity .2s;
+}
+.overlay.open { opacity: 1; pointer-events: all; }
+
+.modal {
+  background: var(--card); border: 1px solid var(--border2);
+  border-radius: 18px; padding: 28px; width: 440px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.6);
+}
+.modal-title { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+.modal-sub { font-size: 12.5px; color: var(--muted2); margin-bottom: 20px; line-height: 1.5; }
+.modal-actions { display: flex; gap: 8px; margin-top: 20px; }
+.modal-btn {
+  flex: 1; padding: 10px; border-radius: 10px; border: none;
+  cursor: pointer; font-size: 13px; font-weight: 600;
+  font-family: 'DM Sans', sans-serif; transition: all .15s;
+}
+.modal-btn.primary { background: linear-gradient(135deg, #25D366, #128C7E); color: white; box-shadow: 0 2px 12px rgba(37,211,102,.3); }
+.modal-btn.secondary { background: var(--card2); color: var(--muted2); }
+
+/* ── Toast ── */
+.toast {
+  position: fixed; bottom: 24px; right: 24px;
+  background: var(--card); border: 1px solid var(--border2);
+  border-radius: 12px; padding: 12px 18px;
+  font-size: 13px; font-weight: 500;
+  box-shadow: 0 8px 30px rgba(0,0,0,.4);
+  display: flex; align-items: center; gap: 10px;
+  z-index: 300; transform: translateY(20px); opacity: 0;
+  transition: all .3s cubic-bezier(.4,0,.2,1);
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast.success .toast-icon { color: var(--accent); font-size: 16px; }
+.toast.error .toast-icon { color: var(--danger); font-size: 16px; }
+
+/* Util */
+.tag {
+  display: inline-flex; align-items: center;
+  font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 5px;
+  font-family: 'JetBrains Mono', monospace;
+}
+.tag.green { background: rgba(37,211,102,.12); color: var(--accent); border: 1px solid rgba(37,211,102,.2); }
+.tag.orange { background: rgba(255,149,0,.12); color: var(--warn); border: 1px solid rgba(255,149,0,.2); }
+.tag.blue { background: rgba(24,119,242,.12); color: var(--meta); border: 1px solid rgba(24,119,242,.2); }
+.tag.purple { background: rgba(167,139,250,.12); color: var(--purple); border: 1px solid rgba(167,139,250,.2); }
+
+.divider { height: 1px; background: var(--border); margin: 16px 0; }
+
+.info-box {
+  background: rgba(24,119,242,.08); border: 1px solid rgba(24,119,242,.2);
+  border-radius: 10px; padding: 12px 14px; margin-bottom: 16px;
+  font-size: 12px; color: var(--muted2); line-height: 1.6;
+}
+.info-box a { color: var(--meta); text-decoration: none; }
+.info-box strong { color: var(--text); }
+</style>
+</head>
+<body>
+
+<!-- Top nav -->
+<nav class="topnav">
+  <div class="nav-brand">
+    <div class="brand-mark">💬</div>
+    <span class="brand-name">WhatsApp Cloud API</span>
+    <span class="brand-badge">v21.0</span>
+  </div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="switchTab('builder')">Flow Builder</button>
+    <button class="nav-tab" onclick="switchTab('api')">API Playground</button>
+    <button class="nav-tab" onclick="switchTab('webhook')">Webhook Inspector</button>
+  </div>
+  <div class="nav-right">
+    <div class="api-status"><div class="status-dot"></div>graph.facebook.com</div>
+    <button class="connect-btn" onclick="openModal()">
+      <svg viewBox="0 0 16 16" width="14" height="14" fill="white"><path d="M13 8A5 5 0 113 8a5 5 0 0110 0z"/><path d="M8 3v5l3 3"/></svg>
+      Connect to Meta
+    </button>
+  </div>
+</nav>
+
+<!-- Main layout -->
+<div class="app-layout">
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <div class="section-label">
+        Customer Engagement
+        <span class="lbl-badge">6</span>
+      </div>
+      <div id="engagementList"></div>
+    </div>
+    <div class="sidebar-section" style="border-bottom:none;flex:1">
+      <div class="section-label">
+        Campaigns & Sales
+        <span class="lbl-badge">6</span>
+      </div>
+      <div id="campaignList"></div>
+    </div>
+  </div>
+
+  <!-- Center -->
+  <div class="center-panel">
+    <div class="config-area" id="configArea">
+      <!-- Dynamic content loaded here -->
+    </div>
+    <div class="send-bar">
+      <div class="phone-input-wrap">
+        <span class="phone-prefix">+</span>
+        <input class="phone-input" id="phoneInput" placeholder="27821234567" maxlength="15">
+      </div>
+      <button class="send-btn" id="sendBtn" onclick="sendFlow()">
+        <svg viewBox="0 0 20 20"><path d="M2.93 17.07A10 10 0 1 1 17.07 2.93 10 10 0 0 1 2.93 17.07zm12.73-1.41A8 8 0 1 0 4.34 4.34a8 8 0 0 0 11.32 11.32zM9 11V9h2v6H9v-4zm0-6h2v2H9V5z" opacity="0"/><path d="M10 15l-3-3h2V8h2v4h2l-3 3z"/></svg>
+        Send to WhatsApp
+      </button>
+    </div>
+  </div>
+
+  <!-- Right: Phone preview -->
+  <div class="phone-panel">
+    <div class="phone-outer">
+      <div class="phone-inner">
+        <div class="ph-status">
+          <span class="ph-time" id="phTime">09:41</span>
+          <div class="ph-icons"><span>▲▲▲</span><span>WiFi</span><span>⚡</span></div>
+        </div>
+        <div class="ph-header">
+          <div class="ph-avatar" id="phAvatar">🤖</div>
+          <div>
+            <div class="ph-hdr-name" id="phName">Select a use case</div>
+            <div class="ph-hdr-status" id="phStatus">tap any flow on the left</div>
+          </div>
+        </div>
+        <div class="ph-chat" id="phChat">
+          <div class="msg-date">Today</div>
+        </div>
+        <div class="ph-input-bar">
+          <div class="ph-input-box">Type a message</div>
+          <div class="ph-mic">🎤</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Webhook log -->
+    <div class="webhook-log">
+      <div class="wh-header">
+        <div class="wh-title">
+          Webhook Log
+          <span class="wh-live">LIVE</span>
+        </div>
+        <span style="font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace">0 events</span>
+      </div>
+      <div class="wh-body" id="webhookLog">
+        <div style="font-size:11px;color:var(--muted);padding:10px 0;text-align:center">No events yet</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Connect to Meta Modal -->
+<div class="overlay" id="overlay" onclick="closeModal()">
+  <div class="modal" onclick="e=>e.stopPropagation()">
+    <div class="modal-title">Connect to Meta Cloud API</div>
+    <div class="modal-sub">Enter your Meta for Developers credentials. All values are stored locally in your browser only.</div>
+    <div class="cred-grid">
+      <div class="cred-field" style="grid-column:1/-1">
+        <label class="field-label">Phone Number ID</label>
+        <input class="field-input" id="m_phone_id" placeholder="123456789012345">
+      </div>
+      <div class="cred-field" style="grid-column:1/-1">
+        <label class="field-label">WhatsApp Business Account ID (WABA)</label>
+        <input class="field-input" id="m_waba_id" placeholder="987654321098765">
+      </div>
+      <div class="cred-field" style="grid-column:1/-1">
+        <label class="field-label">Permanent Access Token</label>
+        <input class="field-input token" id="m_token" type="password" placeholder="EAAxxxxxxxxxxxxxxxx">
+      </div>
+      <div class="cred-field">
+        <label class="field-label">Webhook Verify Token</label>
+        <input class="field-input" id="m_verify" placeholder="my_verify_token_123">
+      </div>
+      <div class="cred-field">
+        <label class="field-label">API Version</label>
+        <input class="field-input" id="m_version" value="v21.0">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn secondary" onclick="closeModal()">Cancel</button>
+      <button class="modal-btn primary" onclick="saveCredentials()">Save & Connect</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <span class="toast-icon">✓</span>
+  <span id="toastMsg">Message sent!</span>
+</div>
+
+<script>
+/* ─── DATA ─────────────────────────────────────────────────── */
+const USE_CASES = {
+  engagement: [
+    {
+      id: 'welcome_menu',
+      icon: '👋',
+      name: 'Welcome & Main Menu',
+      tag: 'interactive.button',
+      avatar: '🤖', botName: 'BizBot', botStatus: 'Online · Business Assistant',
+      desc: 'Greet new and returning customers with a branded welcome message and an interactive button menu to route them to the right service.',
+      templateType: 'interactive_buttons',
+      apiEndpoint: '/{PHONE_NUMBER_ID}/messages',
+      method: 'POST',
+      steps: [
+        { name: 'Send welcome message', detail: 'Triggered on first inbound message or WABA opt-in event. Bot sends interactive button message.', method: 'POST' },
+        { name: 'Receive button reply via webhook', detail: 'User taps a button — Meta sends a webhook with interactive.button_reply.id to your endpoint.', method: 'WEBHOOK' },
+        { name: 'Route to sub-flow', detail: 'Parse button_reply.id and branch to the appropriate handler (support, orders, info).', method: 'INTERNAL' },
+        { name: 'Mark message as read', detail: 'POST to /messages with status=read and the message_id to show blue ticks.', method: 'POST' },
+      ],
+      phone: [
+        { type:'bot', text:'👋 Hello! Welcome to *BizBot*.\n\nHow can I help you today?', buttons:['🛍️ Shop & Orders','🎧 Customer Support','ℹ️ Company Info'] },
+        { type:'user', text:'🛍️ Shop & Orders' },
+        { type:'bot', text:'Great choice! Here\'s what you can do:', buttons:['📦 Track order','🔄 Return item','💳 New order'] },
+      ],
+      payload: `<span class="c">// POST /{PHONE_NUMBER_ID}/messages</span>
+{
+  <span class="n">"messaging_product"</span>: <span class="s">"whatsapp"</span>,
+  <span class="n">"recipient_type"</span>:  <span class="s">"individual"</span>,
+  <span class="n">"to"</span>:               <span class="s">"+27821234567"</span>,
+  <span class="n">"type"</span>:             <span class="s">"interactive"</span>,
+  <span class="n">"interactive"</span>: {
+    <span class="n">"type"</span>: <span class="s">"button"</span>,
+    <span class="n">"header"</span>: { <span class="n">"type"</span>: <span class="s">"text"</span>, <span class="n">"text"</span>: <span class="s">"👋 Welcome to BizBot"</span> },
+    <span class="n">"body"</span>:   { <span class="n">"text"</span>: <span class="s">"Hello! How can I help you today?"</span> },
+    <span class="n">"footer"</span>: { <span class="n">"text"</span>: <span class="s">"Reply anytime · We\'re here 24/7"</span> },
+    <span class="n">"action"</span>: {
+      <span class="n">"buttons"</span>: [
+        { <span class="n">"type"</span>: <span class="s">"reply"</span>, <span class="n">"reply"</span>: { <span class="n">"id"</span>: <span class="s">"shop"</span>,    <span class="n">"title"</span>: <span class="s">"🛍️ Shop &amp; Orders"</span> } },
+        { <span class="n">"type"</span>: <span class="s">"reply"</span>, <span class="n">"reply"</span>: { <span class="n">"id"</span>: <span class="s">"support"</span>, <span class="n">"title"</span>: <span class="s">"🎧 Customer Support"</span> } },
+        { <span class="n">"type"</span>: <span class="s">"reply"</span>, <span class="n">"reply"</span>: { <span class="n">"id"</span>: <span class="s">"info"</span>,    <span class="n">"title"</span>: <span class="s">"ℹ️ Company Info"</span> } }
+      ]
+    }
+  }
+}`,
+      webhook: `<span class="c">// Inbound webhook POST to your server</span>
+{
+  <span class="n">"object"</span>: <span class="s">"whatsapp_business_account"</span>,
+  <span class="n">"entry"</span>: [{
+    <span class="n">"id"</span>: <span class="s">"WABA_ID"</span>,
+    <span class="n">"changes"</span>: [{
+      <span class="n">"value"</span>: {
+        <span class="n">"messages"</span>: [{
+          <span class="n">"from"</span>: <span class="s">"27821234567"</span>,
+          <span class="n">"type"</span>: <span class="s">"interactive"</span>,
+          <span class="n">"interactive"</span>: {
+            <span class="n">"type"</span>: <span class="s">"button_reply"</span>,
+            <span class="n">"button_reply"</span>: {
+              <span class="n">"id"</span>:    <span class="s">"shop"</span>,
+              <span class="n">"title"</span>: <span class="s">"🛍️ Shop &amp; Orders"</span>
+            }
+          }
+        }]
+      }
+    }]
+  }]
+}`,
+    },
+    {
+      id: 'order_tracking',
+      icon: '📦',
+      name: 'Order Tracking',
+      tag: 'template + text',
+      avatar: '📦', botName: 'OrderBot', botStatus: 'Online · Order Tracker',
+      desc: 'Proactively notify customers of order status changes (confirmed, packed, shipped, out-for-delivery, delivered) via approved template messages.',
+      templateType: 'template',
+      apiEndpoint: '/{PHONE_NUMBER_ID}/messages',
+      method: 'POST',
+      steps: [
+        { name: 'Trigger from your OMS', detail: 'Your order management system fires an event when status changes (e.g. "shipped"). Your backend calls the Cloud API.', method: 'INTERNAL' },
+        { name: 'Send template message', detail: 'Use a pre-approved utility template with dynamic parameters for order number, status, and ETA.', method: 'POST' },
+        { name: 'Handle delivery receipt', detail: 'Webhook fires with statuses[].status = "delivered" or "read". Update your DB accordingly.', method: 'WEBHOOK' },
+        { name: 'Handle customer reply', detail: 'If customer types "WHERE IS MY ORDER", NLP detects intent and triggers another status lookup.', method: 'WEBHOOK' },
+      ],
+      phone: [
+        { type:'bot', text:'📦 *Order #WA-28910 Update*\n\nYour order has been *shipped!* 🚚\n\nTracking: FL-9234-ZA\nEstimated delivery: *Wed, 4 June*\n\nTap below to track live 👇', buttons:['🗺️ Track Live','📞 Contact Support'] },
+        { type:'user', text:'🗺️ Track Live' },
+        { type:'bot', text:'📍 *Live Tracking*\n\nYour parcel is *12km away*.\nDriver: Themba M. · ETA: ~25 min\n\n_You\'ll get a notification when it arrives._' },
+      ],
+      payload: `<span class="c">// Utility template — pre-approved in WhatsApp Manager</span>
+{
+  <span class="n">"messaging_product"</span>: <span class="s">"whatsapp"</span>,
+  <span class="n">"to"</span>:               <span class="s">"+27821234567"</span>,
+  <span class="n">"type"</span>:             <span class="s">"template"</span>,
+  <span class="n">"template"</span>: {
+    <span class="n">"name"</span>:     <span class="s">"order_status_update"</span>,
+    <span class="n">"language"</span>: { <span class="n">"code"</span>: <span class="s">"en"</span> },
+    <span class="n">"components"</span>: [
+      {
+        <span class="n">"type"</span>: <span class="s">"header"</span>,
+        <span class="n">"parameters"</span>: [
+          { <span class="n">"type"</span>: <span class="s">"text"</span>, <span class="n">"text"</span>: <span class="s">"WA-28910"</span> }
+        ]
+      },
+      {
+        <span class="n">"type"</span>: <span class="s">"body"</span>,
+        <span class="n">"parameters"</span>: [
+          { <span class="n">"type"</span>: <span class="s">"text"</span>, <span class="n">"text"</span>: <span class="s">"shipped"</span> },
+          { <span class="n">"type"</span>: <span class="s">"text"</span>, <span class="n">"text"</span>: <span class="s">"Wed, 4 June"</span> }
+        ]
+      },
+      {
+        <span class="n">"type"</span>: <span class="s">"button"</span>, <span class="n">"sub_type"</span>: <span class="s">"quick_reply"</span>,
+        <span class="n">"index"</span>: <span class="k">0</span>,
+        <span class="n">"parameters"</span>: [{ <span class="n">"type"</span>: <span class="s">"payload"</span>, <span class="n">"payload"</span>: <span class="s">"TRACK_WA28910"</span> }]
+      }
+    ]
+  }
+}`,
+      webhook: `<span class="c">// Delivery status webhook</span>
+{
+  <span class="n">"statuses"</span>: [{
+    <span class="n">"id"</span>:           <span class="s">"wamid.HBgNMjc..."</span>,
+    <span class="n">"status"</span>:       <span class="s">"delivered"</span>,
+    <span class="n">"timestamp"</span>:    <span class="s">"1748733600"</span>,
+    <span class="n">"recipient_id"</span>: <span class="s">"27821234567"</span>,
+    <span class="n">"conversation"</span>: {
+      <span class="n">"id"</span>:     <span class="s">"CONV_ID_ABC"</span>,
+      <span class="n">"origin"</span>: { <span class="n">"type"</span>: <span class="s">"utility"</span> }
+    },
+    <span class="n">"pricing"</span>: {
+      <span class="n">"billable"</span>:      <span class="k">true</span>,
+      <span class="n">"pricing_model"</span>: <span class="s">"CBP"</span>,
+      <span class="n">"category"</span>:      <span class="s">"utility"</span>
+    }
+  }]
+}`,
+    },
+    {
+      id: 'live_support',
+      icon: '🎧',
+      name: 'Live Agent Handoff',
+      tag: 'text + handoff',
+      avatar: '🎧', botName: 'SupportBot', botStatus: 'Online · Support',
+      desc: 'Bot handles tier-1 FAQs autonomously. Detects frustration or complexity, transfers seamlessly to a human agent, maintaining full context.',
+      templateType: 'text',
+      steps: [
+        { name: 'Inbound message received', detail: 'Webhook delivers customer message. NLP classifies intent — FAQ, complaint, or escalation needed.', method: 'WEBHOOK' },
+        { name: 'Bot handles FAQ', detail: 'Bot replies with text or list message for common queries (hours, returns, pricing).', method: 'POST' },
+        { name: 'Escalation trigger', detail: 'Sentiment analysis detects frustration OR customer types "agent". Bot notifies customer of handoff.', method: 'INTERNAL' },
+        { name: 'Agent takes over', detail: 'System sends agent the conversation history via your CRM. Agent continues from WhatsApp Business Manager or your inbox.', method: 'INTERNAL' },
+      ],
+      phone: [
+        { type:'bot', text:'🎧 Hi! I\'m your support assistant.\n\nWhat can I help you with?', buttons:['📋 Order issue','💳 Billing','🔧 Technical','👤 Talk to agent'] },
+        { type:'user', text:'👤 Talk to agent' },
+        { type:'bot', text:'Connecting you to a live agent now... ⏳\n\n*Avg wait: 2 minutes*\n\nYour conversation history has been shared with the agent.' },
+        { type:'bot', text:'✅ *Agent Sarah* has joined the chat.\n\nSarah: Hi there! I can see your previous messages. How can I help you?' },
+      ],
+      payload: `<span class="c">// Handoff notification message</span>
+{
+  <span class="n">"messaging_product"</span>: <span class="s">"whatsapp"</span>,
+  <span class="n">"to"</span>:   <span class="s">"+27821234567"</span>,
+  <span class="n">"type"</span>: <span class="s">"text"</span>,
+  <span class="n">"text"</span>: {
+    <span class="n">"body"</span>: <span class="s">"⏳ Connecting you to a live agent...\\n\\nAvg wait: 2 minutes. Your conversation has been shared with the agent."</span>
+  }
+}
+
+<span class="c">// Mark as read (show blue ticks)</span>
+{
+  <span class="n">"messaging_product"</span>: <span class="s">"whatsapp"</span>,
+  <span class="n">"status"</span>:            <span class="s">"read"</span>,
+  <span class="n">"message_id"</span>:        <span class="s">"wamid.HBgNMjc..."</span>
+}`,
+      webhook: `<span class="c">// Inbound text message</span>
+{
+  <span class="n">"messages"</span>: [{
+    <span class="n">"from"</span>: <span class="s">"27821234567"</span>,
+    <span class="n">"id"</span>:   <span class="s">"wamid.HBgNMjc..."</span>,
+    <span class="n">"type"</span>: <span class="s">"text"</span>,
+    <span class="n">"text"</span>: { <span class="n">"body"</span>: <span class="s">"I need to speak to a human"</span> },
+    <span class="n">"timestamp"</span>: <span class="s">"1748733600"</span>
+  }],
+  <span class="n">"contacts"</span>: [{
+    <span class="n">"profile"</span>: { <span class="n">"name"</span>: <span class="s">"Sipho Dlamini"</span> },
+    <span class="n">"wa_id"</span>: <span class="s">"27821234567"</span>
+  }]
+}`,
+    },
+    {
+      id: 'appointment',
+      icon: '📅',
+      name: 'Appointment Booking',
+      tag: 'interactive.list',
+      avatar: '📅', botName: 'BookBot', botStatus: 'Online · Booking Assistant',
+      desc: 'Full appointment booking flow using WhatsApp interactive list messages to present available slots, collect details, and send confirmation.',
+      templateType: 'interactive_list',
+      steps: [
+        { name: 'Send list message with slots', detail: 'Bot presents available time slots using interactive list message (up to 10 rows across sections).', method: 'POST' },
+        { name: 'Receive list selection', detail: 'Webhook delivers interactive.list_reply.id with the selected slot row id.', method: 'WEBHOOK' },
+        { name: 'Collect additional details', detail: 'Bot asks for name, reason, or any additional info via follow-up text messages.', method: 'POST' },
+        { name: 'Send confirmation template', detail: 'Send approved utility template with booking reference, date, time, and location.', method: 'POST' },
+      ],
+      phone: [
+        { type:'bot', text:'📅 *Book an Appointment*\n\nPlease select your preferred time slot:', list:[
+          { icon:'🌅', text:'Today · 14:30 — Dr. Mokoena' },
+          { icon:'🌄', text:'Tomorrow · 09:00 — Dr. Louw' },
+          { icon:'🌤️', text:'Tomorrow · 11:30 — Dr. Patel' },
+        ]},
+        { type:'user', text:'Today · 14:30 — Dr. Mokoena' },
+        { type:'bot', text:'✅ *Appointment Confirmed!*\n\n👩‍⚕️ Dr. Sarah Mokoena\n📅 Today at 14:30\n📍 Cape Town Medical Centre\n🔖 Ref: BK-44821\n\n_You\'ll receive a reminder 30 min before._' },
+      ],
+      payload: `<span class="c">// Interactive List Message</span>
+{
+  <span class="n">"messaging_product"</span>: <span class="s">"whatsapp"</span>,
+  <span class="n">"to"</span>:   <span class="s">"+27821234567"</span>,
+  <span class="n">"type"</span>: <span class="s">"interactive"</span>,
+  <span class="n">"interactive"</span>: {
+    <span class="n">"type"</span>: <span class="s">"list"</span>,
+    <span class="n">"header"</span>: { <span class="n">"type"</span>: <span class="s">"text"</span>, <span class="n">"text"</span>: <span class="s">"📅 Available Slots"</span> },
+    <span class="n">"body"</span>:   { <span class="n">"text"</span>: <span class="s">"Select your preferred appointment time:"</span> },
+    <span class="n">"footer"</span>: { <span class="n">"text"</span>: <span class="s">"Booking within 24h window — free conversation"</span> },
+    <span class="n">"action"</span>: {
+      <span class="n">"button"</span>: <span class="s">"View Slots"</span>,
+      <span class="n">"sections"</span>: [{
+        <span class="n">"title"</span>: <span class="s">"Today"</span>,
+        <span class="n">"rows"</span>: [
+          { <span class="n">"id"</span>: <span class="s">"slot_1"</span>, <span class="n">"title"</span>: <span class="s">"14:30 — Dr. Mokoena"</span>, <span class="n">"description"</span>: <span class="s">"General Practitioner · 30 min"</span> }
+        ]
+      }, {
+        <span class="n">"title"</span>: <span class="s">"Tomorrow"</span>,
+        <span class="n">"rows"</span>: [
+          { <span class="n">"id"</span>: <span class="s">"slot_2"</span>, <span class="n">"title"</span>: <span class="s">"09:00 — Dr. Louw"</span>,   <span class="n">"description"</span>: <span class="s">"General Practitioner · 45 min"</span> },
+          { <span class="n">"id"</span>: <span class="s">"slot_3"</span>, <span class="n">"title"</span>: <span class="s">"11:30 — Dr. Patel"</span>,  <span class="n">"description"</span>: <span class="s">"Specialist · 60 min"</span> }
+        ]
+      }]
+    }
+  }
+}`,
+      webhook: `<span class="c">// List reply webhook</span>
+{
+  <span class="n">"messages"</span>: [{
+    <span class="n">"type"</span>: <span class="s">"interactive"</span>,
+    <span class="n">"interactive"</span>: {
+      <span class="n">"type"</span>: <span class="s">"list_reply"</span>,
+      <span class="n">"list_reply"</span>: {
+        <span class="n">"id"</span>:          <span class="s">"slot_1"</span>,
+        <span class="n">"title"</span>:       <span class="s">"14:30 — Dr. Mokoena"</span>,
+        <span class="n">"description"</span>: <span class="s">"General Practitioner · 30 min"</span>
+      }
+    }
+  }]
+}`,
+    },
+    {
+      id: 'feedback',
+      icon: '⭐',
+      name: 'CSAT & Feedback',
+      tag: 'interactive.button',
+      avatar: '⭐', botName: 'FeedbackBot', botStatus: 'Online · Survey Bot',
+      desc: 'Automatically collect customer satisfaction ratings after a purchase, support interaction, or service event using interactive buttons and free-text follow-ups.',
+      templateType: 'interactive_buttons',
+      steps: [
+        { name: 'Trigger post-event', detail: 'OMS / CRM fires trigger (delivery confirmed, ticket closed). Backend calls Cloud API after a configurable delay.', method: 'INTERNAL' },
+        { name: 'Send CSAT template', detail: 'Approved marketing template with 3-button rating (😃 Great / 😐 OK / 😞 Poor). Must use template outside 24h window.', method: 'POST' },
+        { name: 'Receive rating', detail: 'Webhook delivers button_reply.id = "great" | "ok" | "poor". Store in analytics DB.', method: 'WEBHOOK' },
+        { name: 'Follow-up for detail', detail: 'For "ok" or "poor", bot sends text asking for elaboration. Positive responses get a thank-you.', method: 'POST' },
+      ],
+      phone: [
+        { type:'bot', text:'⭐ *How was your experience?*\n\nYour order #WA-28910 was delivered. We\'d love your feedback!' , buttons:['😃 Great!','😐 It was OK','😞 Not happy'] },
+        { type:'user', text:'😃 Great!' },
+        { type:'bot', text:'🎉 Thank you! We\'re so glad you loved it.\n\n_Your feedback helps us serve you better._\n\nWould you like to leave a review? 👇', buttons:['⭐ Leave review','✅ All done'] },
+      ],
+      payload: `<span class="c">// CSAT marketing template (outside 24h window)</span>
+{
+  <span class="n">"messaging_product"</span>: <span class="s">"whatsapp"</span>,
+  <span class="n">"to"</span>:   <span class="s">"+27821234567"</span>,
+  <span class="n">"type"</span>: <span class="s">"template"</span>,
+  <span class="n">"template"</span>: {
+    <span class="n">"name"</span>:     <span class="s">"csat_survey_v2"</span>,
+    <span class="n">"language"</span>: { <span class="n">"code"</span>: <span class="s">"en"</span> },
+    <span class="n">"components"</span>: [
+      {
+        <span class="n">"type"</span>: <span class="s">"body"</span>,
+        <span class="n">"parameters"</span>: [
+          { <span class="n">"type"</span>: <span class="s">"text"</span>, <span class="n">"text"</span>: <span class="s">"WA-28910"</span> }
+        ]
+      },
+      {
+        <span class="n">"type"</span>: <span class="s">"button"</span>, <span class="n">"sub_type"</span>: <span class="s">"quick_reply"</span>,
+        <span class="n">"index"</span>: <span class="k">0</span>,
+        <span class="n">"parameters"</span>: [{ <span class="n">"type"</span>: <span class="s">"payload"</span>, <span class="n">"payload"</span>: <span class="s">"CSAT_GREAT"</span> }]
+      },
+      {
+        <span class="n">"type"</span>: <span class="s">"button"</span>, <span class="n">"sub_type"</span>: <span class="s">"quick_reply"</span>,
+        <span class="n">"index"</span>: <span class="k">1</span>,
+        <span class="n">"parameters"</span>: [{ <span class="n">"type"</span>: <span class="s">"payload"</span>, <span class="n">"payload"</span>: <span class="s">"CSAT_OK"</span> }]
+      }
+    ]
+  }
+}`,
+      webhook: `<span class="c">// Button reply from CSAT template</span>
+{
+  <span class="n">"messages"</span>: [{
+    <span class="n">"type"</span>: <span class="s">"interactive"</span>,
+    <span class="n">"interactive"</span>: {
+      <span class="n">"type"</span>: <span class="s">"button_reply"</span>,
+      <span class="n">"button_reply"</span>: {
+        <span class="n">"id"</span>:    <span class="s">"CSAT_GREAT"</span>,
+        <span class="n">"title"</span>: <span class="s">"😃 Great!"</span>
+      }
+    }
+  }]
+}`,
+    },
+    {
+      id: 'onboarding',
+      icon: '🎯',
+      name: 'Customer Onboarding',
+      tag: 'flow + media',
+      avatar: '🎯', botName: 'OnboardBot', botStatus: 'Online · Onboarding',
+      desc: 'Guide new customers through account setup, KYC document collection, and product orientation using a multi-step WhatsApp flow with document upload support.',
+      templateType: 'media + interactive',
+      steps: [
+        { name: 'Send welcome with image header', detail: 'Marketing template with image header (brand banner) and CTA button to start onboarding.', method: 'POST' },
+        { name: 'Collect documents', detail: 'Request ID, proof of address, or selfie. Meta Cloud API supports image/document message types in the 24h window.', method: 'POST' },
+        { name: 'Receive media upload', detail: 'Webhook delivers messages[].type = "image" with an id. Retrieve media via GET /media/{media_id}.', method: 'WEBHOOK' },
+        { name: 'Confirm and activate', detail: 'After successful KYC, send utility confirmation template with account number and next steps.', method: 'POST' },
+      ],
+      phone: [
+        { type:'bot', img:true, text:'🎯 *Welcome to FinServ!*\n\nLet\'s set up your account in 3 simple steps.\n\n✅ Step 1 of 3 — Identity verification\n\nPlease send a clear photo of your *South African ID or Passport*.', buttons:['📷 Upload ID','❓ Need help'] },
+        { type:'user', text:'📷 [ID Document uploaded]' },
+        { type:'bot', text:'✅ *ID received!* Processing...\n\n*Step 2 of 3* — Please send a selfie holding your ID document.' },
+      ],
+      payload: `<span class="c">// Image header template for onboarding</span>
+{
+  <span class="n">"messaging_product"</span>: <span class="s">"whatsapp"</span>,
+  <span class="n">"to"</span>:   <span class="s">"+27821234567"</span>,
+  <span class="n">"type"</span>: <span class="s">"template"</span>,
+  <span class="n">"template"</span>: {
+    <span class="n">"name"</span>:     <span class="s">"onboarding_welcome_img"</span>,
+    <span class="n">"language"</span>: { <span class="n">"code"</span>: <span class="s">"en"</span> },
+    <span class="n">"components"</span>: [{
+      <span class="n">"type"</span>: <span class="s">"header"</span>,
+      <span class="n">"parameters"</span>: [{
+        <span class="n">"type"</span>: <span class="s">"image"</span>,
+        <span class="n">"image"</span>: { <span class="n">"link"</span>: <span class="s">"https://yourdomain.com/banner.jpg"</span> }
+      }]
+    }]
+  }
+}
+
+<span class="c">// Retrieve uploaded media</span>
+<span class="k">GET</span> <span class="url">https://graph.facebook.com/v21.0/{media_id}</span>
+<span class="c">// Returns: { url, mime_type, file_size, id }</span>
+<span class="c">// Then: GET {url} with Authorization: Bearer TOKEN to download</span>`,
+      webhook: `<span class="c">// Image upload webhook</span>
+{
+  <span class="n">"messages"</span>: [{
+    <span class="n">"from"</span>: <span class="s">"27821234567"</span>,
+    <span class="n">"type"</span>: <span class="s">"image"</span>,
+    <span class="n">"image"</span>: {
+      <span class="n">"caption"</span>:   <span class="s">"My ID document"</span>,
+      <span class="n">"mime_type"</span>: <span class="s">"image/jpeg"</span>,
+      <span class="n">"sha256"</span>:    <span class="s">"abc123..."</span>,
+      <span class="n">"id"</span>:        <span class="s">"media_id_XYZ"</span>
+    }
+  }]
+}`,
+    },
+  ],
+
+  campaign: [
+    {
+      id: 'flash_sale',
+      icon: '🔥',
+      name: 'Flash Sale Broadcast',
+      tag: 'marketing template',
+      avatar: '🔥', botName: 'SalesBot', botStatus: 'Online · Promotions',
+      desc: 'Send a time-limited flash sale broadcast to opted-in customers using an approved marketing template with image header, countdown text, and CTA buttons.',
+      templateType: 'marketing template',
+      steps: [
+        { name: 'Segment opted-in contacts', detail: 'Query your CRM for contacts with whatsapp_opt_in=true and purchase_segment matching the campaign target.', method: 'INTERNAL' },
+        { name: 'Batch send via Cloud API', detail: 'Loop through contacts. Meta supports up to 80 messages/sec on standard tier. Use exponential backoff for 130429 errors.', method: 'POST' },
+        { name: 'Track opens & conversions', detail: 'Webhook statuses[].status = "read" signals message opened. Track CTA clicks via your landing page UTM params.', method: 'WEBHOOK' },
+        { name: 'Send reminder to non-openers', detail: 'After 4h, send a follow-up to contacts where status was "delivered" but not "read".', method: 'POST' },
+      ],
+      phone: [
+        { type:'bot', img:true, text:'🔥 *FLASH SALE — 6 HOURS ONLY!*\n\nGet *40% off* everything in Electronics.\n\n⏰ Ends at midnight tonight\n🎯 Code: *FLASH40*\n\nShop now before it\'s gone! 👇', buttons:['🛒 Shop Now','📤 Share Deal'] },
+        { type:'user', text:'🛒 Shop Now' },
+        { type:'bot', text:'🛒 Great! Here\'s your exclusive link:\n\nhttps://shop.example.com?promo=FLASH40\n\n_Code FLASH40 auto-applied at checkout_ ✅' },
+      ],
+      payload: `<span class="c">// Marketing template broadcast</span>
+<span class="c">// Must use approved template — outside 24h window</span>
+{
+  <span class="n">"messaging_product"</span>: <span class="s">"whatsapp"</span>,
+  <span class="n">"to"</span>:   <span class="s">"+27821234567"</span>,
+  <span class="n">"type"</span>: <span class="s">"template"</span>,
+  <span class="n">"template"</span>: {
+    <span class="n">"name"</span>:     <span class="s">"flash_sale_v3"</span>,
+    <span class="n">"language"</span>: { <span class="n">"code"</span>: <span class="s">"en"</span> },
+    <span class="n">"components"</span>: [
+      {
+        <span class="n">"type"</span>: <span class="s">"header"</span>,
+        <span class="n">"parameters"</span>: [{
+          <span class="n">"type"</span>: <span class="s">"image"</span>,
+          <span class="n">"image"</span>: { <span class="n">"link"</span>: <span class="s">"https://cdn.example.com/flash40.jpg"</span> }
+        }]
+      },
+      {
+        <span class="n">"type"</span>: <span class="s">"body"</span>,
+        <span class="n">"parameters"</span>: [
+          { <span class="n">"type"</span>: <span class="s">"text"</span>, <span class="n">"text"</span>: <span class="s">"40%"</span> },
+          { <span class="n">"type"</span>: <span class="s">"text"</span>, <span class="n">"text"</span>: <span class="s">"FLASH40"</span> }
+        ]
+      },
+      {
+        <span class="n">"type"</span>: <span class="s">"button"</span>, <span class="n">"sub_type"</span>: <span class="s">"url"</span>, <span class="n">"index"</span>: <span class="k">0</span>,
+        <span class="n">"parameters"</span>: [{ <span class="n">"type"</span>: <span class="s">"text"</span>, <span class="n">"text"</span>: <span class="s">"?promo=FLASH40&src=wa"</span> }]
+      }
+    ]
+  }
+}`,
+      webhook: `<span class="c">// Read receipt — user opened message</span>
+{
+  <span class="n">"statuses"</span>: [{
+    <span class="n">"id"</span>:      <span class="s">"wamid.HBgNMjc..."</span>,
+    <span class="n">"status"</span>: <span class="s">"read"</span>,
+    <span class="n">"conversation"</span>: {
+      <span class="n">"origin"</span>: { <span class="n">"type"</span>: <span class="s">"marketing"</span> }
+    },
+    <span class="n">"pricing"</span>: {
+      <span class="n">"category"</span>: <span class="s">"marketing"</span>,
+      <span class="n">"billable"</span>: <span class="k">true</span>
+    }
+  }]
+}`,
+    },
+    {
+      id: 'abandoned_cart',
+      icon: '🛒',
+      name: 'Abandoned Cart Recovery',
+      tag: 'marketing template',
+      avatar: '🛒', botName: 'CartBot', botStatus: 'Online · Recovery Bot',
+      desc: 'Recover abandoned carts by sending a personalised reminder with the abandoned product image, price, and a direct checkout link after a configurable delay.',
+      templateType: 'marketing template',
+      steps: [
+        { name: 'Cart abandonment event', detail: 'E-commerce platform fires webhook after 30–60 min of cart inactivity. Your backend calls Cloud API.', method: 'INTERNAL' },
+        { name: 'Send cart recovery template', detail: 'Marketing template with product image header, dynamic product name + price in body, and "Complete Purchase" CTA button.', method: 'POST' },
+        { name: 'Handle CTA click', detail: 'If user replies or clicks, open a 24h service window. Bot can also offer a discount to incentivise completion.', method: 'WEBHOOK' },
+        { name: 'Send follow-up discount', detail: 'If no conversion in 4h, send a second template with a time-limited promo code.', method: 'POST' },
+      ],
+      phone: [
+        { type:'bot', img:true, text:'🛒 *You left something behind!*\n\n📱 *iPhone 15 Pro* — R 22,999\n\nYour cart is waiting. Complete your purchase before stock runs out! ⚡', buttons:['✅ Complete Purchase','🗑️ Clear Cart'] },
+        { type:'user', text:'✅ Complete Purchase' },
+        { type:'bot', text:'🎉 Taking you to checkout!\n\nhttps://shop.example.com/checkout?cart=abc123\n\n_Your items are reserved for 15 minutes._ ⏳' },
+      ],
+      payload: `<span class="c">// Abandoned cart recovery template</span>
+{
+  <span class="n">"messaging_product"</span>: <span class="s">"whatsapp"</span>,
+  <span class="n">"to"</span>:   <span class="s">"+27821234567"</span>,
+  <span class="n">"type"</span>: <span class="s">"template"</span>,
+  <span class="n">"template"</span>: {
+    <span class="n">"name"</span>:     <span class="s">"cart_recovery_v2"</span>,
+    <span class="n">"language"</span>: { <span class="n">"code"</span>: <span class="s">"en"</span> },
+    <span class="n">"components"</span>: [
+      {
+        <span class="n">"type"</span>: <span class="s">"header"</span>,
+        <span class="n">"parameters"</span>: [{
+          <span class="n">"type"</span>: <span class="s">"image"</span>,
+          <span class="n">"image"</span>: { <span class="n">"link"</span>: <span class="s">"https://cdn.shop.com/iphone15pro.jpg"</span> }
+        }]
+      },
+      {
+        <span class="n">"type"</span>: <span class="s">"body"</span>,
+        <span class="n">"parameters"</span>: [
+          { <span class="n">"type"</span>: <span class="s">"text"</span>, <span class="n">"text"</span>: <span class="s">"iPhone 15 Pro"</span> },
+          { <span class="n">"type"</span>: <span class="s">"text"</span>, <span class="n">"text"</span>: <span class="s">"R 22,999"</span> }
+        ]
+      },
+      {
+        <span class="n">"type"</span>: <span class="s">"button"</span>, <span class="n">"sub_type"</span>: <span class="s">"url"</span>, <span class="n">"index"</span>: <span class="k">0</span>,
+        <span class="n">"parameters"</span>: [{ <span class="n">"type"</span>: <span class="s">"text"</span>, <span class="n">"text"</span>: <span class="s">"?cart=abc123&src=wa_recover"</span> }]
+      }
+    ]
+  }
+}`,
+      webhook: `<span class="c">// CTA button click payload</span>
+{
+  <span class="n">"messages"</span>: [{
+    <span class="n">"type"</span>: <span class="s">"interactive"</span>,
+    <span class="n">"interactive"</span>: {
+      <span class="n">"type"</span>: <span class="s">"button_reply"</span>,
+      <span class="n">"button_reply"</span>: {
+        <span class="n">"id"</span>:    <span class="s">"cart_checkout"</span>,
+        <span class="n">"title"</span>: <span class="s">"✅ Complete Purchase"</span>
+      }
+    },
+    <span class="c">// Now inside 24h window — free service replies</span>
+    <span class="n">"context"</span>: { <span class="n">"from"</span>: <span class="s">"WABA_PHONE"</span>, <span class="n">"id"</span>: <span class="s">"wamid.template..."</span> }
+  }]
+}`,
+    },
+    {
+      id: 'product_launch',
+      icon: '🚀',
+      name: 'Product Launch Campaign',
+      tag: 'video template',
+      avatar: '🚀', botName: 'LaunchBot', botStatus: 'Online · Campaigns',
+      desc: 'Create buzz around a product launch with a video or image template broadcast, followed by interactive product discovery and direct in-chat purchase flow.',
+      templateType: 'marketing template',
+      steps: [
+        { name: 'Pre-launch teaser', detail: 'Send a broadcast 24h before launch — image or video header template with countdown language.', method: 'POST' },
+        { name: 'Launch day announcement', detail: 'Send main campaign template with product video, key features in body, and "Buy Now" / "Learn More" buttons.', method: 'POST' },
+        { name: 'Handle interest replies', detail: '24h window opens on reply. Bot presents full product catalogue and answers questions.', method: 'WEBHOOK' },
+        { name: 'Convert to purchase', detail: 'Collect order or redirect to checkout link. Send order confirmation utility template.', method: 'POST' },
+      ],
+      phone: [
+        { type:'bot', img:true, text:'🚀 *Introducing the NextGen Pro!*\n\n✨ 3× faster performance\n🔋 48h battery life\n📸 200MP camera\n\n*Early bird price: R 12,999*\n\nLimited to first 500 orders only! ⚡', buttons:['🛒 Order Now','📹 Watch Demo','📋 Learn More'] },
+        { type:'user', text:'🛒 Order Now' },
+        { type:'bot', text:'🎉 *You\'re in the first 500!*\n\n📦 NextGen Pro — R 12,999\n🎁 Free case + screen protector\n\nConfirm your order?', buttons:['✅ Confirm','✏️ Change qty'] },
+      ],
+      payload: `<span class="c">// Video header marketing template</span>
+{
+  <span class="n">"messaging_product"</span>: <span class="s">"whatsapp"</span>,
+  <span class="n">"to"</span>:   <span class="s">"+27821234567"</span>,
+  <span class="n">"type"</span>: <span class="s">"template"</span>,
+  <span class="n">"template"</span>: {
+    <span class="n">"name"</span>:     <span class="s">"product_launch_video"</span>,
+    <span class="n">"language"</span>: { <span class="n">"code"</span>: <span class="s">"en"</span> },
+    <span class="n">"components"</span>: [
+      {
+        <span class="n">"type"</span>: <span class="s">"header"</span>,
+        <span class="n">"parameters"</span>: [{
+          <span class="n">"type"</span>: <span class="s">"video"</span>,
+          <span class="n">"video"</span>: { <span class="n">"link"</span>: <span class="s">"https://cdn.example.com/launch-30s.mp4"</span> }
+        }]
+      },
+      {
+        <span class="n">"type"</span>: <span class="s">"body"</span>,
+        <span class="n">"parameters"</span>: [
+          { <span class="n">"type"</span>: <span class="s">"text"</span>, <span class="n">"text"</span>: <span class="s">"NextGen Pro"</span> },
+          { <span class="n">"type"</span>: <span class="s">"text"</span>, <span class="n">"text"</span>: <span class="s">"R 12,999"</span> }
+        ]
+      },
+      {
+        <span class="n">"type"</span>: <span class="s">"button"</span>, <span class="n">"sub_type"</span>: <span class="s">"url"</span>, <span class="n">"index"</span>: <span class="k">0</span>,
+        <span class="n">"parameters"</span>: [{ <span class="n">"type"</span>: <span class="s">"text"</span>, <span class="n">"text"</span>: <span class="s">"?product=nextgen-pro&src=wa_launch"</span> }]
+      }
+    ]
+  }
+}`,
+      webhook: `<span class="c">// User replied — 24h window open</span>
+{
+  <span class="n">"messages"</span>: [{
+    <span class="n">"from"</span>: <span class="s">"27821234567"</span>,
+    <span class="n">"type"</span>: <span class="s">"interactive"</span>,
+    <span class="n">"interactive"</span>: {
+      <span class="n">"type"</span>: <span class="s">"button_reply"</span>,
+      <span class="n">"button_reply"</span>: { <span class="n">"id"</span>: <span class="s">"order_now"</span>, <span class="n">"title"</span>: <span class="s">"🛒 Order Now"</span> }
+    }
+  }]
+  <span class="c">// 24h free conversation window now open</span>
+}`,
+    },
+    {
+      id: 'loyalty_rewards',
+      icon: '🎁',
+      name: 'Loyalty & Rewards',
+      tag: 'personalised template',
+      avatar: '🎁', botName: 'RewardBot', botStatus: 'Online · Rewards Bot',
+      desc: 'Engage loyalty programme members with personalised points balance updates, tier upgrade notifications, and exclusive member-only offer broadcasts.',
+      templateType: 'marketing template',
+      steps: [
+        { name: 'Points milestone trigger', detail: 'Loyalty system detects customer crossed a points threshold. Backend calls Cloud API.', method: 'INTERNAL' },
+        { name: 'Send personalised reward message', detail: 'Template with first name, points balance, tier status, and expiry date as dynamic parameters.', method: 'POST' },
+        { name: 'Interactive rewards menu', detail: 'User opens 24h window by replying. Bot shows list of available reward redemption options.', method: 'POST' },
+        { name: 'Process redemption', detail: 'User selects reward. Bot calls loyalty API to process redemption and sends confirmation.', method: 'POST' },
+      ],
+      phone: [
+        { type:'bot', text:'🎁 *Congrats, Sipho!*\n\nYou\'ve reached *Gold Status* 🥇\n\n⭐ Points: *4,250*\nExpiry: 31 Dec 2026\n\nYour exclusive benefits:', list:[
+          { icon:'🎟️', text:'Free delivery on all orders' },
+          { icon:'💰', text:'Double points this weekend' },
+          { icon:'🏷️', text:'Member-only 25% discount' },
+        ]},
+        { type:'user', text:'🏷️ Member-only 25% discount' },
+        { type:'bot', text:'✅ *25% discount activated!*\n\nCode: *GOLD25SIPHO*\nValid for 7 days · Single use\n\n_Shop at shop.example.com and your code is auto-applied._' },
+      ],
+      payload: `<span class="c">// Personalised loyalty template</span>
+{
+  <span class="n">"messaging_product"</span>: <span class="s">"whatsapp"</span>,
+  <span class="n">"to"</span>:   <span class="s">"+27821234567"</span>,
+  <span class="n">"type"</span>: <span class="s">"template"</span>,
+  <span class="n">"template"</span>: {
+    <span class="n">"name"</span>:     <span class="s">"loyalty_tier_upgrade"</span>,
+    <span class="n">"language"</span>: { <span class="n">"code"</span>: <span class="s">"en"</span> },
+    <span class="n">"components"</span>: [{
+      <span class="n">"type"</span>: <span class="s">"body"</span>,
+      <span class="n">"parameters"</span>: [
+        { <span class="n">"type"</span>: <span class="s">"text"</span>, <span class="n">"text"</span>: <span class="s">"Sipho"</span> },
+        { <span class="n">"type"</span>: <span class="s">"text"</span>, <span class="n">"text"</span>: <span class="s">"Gold"</span> },
+        { <span class="n">"type"</span>: <span class="s">"text"</span>, <span class="n">"text"</span>: <span class="s">"4,250"</span> },
+        { <span class="n">"type"</span>: <span class="s">"text"</span>, <span class="n">"text"</span>: <span class="s">"31 Dec 2026"</span> }
+      ]
+    }]
+  }
+}`,
+      webhook: `<span class="c">// List reply — reward selected</span>
+{
+  <span class="n">"messages"</span>: [{
+    <span class="n">"type"</span>: <span class="s">"interactive"</span>,
+    <span class="n">"interactive"</span>: {
+      <span class="n">"type"</span>: <span class="s">"list_reply"</span>,
+      <span class="n">"list_reply"</span>: {
+        <span class="n">"id"</span>:    <span class="s">"reward_discount_25"</span>,
+        <span class="n">"title"</span>: <span class="s">"🏷️ Member-only 25% discount"</span>
+      }
+    }
+  }]
+}`,
+    },
+    {
+      id: 'reengagement',
+      icon: '💤',
+      name: 'Re-engagement Campaign',
+      tag: 'winback template',
+      avatar: '💤', botName: 'WinbackBot', botStatus: 'Online · Re-engagement',
+      desc: 'Win back dormant customers (90+ days inactive) with a personalised winback sequence: a compelling offer template, followed by a 2-step interactive survey to understand churn.',
+      templateType: 'marketing template',
+      steps: [
+        { name: 'Identify dormant segment', detail: 'CRM query: last_purchase > 90 days AND whatsapp_opt_in = true AND no_contact_last_30d = true.', method: 'INTERNAL' },
+        { name: 'Send winback offer template', detail: 'Marketing template with personalised name, last product category, exclusive discount, and expiry.', method: 'POST' },
+        { name: 'Handle reply — survey', detail: 'Reply opens 24h window. Bot asks why they left with a list message (price / quality / competitor / other).', method: 'WEBHOOK' },
+        { name: 'Route based on response', detail: 'Price concern → send bigger discount. Quality → route to support. Competitor → send comparison template.', method: 'POST' },
+      ],
+      phone: [
+        { type:'bot', text:'💤 *We miss you, Lena!*\n\nIt\'s been a while since your last order.\n\nAs a valued customer, here\'s *30% off* your next purchase:\n\n🏷️ Code: *COMEBACK30*\n⏰ Expires in 48 hours', buttons:['🛍️ Redeem Offer','❓ Why we left'] },
+        { type:'user', text:'❓ Why we left' },
+        { type:'bot', text:'We\'d love to know what happened.\n\nWhat was the main reason you stopped shopping with us?', list:[
+          { icon:'💸', text:'Prices were too high' },
+          { icon:'📦', text:'Product quality issues' },
+          { icon:'🚚', text:'Slow delivery' },
+          { icon:'🔀', text:'Found a better alternative' },
+        ]},
+      ],
+      payload: `<span class="c">// Winback marketing template</span>
+{
+  <span class="n">"messaging_product"</span>: <span class="s">"whatsapp"</span>,
+  <span class="n">"to"</span>:   <span class="s">"+27821234567"</span>,
+  <span class="n">"type"</span>: <span class="s">"template"</span>,
+  <span class="n">"template"</span>: {
+    <span class="n">"name"</span>:     <span class="s">"winback_offer_v2"</span>,
+    <span class="n">"language"</span>: { <span class="n">"code"</span>: <span class="s">"en"</span> },
+    <span class="n">"components"</span>: [
+      {
+        <span class="n">"type"</span>: <span class="s">"body"</span>,
+        <span class="n">"parameters"</span>: [
+          { <span class="n">"type"</span>: <span class="s">"text"</span>, <span class="n">"text"</span>: <span class="s">"Lena"</span> },
+          { <span class="n">"type"</span>: <span class="s">"text"</span>, <span class="n">"text"</span>: <span class="s">"30%"</span> },
+          { <span class="n">"type"</span>: <span class="s">"text"</span>, <span class="n">"text"</span>: <span class="s">"COMEBACK30"</span> },
+          { <span class="n">"type"</span>: <span class="s">"text"</span>, <span class="n">"text"</span>: <span class="s">"48 hours"</span> }
+        ]
+      },
+      {
+        <span class="n">"type"</span>: <span class="s">"button"</span>, <span class="n">"sub_type"</span>: <span class="s">"quick_reply"</span>,
+        <span class="n">"index"</span>: <span class="k">0</span>,
+        <span class="n">"parameters"</span>: [{ <span class="n">"type"</span>: <span class="s">"payload"</span>, <span class="n">"payload"</span>: <span class="s">"WINBACK_ACCEPT"</span> }]
+      }
+    ]
+  }
+}`,
+      webhook: `<span class="c">// Churn reason — list_reply</span>
+{
+  <span class="n">"messages"</span>: [{
+    <span class="n">"type"</span>: <span class="s">"interactive"</span>,
+    <span class="n">"interactive"</span>: {
+      <span class="n">"type"</span>: <span class="s">"list_reply"</span>,
+      <span class="n">"list_reply"</span>: {
+        <span class="n">"id"</span>:    <span class="s">"churn_price"</span>,
+        <span class="n">"title"</span>: <span class="s">"💸 Prices were too high"</span>
+      }
+    }
+  }]
+  <span class="c">// Route: churn_price → send bigger discount template</span>
+}`,
+    },
+    {
+      id: 'referral',
+      icon: '📣',
+      name: 'Referral Programme',
+      tag: 'interactive + deep link',
+      avatar: '📣', botName: 'ReferBot', botStatus: 'Online · Referrals',
+      desc: 'Drive growth through a WhatsApp-native referral programme: generate unique referral links per contact, share via WhatsApp, and reward both referrer and referee.',
+      templateType: 'marketing template',
+      steps: [
+        { name: 'Invite eligible customers', detail: 'After 2nd purchase, send a marketing template inviting the customer to join the referral programme.', method: 'POST' },
+        { name: 'Generate unique referral link', detail: 'Bot calls your backend API to generate a unique referral code tied to the customer\'s WhatsApp number.', method: 'INTERNAL' },
+        { name: 'Share via WhatsApp', detail: 'Send a text message with the referral link. Customer forwards to friends. WhatsApp Click-to-Chat UTM tracked.', method: 'POST' },
+        { name: 'Reward on conversion', detail: 'When referee completes first purchase, trigger utility template to notify referrer of their reward credit.', method: 'POST' },
+      ],
+      phone: [
+        { type:'bot', text:'📣 *Love BizShop? Share it!*\n\nInvite friends and earn *R 150 store credit* for every successful referral!\n\nYour unique link:', buttons:['🔗 Get My Referral Link','📊 My Referrals'] },
+        { type:'user', text:'🔗 Get My Referral Link' },
+        { type:'bot', text:'🎉 Here\'s your personal referral link:\n\nhttps://bizshop.com/ref/SIPHO-X8K2\n\n_Share it on WhatsApp, copy it anywhere!_\n\n👥 Referred so far: *3 friends*\n💰 Earned: *R 450 credit*' },
+      ],
+      payload: `<span class="c">// Referral invitation template</span>
+{
+  <span class="n">"messaging_product"</span>: <span class="s">"whatsapp"</span>,
+  <span class="n">"to"</span>:   <span class="s">"+27821234567"</span>,
+  <span class="n">"type"</span>: <span class="s">"template"</span>,
+  <span class="n">"template"</span>: {
+    <span class="n">"name"</span>:     <span class="s">"referral_invite_v1"</span>,
+    <span class="n">"language"</span>: { <span class="n">"code"</span>: <span class="s">"en"</span> },
+    <span class="n">"components"</span>: [{
+      <span class="n">"type"</span>: <span class="s">"body"</span>,
+      <span class="n">"parameters"</span>: [
+        { <span class="n">"type"</span>: <span class="s">"text"</span>, <span class="n">"text"</span>: <span class="s">"Sipho"</span> },
+        { <span class="n">"type"</span>: <span class="s">"text"</span>, <span class="n">"text"</span>: <span class="s">"R 150"</span> }
+      ]
+    }]
+  }
+}
+
+<span class="c">// Follow-up: deliver unique link in service message</span>
+{
+  <span class="n">"type"</span>: <span class="s">"text"</span>,
+  <span class="n">"text"</span>: {
+    <span class="n">"body"</span>: <span class="s">"Your referral link: https://bizshop.com/ref/SIPHO-X8K2\\n\\nShare it on WhatsApp to earn R150 per signup!"</span>
+  }
+}`,
+      webhook: `<span class="c">// Referee completed purchase — reward trigger</span>
+<span class="c">// (Your backend detects referee conversion)</span>
+<span class="c">// Then sends reward notification template:</span>
+{
+  <span class="n">"type"</span>: <span class="s">"template"</span>,
+  <span class="n">"template"</span>: {
+    <span class="n">"name"</span>: <span class="s">"referral_reward_credit"</span>,
+    <span class="n">"components"</span>: [{
+      <span class="n">"type"</span>: <span class="s">"body"</span>,
+      <span class="n">"parameters"</span>: [
+        { <span class="n">"type"</span>: <span class="s">"text"</span>, <span class="n">"text"</span>: <span class="s">"Sipho"</span> },
+        { <span class="n">"type"</span>: <span class="s">"text"</span>, <span class="n">"text"</span>: <span class="s">"R150"</span> },
+        { <span class="n">"type"</span>: <span class="s">"text"</span>, <span class="n">"text"</span>: <span class="s">"Lena"</span> }
+      ]
+    }]
+  }
+}`,
+    },
+  ]
+};
+
+/* ─── STATE ─────────────────────────────────────────────────── */
+let activeUC = null;
+let activeTab = 'payload';
+let credentials = {
+  phone_id: '', waba_id: '', token: '', verify: '', version: 'v21.0'
+};
+let webhookCount = 0;
+
+/* ─── INIT ──────────────────────────────────────────────────── */
+function init() {
+  renderSidebar();
+  loadUC(USE_CASES.engagement[0].id);
+  updateClock();
+  setInterval(updateClock, 30000);
+  loadCredentials();
+}
+
+function updateClock() {
+  const now = new Date();
+  const t = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+  document.getElementById('phTime').textContent = t;
+}
+
+function renderSidebar() {
+  const eList = document.getElementById('engagementList');
+  const cList = document.getElementById('campaignList');
+  eList.innerHTML = USE_CASES.engagement.map(uc => ucBtn(uc, 'engagement')).join('');
+  cList.innerHTML = USE_CASES.campaign.map(uc => ucBtn(uc, 'campaign')).join('');
+}
+
+function ucBtn(uc, type) {
+  return `<button class="use-case-btn ${type}" id="btn-${uc.id}" onclick="loadUC('${uc.id}')">
+    <div class="uc-icon">${uc.icon}</div>
+    <div class="uc-info">
+      <div class="uc-name">${uc.name}</div>
+      <div class="uc-tag">${uc.tag}</div>
+    </div>
+  </button>`;
+}
+
+/* ─── LOAD USE CASE ─────────────────────────────────────────── */
+function loadUC(id) {
+  const uc = findUC(id);
+  if (!uc) return;
+  activeUC = uc;
+
+  // Highlight sidebar
+  document.querySelectorAll('.use-case-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('btn-'+id);
+  if (btn) btn.classList.add('active');
+
+  const type = USE_CASES.engagement.find(u=>u.id===id) ? 'engagement' : 'campaign';
+  const accentCol = type === 'engagement' ? 'var(--accent)' : 'var(--warn)';
+  const tagType = type === 'engagement' ? 'green' : 'orange';
+
+  // Phone header
+  document.getElementById('phAvatar').textContent = uc.avatar;
+  document.getElementById('phName').textContent = uc.botName;
+  document.getElementById('phStatus').textContent = uc.botStatus;
+
+  // Render center
+  const area = document.getElementById('configArea');
+  area.innerHTML = `
+    <div class="page-header">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <span style="font-size:24px">${uc.icon}</span>
+        <span class="tag ${tagType}">${type === 'engagement' ? 'Customer Engagement' : 'Campaign & Sales'}</span>
+        <span class="tag blue">${uc.templateType}</span>
+      </div>
+      <div class="page-title">${uc.name}</div>
+      <div class="page-subtitle">${uc.desc}</div>
+    </div>
+
+    <div class="info-box">
+      <strong>Meta Cloud API endpoint:</strong>
+      <code style="font-family:'JetBrains Mono',monospace;color:var(--accent2);margin-left:6px">POST https://graph.facebook.com/${credentials.version||'v21.0'}${uc.apiEndpoint||'/{PHONE_NUMBER_ID}/messages'}</code><br>
+      <strong style="margin-top:6px;display:block">Pricing (July 2026+):</strong> ${type==='engagement' ? 'Service messages within 24h customer-initiated window are <strong>free</strong>. Utility templates: billed per conversation.' : 'Marketing templates billed per delivered conversation. Free Entry Point (FEP): 72h free from Click-to-WhatsApp ads.'}
+      <a href="https://developers.facebook.com/docs/whatsapp/pricing" target="_blank" style="display:block;margin-top:4px">→ Meta pricing docs</a>
+    </div>
+
+    <!-- Flow steps -->
+    <div class="flow-card">
+      <div class="flow-card-header">
+        <div class="flow-card-title">
+          <span style="color:${accentCol}">▶</span>
+          Conversation Flow — ${uc.steps.length} steps
+        </div>
+        <span class="tag ${tagType}" style="font-size:9px">${uc.id}</span>
+      </div>
+      <div class="flow-steps">
+        ${uc.steps.map((step, i) => `
+          <div class="flow-step ${type}-step">
+            <div class="step-bullet">${i+1}</div>
+            <div class="step-body">
+              <div class="step-name">${step.name}</div>
+              <div class="step-detail">${step.detail}</div>
+              <div class="step-method">
+                <span class="method-${step.method==='POST'?'post':'get'}">${step.method}</span>
+                ${step.method==='POST' ? 'graph.facebook.com/v21.0/...' : step.method==='WEBHOOK' ? 'your-server/webhook' : 'internal logic'}
+              </div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+
+    <!-- Code block with tabs -->
+    <div class="code-block-wrap">
+      <div class="code-block-header">
+        <div style="display:flex;gap:4px">
+          <button class="payload-tab ${activeTab==='payload'?'active':''}" onclick="switchPayloadTab('payload')">📤 Request Payload</button>
+          <button class="payload-tab ${activeTab==='webhook'?'active':''}" onclick="switchPayloadTab('webhook')">📥 Webhook Response</button>
+        </div>
+        <button class="copy-btn" id="copyBtn" onclick="copyCode()">Copy</button>
+      </div>
+      <div class="code-lang" style="padding:6px 16px;border-bottom:1px solid var(--border)">
+        <div class="lang-dot" style="background:#F8D853"></div>
+        JSON &nbsp;·&nbsp; Authorization: Bearer {ACCESS_TOKEN} &nbsp;·&nbsp; Content-Type: application/json
+      </div>
+      <pre class="code-block" id="codeBlock">${activeTab==='payload' ? uc.payload : uc.webhook}</pre>
+    </div>
+
+    <!-- Credentials card -->
+    <div class="cred-card">
+      <div class="cred-title">
+        <svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 8h-1V6a7 7 0 00-14 0v2H2a2 2 0 00-2 2v8a2 2 0 002 2h16a2 2 0 002-2v-8a2 2 0 00-2-2zM6 6a4 4 0 018 0v2H6V6zm4 9a2 2 0 100-4 2 2 0 000 4z"/></svg>
+        Meta API Credentials
+      </div>
+      <div class="cred-grid">
+        <div class="cred-field">
+          <label class="field-label">Phone Number ID</label>
+          <input class="field-input" id="c_phone_id" value="${credentials.phone_id}" placeholder="123456789012345" oninput="updateCred('phone_id',this.value)">
+        </div>
+        <div class="cred-field">
+          <label class="field-label">WABA ID</label>
+          <input class="field-input" id="c_waba_id" value="${credentials.waba_id}" placeholder="987654321098765" oninput="updateCred('waba_id',this.value)">
+        </div>
+        <div class="cred-field" style="grid-column:1/-1">
+          <label class="field-label">Access Token</label>
+          <input class="field-input token" id="c_token" type="password" value="${credentials.token}" placeholder="EAAxxxxxxxxxxxxxxxx" oninput="updateCred('token',this.value)">
+        </div>
+      </div>
+    </div>
+  `;
+
+  activeTab = 'payload';
+  renderPhone(uc);
+}
+
+function findUC(id) {
+  return [...USE_CASES.engagement, ...USE_CASES.campaign].find(u => u.id === id);
+}
+
+/* ─── PHONE RENDER ──────────────────────────────────────────── */
+function renderPhone(uc) {
+  const chat = document.getElementById('phChat');
+  chat.innerHTML = '<div class="msg-date">Today</div>';
+
+  let delay = 0;
+  uc.phone.forEach((m, i) => {
+    delay += m.type === 'bot' ? 600 : 300;
+    const d = delay;
+    if (m.type === 'bot') {
+      // Show typing first
+      setTimeout(() => {
+        const typing = document.createElement('div');
+        typing.className = 'msg bot';
+        typing.id = `typing-${i}`;
+        typing.innerHTML = `<div class="typing"><div class="tdot"></div><div class="tdot"></div><div class="tdot"></div></div>`;
+        chat.appendChild(typing);
+        chat.scrollTop = chat.scrollHeight;
+      }, d - 500 < 0 ? 0 : d - 500);
+
+      setTimeout(() => {
+        const el = document.getElementById(`typing-${i}`);
+        if (el) el.remove();
+
+        const msg = document.createElement('div');
+        msg.className = 'msg bot';
+
+        let inner = '';
+        if (m.img) {
+          inner += `<div class="bubble bot"><div class="bubble-img">📸</div>${formatText(m.text)}${renderBubbleButtons(m.buttons||[], i)}${renderList(m.list||[])}<div class="bubble-meta">${getTime()}</div></div>`;
+        } else {
+          inner += `<div class="bubble bot">${formatText(m.text)}${renderBubbleButtons(m.buttons||[], i)}${renderList(m.list||[])}<div class="bubble-meta">${getTime()}</div></div>`;
+        }
+        msg.innerHTML = inner;
+        chat.appendChild(msg);
+        chat.scrollTop = chat.scrollHeight;
+      }, d);
+    } else {
+      setTimeout(() => {
+        const msg = document.createElement('div');
+        msg.className = 'msg user';
+        msg.innerHTML = `<div class="bubble user">${formatText(m.text)}<div class="bubble-meta">${getTime()} ✓✓</div></div>`;
+        chat.appendChild(msg);
+        chat.scrollTop = chat.scrollHeight;
+        addWebhookEntry('messages', 'text');
+      }, d);
+    }
+    delay += m.type === 'bot' ? 400 : 200;
+  });
+}
+
+function renderBubbleButtons(buttons, msgIdx) {
+  if (!buttons || !buttons.length) return '';
+  return `<div class="bubble-buttons">${buttons.map((b,j) => `<div class="bubble-btn" onclick="tapButton(this,'${b}',${msgIdx},${j})">${b}</div>`).join('')}</div>`;
+}
+
+function renderList(list) {
+  if (!list || !list.length) return '';
+  return `<div style="margin-top:8px"><div class="list-section-title">Options</div>${list.map(r=>`<div class="list-row"><span class="lr-icon">${r.icon}</span>${r.text}</div>`).join('')}</div>`;
+}
+
+function tapButton(el, label, msgIdx, btnIdx) {
+  // Disable all buttons in this group
+  const group = el.closest('.bubble-buttons');
+  group.querySelectorAll('.bubble-btn').forEach(b => { b.style.opacity='0.4'; b.style.pointerEvents='none'; });
+  el.classList.add('tapped');
+  el.style.opacity = '1';
+
+  // Add user reply
+  setTimeout(() => {
+    const chat = document.getElementById('phChat');
+    const msg = document.createElement('div');
+    msg.className = 'msg user';
+    msg.innerHTML = `<div class="bubble user">${label}<div class="bubble-meta">${getTime()} ✓✓</div></div>`;
+    chat.appendChild(msg);
+    chat.scrollTop = chat.scrollHeight;
+    addWebhookEntry('button_reply', label);
+  }, 200);
+}
+
+function formatText(text) {
+  return text
+    .replace(/\*(.*?)\*/g, '<b>$1</b>')
+    .replace(/_(.*?)_/g, '<i>$1</i>')
+    .replace(/\n/g, '<br>');
+}
+
+function getTime() {
+  const now = new Date();
+  return now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+}
+
+/* ─── WEBHOOK LOG ───────────────────────────────────────────── */
+function addWebhookEntry(type, detail) {
+  webhookCount++;
+  const log = document.getElementById('webhookLog');
+  const ts = new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const entry = document.createElement('div');
+  entry.className = 'wh-entry';
+  entry.innerHTML = `<span class="wh-method">POST</span> <span class="wh-path">/webhook</span> <span class="wh-status">200</span><span class="wh-time">${ts}</span><br><span style="color:var(--muted2);font-size:9.5px">${type} · ${String(detail).substring(0,28)}</span>`;
+
+  if (log.querySelector('div[style]')) log.innerHTML = '';
+  log.prepend(entry);
+
+  const hdr = document.querySelector('.wh-header span:last-child');
+  if (hdr) hdr.textContent = `${webhookCount} event${webhookCount!==1?'s':''}`;
+}
+
+/* ─── PAYLOAD TABS ──────────────────────────────────────────── */
+function switchPayloadTab(tab) {
+  activeTab = tab;
+  const uc = activeUC;
+  if (!uc) return;
+  document.querySelectorAll('.payload-tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('codeBlock').innerHTML = tab === 'payload' ? uc.payload : uc.webhook;
+}
+
+function copyCode() {
+  const code = document.getElementById('codeBlock').innerText;
+  navigator.clipboard.writeText(code).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = '✓ Copied';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+/* ─── SEND ──────────────────────────────────────────────────── */
+async function sendFlow() {
+  const phone = document.getElementById('phoneInput').value.trim();
+  if (!phone) { showToast('Enter a phone number first', 'error'); return; }
+  if (!credentials.token || !credentials.phone_id) { showToast('Add your Meta credentials first', 'error'); return; }
+
+  const uc = activeUC;
+  const btn = document.getElementById('sendBtn');
+  btn.classList.add('loading');
+  btn.textContent = 'Sending...';
+
+  const endpoint = `https://graph.facebook.com/${credentials.version||'v21.0'}/${credentials.phone_id}/messages`;
+
+  const body = {
+    messaging_product: 'whatsapp',
+    recipient_type: 'individual',
+    to: phone.startsWith('+') ? phone : '+'+phone,
+    type: 'text',
+    text: { body: `👋 Hello from WhatsApp Cloud API! This is a demo of the "${uc.name}" flow.` }
+  };
+
+  try {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${credentials.token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (res.ok && data.messages) {
+      showToast(`✓ Message sent! ID: ${data.messages[0].id.substring(0,20)}...`, 'success');
+      addWebhookEntry('sent', data.messages[0].id.substring(0,20));
+    } else {
+      const errMsg = data.error?.message || 'Unknown error';
+      showToast(`Error: ${errMsg}`, 'error');
+    }
+  } catch (e) {
+    showToast(`Network error: ${e.message}`, 'error');
+  }
+
+  btn.classList.remove('loading');
+  btn.innerHTML = `<svg viewBox="0 0 20 20" width="16" height="16" fill="white"><path d="M10 15l-3-3h2V8h2v4h2l-3 3z"/></svg> Send to WhatsApp`;
+}
+
+/* ─── CREDS ─────────────────────────────────────────────────── */
+function updateCred(key, val) {
+  credentials[key] = val;
+  localStorage.setItem('wa_creds', JSON.stringify(credentials));
+}
+
+function saveCredentials() {
+  credentials.phone_id = document.getElementById('m_phone_id').value;
+  credentials.waba_id  = document.getElementById('m_waba_id').value;
+  credentials.token    = document.getElementById('m_token').value;
+  credentials.verify   = document.getElementById('m_verify').value;
+  credentials.version  = document.getElementById('m_version').value || 'v21.0';
+  localStorage.setItem('wa_creds', JSON.stringify(credentials));
+  closeModal();
+  showToast('Credentials saved!', 'success');
+  if (activeUC) loadUC(activeUC.id);
+}
+
+function loadCredentials() {
+  const saved = localStorage.getItem('wa_creds');
+  if (saved) {
+    try { credentials = {...credentials, ...JSON.parse(saved)}; } catch(e) {}
+  }
+}
+
+/* ─── MODAL ─────────────────────────────────────────────────── */
+function openModal() {
+  document.getElementById('m_phone_id').value = credentials.phone_id;
+  document.getElementById('m_waba_id').value  = credentials.waba_id;
+  document.getElementById('m_token').value    = credentials.token;
+  document.getElementById('m_verify').value   = credentials.verify;
+  document.getElementById('m_version').value  = credentials.version;
+  document.getElementById('overlay').classList.add('open');
+}
+function closeModal() { document.getElementById('overlay').classList.remove('open'); }
+
+/* ─── TOAST ─────────────────────────────────────────────────── */
+function showToast(msg, type='success') {
+  const t = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  t.className = `toast ${type}`;
+  t.querySelector('.toast-icon').textContent = type === 'success' ? '✓' : '✕';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+/* ─── TABS ──────────────────────────────────────────────────── */
+function switchTab(tab) {
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  // Tab switching can expand in future — for now same view
+}
+
+/* ─── START ─────────────────────────────────────────────────── */
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,1936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wazify — WhatsApp Marketing Platform for Small Business</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cabinet+Grotesk:wght@400;500;600;700;800;900&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════
+   RESET + TOKENS
+═══════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --green:   #22C55E;
+  --green2:  #16A34A;
+  --green3:  #DCFCE7;
+  --teal:    #0D9488;
+  --dark:    #0A0F0D;
+  --dark2:   #111814;
+  --card:    #161D1A;
+  --card2:   #1E2922;
+  --border:  rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.13);
+  --text:    #F0F5F2;
+  --muted:   #6B8070;
+  --muted2:  #9AB0A2;
+  --accent:  #22C55E;
+  --warn:    #F59E0B;
+  --danger:  #EF4444;
+  --blue:    #3B82F6;
+  --purple:  #A78BFA;
+  --font-head: 'Cabinet Grotesk', sans-serif;
+  --font-body: 'Instrument Sans', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+html { scroll-behavior: smooth; }
+body { font-family: var(--font-body); background: var(--dark); color: var(--text); min-height: 100vh; overflow-x: hidden; }
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-thumb { background: var(--card2); border-radius: 10px; }
+button, input, select, textarea { font-family: inherit; }
+a { color: inherit; text-decoration: none; }
+
+/* ═══════════════════════════════════════════════
+   LANDING PAGE
+═══════════════════════════════════════════════ */
+#landing { display: block; }
+#app     { display: none; }
+
+/* Topbar */
+.land-nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 48px; height: 64px;
+  background: rgba(10,15,13,0.85); backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+}
+.logo { display: flex; align-items: center; gap: 10px; }
+.logo-mark {
+  width: 34px; height: 34px; border-radius: 9px;
+  background: linear-gradient(135deg, #22C55E 0%, #0D9488 100%);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px; box-shadow: 0 0 20px rgba(34,197,94,.3);
+}
+.logo-name { font-family: var(--font-head); font-size: 20px; font-weight: 800; letter-spacing: -.5px; }
+.logo-name span { color: var(--green); }
+.nav-links { display: flex; gap: 32px; }
+.nav-links a { font-size: 14px; color: var(--muted2); transition: color .15s; }
+.nav-links a:hover { color: var(--text); }
+.nav-ctas { display: flex; align-items: center; gap: 10px; }
+.btn-ghost {
+  padding: 8px 18px; border-radius: 8px; border: 1px solid var(--border2);
+  background: transparent; color: var(--muted2); font-size: 13.5px; font-weight: 500;
+  cursor: pointer; transition: all .15s;
+}
+.btn-ghost:hover { border-color: var(--green); color: var(--green); }
+.btn-primary {
+  padding: 9px 20px; border-radius: 9px; border: none;
+  background: linear-gradient(135deg, #22C55E, #16A34A);
+  color: white; font-size: 13.5px; font-weight: 700;
+  cursor: pointer; transition: all .15s;
+  box-shadow: 0 2px 16px rgba(34,197,94,.35);
+}
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 24px rgba(34,197,94,.45); }
+
+/* Hero */
+.hero {
+  padding: 160px 48px 100px;
+  position: relative; overflow: hidden;
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+}
+.hero::before {
+  content: '';
+  position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+  width: 800px; height: 600px;
+  background: radial-gradient(ellipse, rgba(34,197,94,.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero-eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(34,197,94,.1); border: 1px solid rgba(34,197,94,.25);
+  border-radius: 20px; padding: 5px 14px;
+  font-size: 12.5px; font-weight: 600; color: var(--green);
+  margin-bottom: 28px; letter-spacing: .03em;
+}
+.hero-eyebrow::before { content: '●'; animation: pulse2 2s infinite; }
+@keyframes pulse2 { 0%,100%{opacity:1} 50%{opacity:.3} }
+.hero-h1 {
+  font-family: var(--font-head); font-size: clamp(44px, 6vw, 76px);
+  font-weight: 900; line-height: 1.0; letter-spacing: -2px;
+  max-width: 900px; margin-bottom: 24px;
+}
+.hero-h1 .green { color: var(--green); }
+.hero-h1 .stroke {
+  -webkit-text-stroke: 2px rgba(34,197,94,.5);
+  color: transparent;
+}
+.hero-sub {
+  font-size: clamp(16px, 2vw, 20px); color: var(--muted2);
+  max-width: 620px; line-height: 1.65; margin-bottom: 44px;
+}
+.hero-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: center; }
+.btn-hero {
+  padding: 14px 32px; border-radius: 12px; border: none;
+  background: linear-gradient(135deg, #22C55E 0%, #0D9488 100%);
+  color: white; font-size: 16px; font-weight: 700;
+  cursor: pointer; transition: all .2s;
+  box-shadow: 0 4px 30px rgba(34,197,94,.4);
+  display: flex; align-items: center; gap: 8px;
+}
+.btn-hero:hover { transform: translateY(-2px); box-shadow: 0 8px 40px rgba(34,197,94,.5); }
+.btn-hero-outline {
+  padding: 14px 28px; border-radius: 12px;
+  border: 1px solid var(--border2); background: transparent;
+  color: var(--text); font-size: 15px; font-weight: 600;
+  cursor: pointer; transition: all .2s;
+  display: flex; align-items: center; gap: 8px;
+}
+.btn-hero-outline:hover { border-color: var(--green); color: var(--green); }
+.hero-trust {
+  margin-top: 52px; display: flex; align-items: center; gap: 20px;
+  color: var(--muted); font-size: 13px; flex-wrap: wrap; justify-content: center;
+}
+.trust-avatars { display: flex; }
+.trust-avatar {
+  width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--dark);
+  background: linear-gradient(135deg, var(--green2), var(--teal));
+  display: flex; align-items: center; justify-content: center; font-size: 13px;
+  margin-left: -8px;
+}
+.trust-avatar:first-child { margin-left: 0; }
+
+/* Hero dashboard mockup */
+.hero-mockup {
+  margin-top: 72px; width: 100%; max-width: 1000px;
+  background: var(--card); border: 1px solid var(--border2);
+  border-radius: 20px; overflow: hidden;
+  box-shadow: 0 40px 120px rgba(0,0,0,.6), 0 0 0 1px rgba(34,197,94,.08);
+  position: relative;
+}
+.mockup-bar {
+  height: 40px; background: var(--card2); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 16px; gap: 6px;
+}
+.mockup-dot { width: 10px; height: 10px; border-radius: 50%; }
+.mockup-content { padding: 24px; display: grid; grid-template-columns: 200px 1fr; gap: 20px; }
+.mock-sidebar { display: flex; flex-direction: column; gap: 4px; }
+.mock-nav-item {
+  padding: 9px 12px; border-radius: 8px; font-size: 12px;
+  display: flex; align-items: center; gap: 8px; color: var(--muted);
+}
+.mock-nav-item.active { background: rgba(34,197,94,.1); color: var(--green); }
+.mock-main { display: flex; flex-direction: column; gap: 14px; }
+.mock-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.mock-stat {
+  background: var(--card2); border: 1px solid var(--border); border-radius: 10px;
+  padding: 14px; 
+}
+.mock-stat-val { font-family: var(--font-head); font-size: 22px; font-weight: 800; }
+.mock-stat-lbl { font-size: 10px; color: var(--muted); margin-top: 3px; }
+.mock-chart {
+  background: var(--card2); border: 1px solid var(--border); border-radius: 10px;
+  height: 100px; display: flex; align-items: flex-end; gap: 6px; padding: 16px;
+}
+.mock-bar-item {
+  flex: 1; border-radius: 4px 4px 0 0;
+  background: linear-gradient(to top, var(--green2), var(--green));
+  opacity: .7;
+}
+
+/* ── Stats strip ── */
+.stats-strip {
+  padding: 60px 48px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 40px;
+  background: var(--card);
+}
+.strip-stat { text-align: center; }
+.strip-val { font-family: var(--font-head); font-size: 48px; font-weight: 900; color: var(--green); line-height: 1; }
+.strip-label { font-size: 14px; color: var(--muted2); margin-top: 8px; }
+
+/* ── Features ── */
+.features { padding: 100px 48px; }
+.section-label {
+  display: inline-block; font-size: 12px; font-weight: 600;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--green);
+  margin-bottom: 16px;
+}
+.section-h2 {
+  font-family: var(--font-head); font-size: clamp(32px, 4vw, 52px);
+  font-weight: 800; letter-spacing: -1.5px; line-height: 1.1; margin-bottom: 60px;
+}
+.features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.feat-card {
+  background: var(--card); border: 1px solid var(--border2); border-radius: 18px;
+  padding: 28px; transition: all .2s;
+  position: relative; overflow: hidden;
+}
+.feat-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--green), transparent);
+  opacity: 0; transition: opacity .2s;
+}
+.feat-card:hover { border-color: rgba(34,197,94,.25); transform: translateY(-3px); }
+.feat-card:hover::before { opacity: 1; }
+.feat-icon {
+  width: 44px; height: 44px; border-radius: 12px;
+  background: rgba(34,197,94,.1); border: 1px solid rgba(34,197,94,.2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; margin-bottom: 16px;
+}
+.feat-title { font-family: var(--font-head); font-size: 18px; font-weight: 700; margin-bottom: 10px; }
+.feat-desc { font-size: 14px; color: var(--muted2); line-height: 1.65; }
+
+/* ── Pricing ── */
+.pricing { padding: 100px 48px; background: var(--card); }
+.pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; max-width: 1000px; margin: 0 auto; }
+.price-card {
+  background: var(--dark2); border: 1px solid var(--border2); border-radius: 20px;
+  padding: 32px; position: relative; transition: all .2s;
+}
+.price-card.featured {
+  background: linear-gradient(160deg, var(--card2) 0%, rgba(34,197,94,.08) 100%);
+  border-color: rgba(34,197,94,.4);
+  box-shadow: 0 0 0 1px rgba(34,197,94,.15), 0 20px 60px rgba(0,0,0,.4);
+}
+.price-badge {
+  position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+  background: linear-gradient(135deg, #22C55E, #0D9488);
+  color: white; font-size: 11px; font-weight: 700; padding: 4px 14px;
+  border-radius: 20px; white-space: nowrap;
+}
+.price-name { font-family: var(--font-head); font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+.price-desc { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
+.price-amount { font-family: var(--font-head); font-size: 48px; font-weight: 900; line-height: 1; }
+.price-amount span { font-size: 18px; color: var(--muted); font-weight: 500; }
+.price-period { font-size: 12px; color: var(--muted); margin-top: 4px; margin-bottom: 28px; }
+.price-features { list-style: none; display: flex; flex-direction: column; gap: 12px; margin-bottom: 28px; }
+.price-features li { display: flex; align-items: flex-start; gap: 10px; font-size: 13.5px; }
+.price-features li::before { content: '✓'; color: var(--green); font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+.price-features li.no::before { content: '✕'; color: var(--muted); }
+.price-features li.no { color: var(--muted); }
+.price-cta {
+  width: 100%; padding: 12px; border-radius: 10px; border: none;
+  font-size: 14px; font-weight: 700; cursor: pointer; transition: all .15s;
+}
+.price-cta.primary { background: linear-gradient(135deg, #22C55E, #16A34A); color: white; box-shadow: 0 2px 16px rgba(34,197,94,.3); }
+.price-cta.outline { background: transparent; border: 1px solid var(--border2); color: var(--muted2); }
+.price-cta:hover { transform: translateY(-1px); }
+
+/* ── CTA Banner ── */
+.cta-banner {
+  padding: 100px 48px; text-align: center;
+  background: linear-gradient(135deg, rgba(34,197,94,.08) 0%, rgba(13,148,136,.08) 100%);
+  border-top: 1px solid rgba(34,197,94,.1); border-bottom: 1px solid rgba(34,197,94,.1);
+}
+.cta-banner h2 { font-family: var(--font-head); font-size: 48px; font-weight: 900; letter-spacing: -1.5px; margin-bottom: 16px; }
+.cta-banner p { color: var(--muted2); font-size: 18px; margin-bottom: 36px; }
+
+/* ── Footer ── */
+.footer {
+  padding: 48px; display: flex; justify-content: space-between; align-items: center;
+  border-top: 1px solid var(--border);
+}
+.footer-copy { font-size: 13px; color: var(--muted); }
+.footer-links { display: flex; gap: 24px; }
+.footer-links a { font-size: 13px; color: var(--muted); transition: color .15s; }
+.footer-links a:hover { color: var(--text); }
+
+/* ═══════════════════════════════════════════════
+   APP SHELL
+═══════════════════════════════════════════════ */
+.app-wrap { display: flex; height: 100vh; overflow: hidden; }
+
+/* Sidebar */
+.app-sidebar {
+  width: 240px; flex-shrink: 0;
+  background: var(--dark2); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+}
+.app-logo {
+  padding: 20px 20px 0;
+  display: flex; align-items: center; gap: 10px;
+}
+.app-logo-mark {
+  width: 30px; height: 30px; border-radius: 8px;
+  background: linear-gradient(135deg, #22C55E, #0D9488);
+  display: flex; align-items: center; justify-content: center; font-size: 15px;
+}
+.app-logo-name { font-family: var(--font-head); font-size: 18px; font-weight: 800; }
+.app-logo-name span { color: var(--green); }
+
+/* Business selector */
+.biz-selector {
+  margin: 16px 14px 0;
+  background: var(--card); border: 1px solid var(--border2); border-radius: 10px;
+  padding: 10px 12px; display: flex; align-items: center; gap: 8px; cursor: pointer;
+}
+.biz-avatar {
+  width: 28px; height: 28px; border-radius: 7px; background: rgba(34,197,94,.15);
+  display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0;
+}
+.biz-name { font-size: 12.5px; font-weight: 600; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.biz-chevron { font-size: 10px; color: var(--muted); }
+
+/* Nav */
+.app-nav { padding: 20px 10px; flex: 1; display: flex; flex-direction: column; gap: 2px; overflow-y: auto; }
+.nav-section-lbl {
+  font-size: 10px; font-weight: 600; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--muted); padding: 10px 10px 6px;
+}
+.app-nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 10px; border-radius: 9px; cursor: pointer;
+  font-size: 13.5px; font-weight: 500; color: var(--muted2);
+  transition: all .15s; border: none; background: transparent; width: 100%; text-align: left;
+}
+.app-nav-item:hover { background: var(--card); color: var(--text); }
+.app-nav-item.active { background: rgba(34,197,94,.12); color: var(--green); }
+.nav-icon { font-size: 16px; flex-shrink: 0; width: 20px; text-align: center; }
+.nav-badge {
+  margin-left: auto; background: var(--green); color: white;
+  font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 10px;
+  min-width: 18px; text-align: center;
+}
+.nav-badge.orange { background: var(--warn); }
+
+/* Plan pill */
+.plan-pill {
+  margin: 0 14px 20px;
+  background: rgba(34,197,94,.08); border: 1px solid rgba(34,197,94,.2);
+  border-radius: 10px; padding: 12px 14px;
+}
+.plan-name { font-size: 11px; font-weight: 700; color: var(--green); text-transform: uppercase; letter-spacing: .06em; }
+.plan-bar-wrap { height: 4px; background: var(--card2); border-radius: 4px; margin: 8px 0; }
+.plan-bar { height: 100%; background: linear-gradient(90deg, var(--green), var(--teal)); border-radius: 4px; }
+.plan-usage { font-size: 11px; color: var(--muted2); display: flex; justify-content: space-between; }
+
+/* App topbar */
+.app-topbar {
+  height: 56px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 28px; background: var(--dark2); flex-shrink: 0;
+}
+.topbar-title { font-family: var(--font-head); font-size: 18px; font-weight: 700; }
+.topbar-right { display: flex; align-items: center; gap: 10px; }
+.icon-btn {
+  width: 36px; height: 36px; border-radius: 9px; background: var(--card);
+  border: 1px solid var(--border2); display: flex; align-items: center; justify-content: center;
+  font-size: 16px; cursor: pointer; transition: all .15s;
+}
+.icon-btn:hover { border-color: var(--green); }
+.user-avatar {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: linear-gradient(135deg, #22C55E, #0D9488);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 700; cursor: pointer;
+}
+
+/* App content */
+.app-content { flex: 1; overflow-y: auto; background: var(--dark); }
+.app-page { display: none; padding: 28px; }
+.app-page.active { display: block; }
+
+/* ── Dashboard page ── */
+.dash-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+.stat-card {
+  background: var(--card); border: 1px solid var(--border2); border-radius: 14px; padding: 20px;
+  position: relative; overflow: hidden;
+}
+.stat-card::after {
+  content: '';
+  position: absolute; bottom: -20px; right: -20px;
+  width: 80px; height: 80px; border-radius: 50%;
+  background: rgba(34,197,94,.05);
+}
+.stat-icon { font-size: 20px; margin-bottom: 12px; }
+.stat-val { font-family: var(--font-head); font-size: 32px; font-weight: 900; line-height: 1; }
+.stat-lbl { font-size: 12px; color: var(--muted2); margin-top: 4px; }
+.stat-change { font-size: 11.5px; margin-top: 10px; display: flex; align-items: center; gap: 4px; }
+.stat-change.up { color: var(--green); }
+.stat-change.dn { color: var(--danger); }
+
+.dash-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 24px; }
+.card { background: var(--card); border: 1px solid var(--border2); border-radius: 14px; overflow: hidden; }
+.card-header {
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.card-title { font-family: var(--font-head); font-size: 15px; font-weight: 700; }
+.card-body { padding: 20px; }
+.card-action {
+  font-size: 12px; color: var(--green); background: transparent;
+  border: none; cursor: pointer; font-weight: 600; padding: 4px 10px;
+  border-radius: 6px; transition: background .15s;
+}
+.card-action:hover { background: rgba(34,197,94,.1); }
+
+/* Chart bars */
+.chart-area { display: flex; align-items: flex-end; gap: 8px; height: 120px; }
+.ch-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.ch-bar-wrap { flex: 1; width: 100%; display: flex; align-items: flex-end; }
+.ch-bar {
+  width: 100%; border-radius: 5px 5px 0 0;
+  background: linear-gradient(to top, var(--green2), var(--green));
+  transition: height .5s ease; min-height: 4px;
+}
+.ch-label { font-size: 9.5px; color: var(--muted); font-family: var(--font-mono); }
+
+/* Recent campaigns table */
+.table { width: 100%; border-collapse: collapse; }
+.table th {
+  text-align: left; font-size: 11px; font-weight: 600; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .06em;
+  padding: 0 0 10px; border-bottom: 1px solid var(--border);
+}
+.table td { padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.table tr:last-child td { border-bottom: none; }
+.status-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 20px;
+}
+.status-pill.sent { background: rgba(34,197,94,.1); color: var(--green); }
+.status-pill.scheduled { background: rgba(245,158,11,.1); color: var(--warn); }
+.status-pill.draft { background: rgba(255,255,255,.05); color: var(--muted); }
+.status-pill::before { content: '●'; font-size: 7px; }
+
+/* Quick actions */
+.quick-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.qa-btn {
+  background: var(--card2); border: 1px solid var(--border2); border-radius: 10px;
+  padding: 14px; display: flex; flex-direction: column; gap: 6px;
+  cursor: pointer; transition: all .15s; border: none; text-align: left;
+}
+.qa-btn:hover { background: rgba(34,197,94,.08); border: 1px solid rgba(34,197,94,.2); }
+.qa-icon { font-size: 20px; }
+.qa-label { font-size: 12.5px; font-weight: 600; color: var(--text); }
+.qa-sub { font-size: 11px; color: var(--muted); }
+
+/* ── Campaign builder ── */
+.builder-layout { display: grid; grid-template-columns: 320px 1fr 300px; gap: 0; height: calc(100vh - 56px - 56px); margin: -28px; }
+.builder-left {
+  border-right: 1px solid var(--border); padding: 20px; overflow-y: auto;
+  background: var(--dark2);
+}
+.builder-center {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: var(--dark); padding: 24px; overflow-y: auto;
+}
+.builder-right {
+  border-left: 1px solid var(--border); padding: 20px; overflow-y: auto;
+  background: var(--dark2);
+}
+.builder-section { margin-bottom: 24px; }
+.builder-label {
+  font-size: 11px; font-weight: 600; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 10px;
+}
+.form-group { margin-bottom: 14px; }
+.form-label { font-size: 12px; color: var(--muted2); margin-bottom: 5px; display: block; }
+.form-input {
+  width: 100%; background: var(--card); border: 1px solid var(--border2);
+  border-radius: 8px; padding: 9px 12px; font-size: 13px; color: var(--text);
+  outline: none; transition: border-color .15s;
+}
+.form-input:focus { border-color: var(--green); }
+.form-input::placeholder { color: var(--muted); }
+.form-textarea { resize: vertical; min-height: 90px; }
+.form-select {
+  width: 100%; background: var(--card); border: 1px solid var(--border2);
+  border-radius: 8px; padding: 9px 12px; font-size: 13px; color: var(--text);
+  outline: none; cursor: pointer;
+}
+
+/* Message type tabs */
+.msg-type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.msg-type-btn {
+  background: var(--card); border: 1px solid var(--border2); border-radius: 9px;
+  padding: 10px; text-align: center; cursor: pointer; transition: all .15s;
+  font-size: 11.5px; font-weight: 600;
+}
+.msg-type-btn:hover { border-color: var(--green); color: var(--green); }
+.msg-type-btn.active { background: rgba(34,197,94,.1); border-color: rgba(34,197,94,.4); color: var(--green); }
+.msg-type-btn .mt-icon { font-size: 20px; display: block; margin-bottom: 4px; }
+
+/* Phone preview in builder */
+.builder-phone {
+  width: 280px; background: #1C1C1E; border-radius: 40px; padding: 8px;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.1), 0 30px 80px rgba(0,0,0,.7);
+}
+.builder-phone-inner {
+  border-radius: 33px; overflow: hidden; background: #0B1317; height: 580px;
+  display: flex; flex-direction: column;
+}
+.bp-header {
+  background: #075E54; padding: 8px 14px;
+  display: flex; align-items: center; gap: 8px;
+}
+.bp-avatar { width: 30px; height: 30px; border-radius: 50%; background: #128C7E; display: flex; align-items: center; justify-content: center; font-size: 13px; }
+.bp-name { font-size: 12.5px; font-weight: 600; color: white; }
+.bp-status { font-size: 10px; color: rgba(255,255,255,.6); }
+.bp-chat { flex: 1; overflow-y: auto; padding: 12px; background: #0B1317; display: flex; flex-direction: column; gap: 6px; }
+.bp-bubble {
+  background: #1E2535; border-radius: 10px; border-top-left-radius: 2px;
+  padding: 8px 10px 18px; position: relative; max-width: 85%;
+  font-size: 11.5px; line-height: 1.45; color: var(--text);
+}
+.bp-bubble b { font-weight: 600; }
+.bp-bubble .bp-time {
+  position: absolute; bottom: 3px; right: 8px;
+  font-size: 9px; color: var(--muted); font-family: var(--font-mono);
+}
+.bp-bubble-img {
+  width: 100%; border-radius: 7px; margin-bottom: 8px;
+  height: 80px; background: linear-gradient(135deg, #128C7E, #075E54);
+  display: flex; align-items: center; justify-content: center; font-size: 28px;
+}
+.bp-btns { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; border-top: 1px solid rgba(255,255,255,.08); padding-top: 8px; }
+.bp-btn {
+  background: rgba(34,197,94,.1); border: 1px solid rgba(34,197,94,.2);
+  border-radius: 6px; padding: 5px 8px; text-align: center;
+  font-size: 10.5px; color: var(--green); font-weight: 500;
+}
+.bp-footer-bar {
+  background: #1A1F2B; padding: 6px 10px;
+  display: flex; align-items: center; gap: 6px; border-top: 1px solid rgba(255,255,255,.06);
+}
+.bp-input-fake {
+  flex: 1; background: #21262D; border-radius: 20px;
+  padding: 7px 12px; font-size: 11px; color: var(--muted);
+}
+
+/* Button builder */
+.btn-builder { display: flex; flex-direction: column; gap: 8px; }
+.btn-row { display: flex; align-items: center; gap: 6px; }
+.btn-row input { flex: 1; }
+.btn-remove {
+  width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--danger);
+  background: transparent; color: var(--danger); cursor: pointer; font-size: 14px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.add-btn-link {
+  font-size: 12px; color: var(--green); background: transparent; border: none;
+  cursor: pointer; display: flex; align-items: center; gap: 5px; padding: 4px 0;
+}
+.add-btn-link:hover { opacity: .8; }
+
+/* Audience segment */
+.segment-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.seg-chip {
+  padding: 5px 12px; border-radius: 20px; font-size: 11.5px; font-weight: 500;
+  background: var(--card2); border: 1px solid var(--border2); cursor: pointer; transition: all .15s;
+}
+.seg-chip.active { background: rgba(34,197,94,.12); border-color: rgba(34,197,94,.35); color: var(--green); }
+
+/* Schedule row */
+.schedule-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+/* Send campaign btn */
+.send-campaign-btn {
+  width: 100%; padding: 12px; border-radius: 10px; border: none;
+  background: linear-gradient(135deg, #22C55E, #0D9488); color: white;
+  font-size: 14px; font-weight: 700; cursor: pointer; transition: all .15s;
+  box-shadow: 0 2px 20px rgba(34,197,94,.3); margin-top: 16px;
+}
+.send-campaign-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 28px rgba(34,197,94,.4); }
+
+/* ── Contacts ── */
+.contacts-toolbar {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;
+}
+.search-input-wrap { position: relative; flex: 1; min-width: 200px; }
+.search-input-wrap input { padding-left: 34px; }
+.search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 14px; }
+.contacts-table { width: 100%; border-collapse: collapse; }
+.contacts-table th {
+  text-align: left; font-size: 11px; font-weight: 600; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .06em;
+  padding: 0 16px 12px; border-bottom: 1px solid var(--border);
+}
+.contacts-table td { padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 13px; }
+.contacts-table tr:last-child td { border-bottom: none; }
+.contacts-table tr:hover td { background: rgba(255,255,255,.02); }
+.contact-avatar {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: var(--card2); display: inline-flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; color: var(--green); margin-right: 8px;
+}
+.tag-chip {
+  font-size: 10.5px; padding: 2px 8px; border-radius: 10px; font-weight: 500;
+}
+.tag-chip.retail { background: rgba(59,130,246,.12); color: var(--blue); }
+.tag-chip.vip { background: rgba(167,139,250,.12); color: var(--purple); }
+.tag-chip.new { background: rgba(34,197,94,.1); color: var(--green); }
+.tag-chip.inactive { background: rgba(255,255,255,.05); color: var(--muted); }
+
+/* ── Inbox ── */
+.inbox-layout { display: grid; grid-template-columns: 300px 1fr; height: calc(100vh - 56px - 56px); margin: -28px; }
+.inbox-list { border-right: 1px solid var(--border); overflow-y: auto; }
+.inbox-search { padding: 14px; border-bottom: 1px solid var(--border); }
+.inbox-item {
+  padding: 14px 16px; border-bottom: 1px solid var(--border);
+  cursor: pointer; transition: background .12s; display: flex; gap: 10px;
+}
+.inbox-item:hover { background: var(--card); }
+.inbox-item.active { background: rgba(34,197,94,.07); border-right: 2px solid var(--green); }
+.inbox-avatar {
+  width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
+  background: var(--card2); display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+}
+.inbox-name { font-size: 13.5px; font-weight: 600; }
+.inbox-preview { font-size: 12px; color: var(--muted2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+.inbox-meta { text-align: right; flex-shrink: 0; }
+.inbox-time { font-size: 10.5px; color: var(--muted); font-family: var(--font-mono); }
+.inbox-unread {
+  width: 18px; height: 18px; border-radius: 50%; background: var(--green);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700; color: white; margin-top: 4px; margin-left: auto;
+}
+
+/* Inbox conversation */
+.inbox-convo { display: flex; flex-direction: column; }
+.convo-header {
+  padding: 14px 20px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 12px; background: var(--dark2);
+}
+.convo-messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.convo-bubble {
+  max-width: 65%; padding: 8px 12px 18px; border-radius: 10px; position: relative;
+  font-size: 13px; line-height: 1.5;
+}
+.convo-bubble.incoming { background: var(--card); border-top-left-radius: 2px; align-self: flex-start; }
+.convo-bubble.outgoing { background: #005C4B; color: white; border-top-right-radius: 2px; align-self: flex-end; }
+.convo-time { position: absolute; bottom: 4px; right: 10px; font-size: 9.5px; color: rgba(255,255,255,.4); font-family: var(--font-mono); }
+.convo-bubble.incoming .convo-time { color: var(--muted); }
+.convo-reply {
+  padding: 12px 16px; border-top: 1px solid var(--border); background: var(--dark2);
+  display: flex; gap: 10px; align-items: flex-end;
+}
+.convo-reply-input {
+  flex: 1; background: var(--card); border: 1px solid var(--border2);
+  border-radius: 10px; padding: 10px 14px; font-size: 13px; color: var(--text);
+  outline: none; resize: none; max-height: 120px; min-height: 40px;
+}
+.convo-reply-input:focus { border-color: var(--green); }
+.reply-send-btn {
+  width: 38px; height: 38px; border-radius: 50%; border: none;
+  background: linear-gradient(135deg, #22C55E, #128C7E);
+  color: white; font-size: 16px; cursor: pointer; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* ── Templates ── */
+.templates-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.template-card {
+  background: var(--card); border: 1px solid var(--border2); border-radius: 14px;
+  overflow: hidden; cursor: pointer; transition: all .2s;
+}
+.template-card:hover { border-color: rgba(34,197,94,.3); transform: translateY(-2px); }
+.tpl-preview { padding: 16px; background: var(--card2); border-bottom: 1px solid var(--border); min-height: 120px; }
+.tpl-bubble {
+  background: #1E2535; border-radius: 8px; border-top-left-radius: 2px;
+  padding: 8px 10px; font-size: 11px; line-height: 1.5; max-width: 90%;
+}
+.tpl-bubble b { font-weight: 600; }
+.tpl-bubble-btns { display: flex; flex-direction: column; gap: 3px; margin-top: 6px; border-top: 1px solid rgba(255,255,255,.08); padding-top: 6px; }
+.tpl-bubble-btn {
+  background: rgba(34,197,94,.08); border-radius: 5px;
+  padding: 4px 8px; font-size: 10px; color: var(--green); text-align: center;
+}
+.tpl-info { padding: 14px; }
+.tpl-name { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+.tpl-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tpl-category {
+  font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 5px;
+}
+.tpl-category.marketing { background: rgba(245,158,11,.1); color: var(--warn); }
+.tpl-category.utility { background: rgba(59,130,246,.1); color: var(--blue); }
+.tpl-category.auth { background: rgba(167,139,250,.1); color: var(--purple); }
+.tpl-status { font-size: 10px; color: var(--green); }
+.tpl-actions { display: flex; gap: 6px; margin-top: 10px; }
+.tpl-btn {
+  flex: 1; padding: 7px; border-radius: 7px; border: none; cursor: pointer;
+  font-size: 11.5px; font-weight: 600; transition: all .15s;
+}
+.tpl-btn.use { background: rgba(34,197,94,.12); color: var(--green); border: 1px solid rgba(34,197,94,.25); }
+.tpl-btn.edit { background: var(--card2); color: var(--muted2); }
+.tpl-btn:hover { opacity: .8; }
+
+/* ── Analytics ── */
+.analytics-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+.big-chart {
+  background: var(--card); border: 1px solid var(--border2); border-radius: 14px;
+  padding: 20px; grid-column: 1/-1;
+}
+.big-chart-area {
+  height: 180px; display: flex; align-items: flex-end; gap: 10px; margin-top: 16px; position: relative;
+}
+.big-chart-area::before {
+  content: '';
+  position: absolute; left: 0; right: 0; top: 0; bottom: 0;
+  background: repeating-linear-gradient(to top, transparent 0, transparent calc(25% - 1px), rgba(255,255,255,.04) calc(25% - 1px), rgba(255,255,255,.04) 25%);
+}
+.big-ch-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.big-ch-bars { flex: 1; width: 100%; display: flex; align-items: flex-end; gap: 3px; }
+.big-ch-bar {
+  flex: 1; border-radius: 3px 3px 0 0; min-height: 4px;
+}
+.big-ch-label { font-size: 9px; color: var(--muted); font-family: var(--font-mono); }
+.chart-legend { display: flex; gap: 16px; margin-bottom: 12px; }
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted2); }
+.legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+.donut-chart {
+  width: 120px; height: 120px; border-radius: 50%;
+  background: conic-gradient(var(--green) 0% 68%, #3B82F6 68% 87%, #F59E0B 87% 95%, var(--muted) 95% 100%);
+  position: relative; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.donut-hole {
+  width: 70px; height: 70px; border-radius: 50%; background: var(--card);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.donut-pct { font-family: var(--font-head); font-size: 18px; font-weight: 800; color: var(--green); }
+.donut-lbl { font-size: 9px; color: var(--muted); }
+
+.analytics-kpi { display: flex; flex-direction: column; gap: 12px; }
+.kpi-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 0; border-bottom: 1px solid var(--border);
+}
+.kpi-row:last-child { border-bottom: none; }
+.kpi-label { font-size: 13px; color: var(--muted2); }
+.kpi-val { font-family: var(--font-head); font-size: 18px; font-weight: 700; }
+.kpi-bar-wrap { width: 100px; height: 4px; background: var(--card2); border-radius: 4px; overflow: hidden; margin-top: 3px; }
+.kpi-bar-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--green2), var(--green)); }
+
+/* ── Settings ── */
+.settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.settings-card { background: var(--card); border: 1px solid var(--border2); border-radius: 14px; overflow: hidden; }
+.settings-card-header { padding: 16px 20px; border-bottom: 1px solid var(--border); }
+.settings-card-body { padding: 20px; }
+.settings-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 0; border-bottom: 1px solid var(--border);
+}
+.settings-row:last-child { border-bottom: none; }
+.settings-key { font-size: 13px; color: var(--muted2); }
+.settings-val { font-size: 13px; font-weight: 500; font-family: var(--font-mono); }
+.toggle {
+  width: 38px; height: 22px; border-radius: 11px; background: var(--green);
+  position: relative; cursor: pointer; transition: background .15s;
+}
+.toggle::after {
+  content: ''; position: absolute; top: 3px; right: 4px;
+  width: 16px; height: 16px; border-radius: 50%; background: white;
+  transition: right .15s;
+}
+.toggle.off { background: var(--card2); }
+.toggle.off::after { right: 18px; }
+.save-btn {
+  padding: 10px 24px; border-radius: 9px; border: none;
+  background: linear-gradient(135deg, #22C55E, #16A34A); color: white;
+  font-size: 13px; font-weight: 700; cursor: pointer; transition: all .15s;
+}
+.save-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(34,197,94,.3); }
+.credential-field { position: relative; }
+.cred-toggle-btn {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; color: var(--muted); cursor: pointer; font-size: 14px;
+}
+.meta-connect-banner {
+  background: linear-gradient(135deg, rgba(34,197,94,.1), rgba(13,148,136,.1));
+  border: 1px solid rgba(34,197,94,.25); border-radius: 12px;
+  padding: 20px; display: flex; align-items: center; gap: 16px; margin-bottom: 20px;
+}
+.meta-connect-icon { font-size: 32px; flex-shrink: 0; }
+.meta-connect-text h4 { font-family: var(--font-head); font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+.meta-connect-text p { font-size: 12.5px; color: var(--muted2); line-height: 1.5; }
+
+/* ── Toast ── */
+.toast {
+  position: fixed; bottom: 24px; right: 24px; z-index: 1000;
+  background: var(--card); border: 1px solid var(--border2); border-radius: 12px;
+  padding: 14px 20px; display: flex; align-items: center; gap: 10px;
+  box-shadow: 0 8px 40px rgba(0,0,0,.5); font-size: 13.5px; font-weight: 500;
+  transform: translateY(20px); opacity: 0; pointer-events: none;
+  transition: all .3s cubic-bezier(.4,0,.2,1);
+}
+.toast.show { transform: translateY(0); opacity: 1; pointer-events: all; }
+.toast.success { border-color: rgba(34,197,94,.3); }
+.toast.success .t-icon { color: var(--green); }
+.toast.error { border-color: rgba(239,68,68,.3); }
+.toast.error .t-icon { color: var(--danger); }
+
+/* ── Misc ── */
+.section-head { margin-bottom: 24px; }
+.section-head h2 { font-family: var(--font-head); font-size: 22px; font-weight: 800; letter-spacing: -.4px; }
+.section-head p { font-size: 13.5px; color: var(--muted2); margin-top: 4px; }
+.divider { height: 1px; background: var(--border); margin: 20px 0; }
+.empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
+.empty-state .es-icon { font-size: 40px; margin-bottom: 12px; }
+.empty-state p { font-size: 13.5px; }
+.flex-between { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ LANDING PAGE ═══════════════ -->
+<div id="landing">
+  <nav class="land-nav">
+    <div class="logo">
+      <div class="logo-mark">💬</div>
+      <div class="logo-name">Wazi<span>fy</span></div>
+    </div>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#" onclick="showApp()">Demo</a>
+      <a href="#">Blog</a>
+    </div>
+    <div class="nav-ctas">
+      <button class="btn-ghost" onclick="showApp()">Sign in</button>
+      <button class="btn-primary" onclick="showApp()">Start free trial →</button>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <div class="hero-eyebrow">● Powered by Meta WhatsApp Cloud API v21.0</div>
+    <h1 class="hero-h1">
+      Grow your business<br>
+      with <span class="green">WhatsApp</span><br>
+      <span class="stroke">marketing</span>
+    </h1>
+    <p class="hero-sub">Send campaigns, automate replies, and convert customers — all from one simple platform built for South African small businesses.</p>
+    <div class="hero-actions">
+      <button class="btn-hero" onclick="showApp()">
+        🚀 Start free — no credit card
+      </button>
+      <button class="btn-hero-outline" onclick="showApp()">
+        👀 See the dashboard →
+      </button>
+    </div>
+    <div class="hero-trust">
+      <div class="trust-avatars">
+        <div class="trust-avatar">👩</div>
+        <div class="trust-avatar">👨</div>
+        <div class="trust-avatar">👩🏽</div>
+        <div class="trust-avatar">👨🏿</div>
+        <div class="trust-avatar">👩🏾</div>
+      </div>
+      <span>Trusted by <strong>1,200+ small businesses</strong> in SA</span>
+      <span>·</span>
+      <span>⭐⭐⭐⭐⭐ 4.9/5 rating</span>
+    </div>
+
+    <!-- Dashboard mockup -->
+    <div class="hero-mockup" style="margin-top:60px">
+      <div class="mockup-bar">
+        <div class="mockup-dot" style="background:#FF5F57"></div>
+        <div class="mockup-dot" style="background:#FFBD2E"></div>
+        <div class="mockup-dot" style="background:#28CA41"></div>
+        <div style="flex:1;text-align:center;font-size:11px;color:var(--muted);font-family:var(--font-mono)">app.wazify.co.za</div>
+      </div>
+      <div class="mockup-content">
+        <div class="mock-sidebar">
+          <div class="mock-nav-item active">📊 Dashboard</div>
+          <div class="mock-nav-item">📣 Campaigns</div>
+          <div class="mock-nav-item">👥 Contacts</div>
+          <div class="mock-nav-item">💬 Inbox</div>
+          <div class="mock-nav-item">📋 Templates</div>
+          <div class="mock-nav-item">📈 Analytics</div>
+        </div>
+        <div class="mock-main">
+          <div class="mock-stats">
+            <div class="mock-stat"><div class="mock-stat-val" style="color:var(--green)">12,450</div><div class="mock-stat-lbl">Messages sent</div></div>
+            <div class="mock-stat"><div class="mock-stat-val" style="color:var(--blue)">84%</div><div class="mock-stat-lbl">Read rate</div></div>
+            <div class="mock-stat"><div class="mock-stat-val" style="color:var(--warn)">R 48k</div><div class="mock-stat-lbl">Revenue driven</div></div>
+            <div class="mock-stat"><div class="mock-stat-val" style="color:var(--purple)">2,341</div><div class="mock-stat-lbl">Contacts</div></div>
+          </div>
+          <div class="mock-chart">
+            <div class="mock-bar-item" style="height:40%"></div>
+            <div class="mock-bar-item" style="height:60%"></div>
+            <div class="mock-bar-item" style="height:45%"></div>
+            <div class="mock-bar-item" style="height:80%"></div>
+            <div class="mock-bar-item" style="height:65%"></div>
+            <div class="mock-bar-item" style="height:90%"></div>
+            <div class="mock-bar-item" style="height:70%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="stats-strip">
+    <div class="strip-stat"><div class="strip-val">98%</div><div class="strip-label">WhatsApp message open rate</div></div>
+    <div class="strip-stat"><div class="strip-val">5×</div><div class="strip-label">Better than email CTR</div></div>
+    <div class="strip-stat"><div class="strip-val">2B+</div><div class="strip-label">Active WhatsApp users worldwide</div></div>
+    <div class="strip-stat"><div class="strip-val">R0</div><div class="strip-label">Setup fee — ever</div></div>
+  </div>
+
+  <section class="features" id="features">
+    <div class="section-label">Everything you need</div>
+    <h2 class="section-h2">One platform.<br>Endless conversations.</h2>
+    <div class="features-grid">
+      <div class="feat-card">
+        <div class="feat-icon">📣</div>
+        <div class="feat-title">Broadcast Campaigns</div>
+        <div class="feat-desc">Send flash sales, product launches, and promotions to your entire contact list in seconds. Track open, delivery, and click rates live.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">🤖</div>
+        <div class="feat-title">Chatbot Flows</div>
+        <div class="feat-desc">Build no-code automated reply flows for FAQs, order tracking, appointments, and support. Available 24/7 with zero effort from you.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">💬</div>
+        <div class="feat-title">Unified Inbox</div>
+        <div class="feat-desc">All customer replies in one inbox. Assign conversations to team members, add notes, and never miss a hot lead again.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">👥</div>
+        <div class="feat-title">Contact Management</div>
+        <div class="feat-desc">Import contacts from CSV or your POS system. Segment by purchase history, location, or custom tags for laser-targeted messaging.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">📋</div>
+        <div class="feat-title">Template Library</div>
+        <div class="feat-desc">50+ pre-approved WhatsApp templates ready to use — order confirmations, sale alerts, appointment reminders, and more.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">📈</div>
+        <div class="feat-title">Real Analytics</div>
+        <div class="feat-desc">See exactly how many messages were delivered, opened, clicked, and converted to sales. Know your ROI to the rand.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="pricing" id="pricing">
+    <div style="text-align:center;margin-bottom:60px">
+      <div class="section-label">Simple pricing</div>
+      <h2 class="section-h2" style="margin-bottom:0">No surprises. No hidden fees.</h2>
+      <p style="color:var(--muted2);margin-top:12px;font-size:16px">You pay us a flat monthly fee. You pay Meta separately per conversation.</p>
+    </div>
+    <div class="pricing-grid">
+      <div class="price-card">
+        <div class="price-name">Starter</div>
+        <div class="price-desc">Perfect for side hustles & solo traders</div>
+        <div class="price-amount">R 299<span>/mo</span></div>
+        <div class="price-period">+ Meta conversation costs (pay Meta directly)</div>
+        <ul class="price-features">
+          <li>1 WhatsApp number</li>
+          <li>2,000 contacts</li>
+          <li>5 campaigns/month</li>
+          <li>Basic chatbot flows</li>
+          <li>Email support</li>
+          <li class="no">Team inbox</li>
+          <li class="no">API access</li>
+          <li class="no">Custom templates</li>
+        </ul>
+        <button class="price-cta outline" onclick="showApp()">Get started free</button>
+      </div>
+      <div class="price-card featured">
+        <div class="price-badge">🔥 Most Popular</div>
+        <div class="price-name">Growth</div>
+        <div class="price-desc">For growing shops & service businesses</div>
+        <div class="price-amount">R 799<span>/mo</span></div>
+        <div class="price-period">+ Meta conversation costs</div>
+        <ul class="price-features">
+          <li>3 WhatsApp numbers</li>
+          <li>10,000 contacts</li>
+          <li>Unlimited campaigns</li>
+          <li>Advanced chatbot builder</li>
+          <li>Team inbox (5 seats)</li>
+          <li>Priority support</li>
+          <li>50+ pre-built templates</li>
+          <li class="no">API access</li>
+        </ul>
+        <button class="price-cta primary" onclick="showApp()">Start 14-day free trial</button>
+      </div>
+      <div class="price-card">
+        <div class="price-name">Pro</div>
+        <div class="price-desc">For agencies & multi-location businesses</div>
+        <div class="price-amount">R 1,999<span>/mo</span></div>
+        <div class="price-period">+ Meta conversation costs</div>
+        <ul class="price-features">
+          <li>Unlimited numbers</li>
+          <li>Unlimited contacts</li>
+          <li>Unlimited campaigns</li>
+          <li>Full API access</li>
+          <li>Unlimited team seats</li>
+          <li>Dedicated account manager</li>
+          <li>Custom templates approved</li>
+          <li>White-label option</li>
+        </ul>
+        <button class="price-cta outline" onclick="showApp()">Contact sales</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta-banner">
+    <h2>Ready to start selling<br>on WhatsApp?</h2>
+    <p>Join 1,200+ South African businesses already growing with Wazify</p>
+    <button class="btn-hero" onclick="showApp()">🚀 Start your free trial — 14 days, no card needed</button>
+  </section>
+
+  <footer class="footer">
+    <div class="footer-copy">© 2026 Wazify (Pty) Ltd · Cape Town, South Africa · Built on Meta WhatsApp Cloud API</div>
+    <div class="footer-links">
+      <a href="#">Privacy</a>
+      <a href="#">Terms</a>
+      <a href="#">POPIA</a>
+      <a href="#">WhatsApp Policy</a>
+      <a href="#">Contact</a>
+    </div>
+  </footer>
+</div>
+
+<!-- ═══════════════ APP SHELL ═══════════════ -->
+<div id="app">
+  <div class="app-wrap">
+    <!-- Sidebar -->
+    <div class="app-sidebar">
+      <div class="app-logo">
+        <div class="app-logo-mark">💬</div>
+        <div class="app-logo-name">Wazi<span>fy</span></div>
+      </div>
+      <div class="biz-selector">
+        <div class="biz-avatar">🏪</div>
+        <div class="biz-name">Mama Zinhle's Boutique</div>
+        <div class="biz-chevron">▾</div>
+      </div>
+      <div class="app-nav">
+        <div class="nav-section-lbl">Main</div>
+        <button class="app-nav-item active" onclick="showPage('dashboard',this)"><span class="nav-icon">📊</span> Dashboard</button>
+        <button class="app-nav-item" onclick="showPage('campaigns',this)"><span class="nav-icon">📣</span> Campaigns</button>
+        <button class="app-nav-item" onclick="showPage('contacts',this)"><span class="nav-icon">👥</span> Contacts <span class="nav-badge">2,341</span></button>
+        <button class="app-nav-item" onclick="showPage('inbox',this)"><span class="nav-icon">💬</span> Inbox <span class="nav-badge orange">7</span></button>
+        <div class="nav-section-lbl">Content</div>
+        <button class="app-nav-item" onclick="showPage('templates',this)"><span class="nav-icon">📋</span> Templates</button>
+        <button class="app-nav-item" onclick="showPage('analytics',this)"><span class="nav-icon">📈</span> Analytics</button>
+        <div class="nav-section-lbl">Account</div>
+        <button class="app-nav-item" onclick="showPage('settings',this)"><span class="nav-icon">⚙️</span> Settings & API</button>
+        <button class="app-nav-item" onclick="showLanding()"><span class="nav-icon">🏠</span> Back to site</button>
+      </div>
+      <div class="plan-pill">
+        <div class="plan-name">Growth Plan</div>
+        <div class="plan-bar-wrap"><div class="plan-bar" style="width:43%"></div></div>
+        <div class="plan-usage"><span>4,312 / 10,000 contacts</span><span>43%</span></div>
+      </div>
+    </div>
+
+    <!-- Main content -->
+    <div style="flex:1;display:flex;flex-direction:column;overflow:hidden">
+      <div class="app-topbar">
+        <div class="topbar-title" id="pageTitle">Dashboard</div>
+        <div class="topbar-right">
+          <div class="icon-btn" title="Notifications">🔔</div>
+          <div class="icon-btn" title="Help">❓</div>
+          <div class="user-avatar" title="Account">MZ</div>
+        </div>
+      </div>
+      <div class="app-content" id="appContent">
+
+        <!-- ── DASHBOARD ── -->
+        <div class="app-page active" id="page-dashboard">
+          <div style="padding:28px">
+            <div class="flex-between">
+              <div><h2 style="font-family:var(--font-head);font-size:22px;font-weight:800">Good morning, Zinhle 👋</h2><p style="color:var(--muted2);font-size:13px;margin-top:3px">Tuesday, 3 June 2026 · Growth Plan</p></div>
+              <button class="btn-primary" onclick="showPage('campaigns',document.querySelector('[onclick*=campaigns]'))">+ New Campaign</button>
+            </div>
+
+            <div class="dash-stats">
+              <div class="stat-card">
+                <div class="stat-icon">📨</div>
+                <div class="stat-val" style="color:var(--green)">12,450</div>
+                <div class="stat-lbl">Messages sent this month</div>
+                <div class="stat-change up">↑ 18% vs last month</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon">👁️</div>
+                <div class="stat-val" style="color:var(--blue)">84%</div>
+                <div class="stat-lbl">Average read rate</div>
+                <div class="stat-change up">↑ 3% vs last month</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon">💰</div>
+                <div class="stat-val" style="color:var(--warn)">R 48,230</div>
+                <div class="stat-lbl">Revenue attributed</div>
+                <div class="stat-change up">↑ 31% vs last month</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon">💬</div>
+                <div class="stat-val" style="color:var(--purple)">342</div>
+                <div class="stat-lbl">New replies today</div>
+                <div class="stat-change dn">↓ 5% vs yesterday</div>
+              </div>
+            </div>
+
+            <div class="dash-grid">
+              <div class="card">
+                <div class="card-header">
+                  <div class="card-title">Messages sent — last 7 days</div>
+                  <button class="card-action">View all →</button>
+                </div>
+                <div class="card-body">
+                  <div class="chart-area">
+                    <div class="ch-col"><div class="ch-bar-wrap"><div class="ch-bar" style="height:45%"></div></div><div class="ch-label">Mon</div></div>
+                    <div class="ch-col"><div class="ch-bar-wrap"><div class="ch-bar" style="height:60%"></div></div><div class="ch-label">Tue</div></div>
+                    <div class="ch-col"><div class="ch-bar-wrap"><div class="ch-bar" style="height:35%"></div></div><div class="ch-label">Wed</div></div>
+                    <div class="ch-col"><div class="ch-bar-wrap"><div class="ch-bar" style="height:80%"></div></div><div class="ch-label">Thu</div></div>
+                    <div class="ch-col"><div class="ch-bar-wrap"><div class="ch-bar" style="height:95%"></div></div><div class="ch-label">Fri</div></div>
+                    <div class="ch-col"><div class="ch-bar-wrap"><div class="ch-bar" style="height:70%"></div></div><div class="ch-label">Sat</div></div>
+                    <div class="ch-col"><div class="ch-bar-wrap"><div class="ch-bar" style="height:55%"></div></div><div class="ch-label">Sun</div></div>
+                  </div>
+                </div>
+              </div>
+              <div class="card">
+                <div class="card-header"><div class="card-title">Quick actions</div></div>
+                <div class="card-body">
+                  <div class="quick-actions">
+                    <button class="qa-btn" onclick="showPage('campaigns',document.querySelector('[onclick*=campaigns]'))">
+                      <div class="qa-icon">📣</div>
+                      <div class="qa-label">New campaign</div>
+                      <div class="qa-sub">Send a broadcast</div>
+                    </button>
+                    <button class="qa-btn" onclick="showPage('contacts',document.querySelector('[onclick*=contacts]'))">
+                      <div class="qa-icon">➕</div>
+                      <div class="qa-label">Add contacts</div>
+                      <div class="qa-sub">Import from CSV</div>
+                    </button>
+                    <button class="qa-btn" onclick="showPage('inbox',document.querySelector('[onclick*=inbox]'))">
+                      <div class="qa-icon">💬</div>
+                      <div class="qa-label">View inbox</div>
+                      <div class="qa-sub">7 unread replies</div>
+                    </button>
+                    <button class="qa-btn" onclick="showPage('templates',document.querySelector('[onclick*=templates]'))">
+                      <div class="qa-icon">📋</div>
+                      <div class="qa-label">Templates</div>
+                      <div class="qa-sub">Browse 50+ templates</div>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header"><div class="card-title">Recent campaigns</div><button class="card-action" onclick="showPage('campaigns',document.querySelector('[onclick*=campaigns]'))">View all →</button></div>
+              <div class="card-body">
+                <table class="table">
+                  <thead><tr>
+                    <th>Campaign</th><th>Sent</th><th>Delivered</th><th>Read</th><th>Replied</th><th>Status</th>
+                  </tr></thead>
+                  <tbody>
+                    <tr><td><strong>Winter Sale — 40% Off</strong></td><td>2,341</td><td>2,298 (98%)</td><td>1,930 (84%)</td><td>412 (18%)</td><td><span class="status-pill sent">Sent</span></td></tr>
+                    <tr><td><strong>New Arrivals — June</strong></td><td>1,892</td><td>1,850 (98%)</td><td>1,580 (85%)</td><td>298 (16%)</td><td><span class="status-pill sent">Sent</span></td></tr>
+                    <tr><td><strong>Weekend Flash Sale</strong></td><td>—</td><td>—</td><td>—</td><td>—</td><td><span class="status-pill scheduled">Scheduled</span></td></tr>
+                    <tr><td><strong>VIP Customer Rewards</strong></td><td>—</td><td>—</td><td>—</td><td>—</td><td><span class="status-pill draft">Draft</span></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── CAMPAIGNS (BUILDER) ── -->
+        <div class="app-page" id="page-campaigns">
+          <div class="builder-layout">
+            <div class="builder-left">
+              <div class="builder-section">
+                <div class="builder-label">1. Campaign Details</div>
+                <div class="form-group">
+                  <label class="form-label">Campaign name</label>
+                  <input class="form-input" id="campName" placeholder="e.g. June Winter Sale" oninput="updatePreview()">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Message type</label>
+                  <div class="msg-type-grid">
+                    <div class="msg-type-btn active" onclick="setMsgType(this,'broadcast')"><span class="mt-icon">📣</span>Broadcast</div>
+                    <div class="msg-type-btn" onclick="setMsgType(this,'interactive')"><span class="mt-icon">👆</span>Interactive</div>
+                    <div class="msg-type-btn" onclick="setMsgType(this,'media')"><span class="mt-icon">🖼️</span>With Image</div>
+                    <div class="msg-type-btn" onclick="setMsgType(this,'promo')"><span class="mt-icon">🎁</span>Promo Code</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="builder-section">
+                <div class="builder-label">2. Message Content</div>
+                <div class="form-group">
+                  <label class="form-label">Header text (optional)</label>
+                  <input class="form-input" id="msgHeader" placeholder="e.g. 🔥 FLASH SALE" oninput="updatePreview()">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Body message</label>
+                  <textarea class="form-input form-textarea" id="msgBody" placeholder="Hi {{name}}, we have an amazing offer for you today!" oninput="updatePreview()">Hi {{name}}! 🎉
+
+Our *Winter Sale* is now live — get up to *40% off* everything in store!
+
+🗓️ Sale ends Sunday midnight
+🏷️ Use code: *WINTER40*
+
+Don't miss out!</textarea>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Footer text (optional)</label>
+                  <input class="form-input" id="msgFooter" placeholder="e.g. Reply STOP to unsubscribe" value="Reply STOP to opt out · Mama Zinhle's Boutique" oninput="updatePreview()">
+                </div>
+              </div>
+
+              <div class="builder-section">
+                <div class="builder-label">3. Action Buttons (max 3)</div>
+                <div class="btn-builder" id="btnBuilder">
+                  <div class="btn-row">
+                    <input class="form-input" placeholder="Button text e.g. Shop Now" value="🛒 Shop Now" oninput="updatePreview()">
+                    <button class="btn-remove" onclick="removeBtn(this)">✕</button>
+                  </div>
+                  <div class="btn-row">
+                    <input class="form-input" placeholder="Button text" value="📞 Call Us" oninput="updatePreview()">
+                    <button class="btn-remove" onclick="removeBtn(this)">✕</button>
+                  </div>
+                </div>
+                <button class="add-btn-link" onclick="addBtn()">+ Add button</button>
+              </div>
+            </div>
+
+            <div class="builder-center">
+              <div style="font-size:11px;color:var(--muted);margin-bottom:16px;text-transform:uppercase;letter-spacing:.08em;font-weight:600">Live preview</div>
+              <div class="builder-phone">
+                <div class="builder-phone-inner">
+                  <div class="bp-header">
+                    <div class="bp-avatar">🏪</div>
+                    <div>
+                      <div class="bp-name">Mama Zinhle's Boutique</div>
+                      <div class="bp-status">Business account · Verified ✓</div>
+                    </div>
+                  </div>
+                  <div class="bp-chat" id="previewChat">
+                    <div id="previewBubble" class="bp-bubble">
+                      <div id="previewImg" class="bp-bubble-img" style="display:none">🖼️</div>
+                      <div id="previewHeader" style="font-size:12px;font-weight:700;margin-bottom:6px;color:var(--green)"></div>
+                      <div id="previewBody" style="white-space:pre-wrap"></div>
+                      <div id="previewFooter" style="font-size:9.5px;color:var(--muted);margin-top:8px;border-top:1px solid rgba(255,255,255,.07);padding-top:6px"></div>
+                      <div class="bp-btns" id="previewBtns"></div>
+                      <div class="bp-time">09:41 ✓✓</div>
+                    </div>
+                  </div>
+                  <div class="bp-footer-bar">
+                    <div class="bp-input-fake">Reply...</div>
+                  </div>
+                </div>
+              </div>
+              <div style="font-size:11px;color:var(--muted);margin-top:12px;text-align:center">Changes reflect in real time ↑</div>
+            </div>
+
+            <div class="builder-right">
+              <div class="builder-section">
+                <div class="builder-label">4. Audience</div>
+                <div class="form-group">
+                  <label class="form-label">Select segment</label>
+                  <div class="segment-chips">
+                    <div class="seg-chip active" onclick="toggleSeg(this)">All contacts (2,341)</div>
+                    <div class="seg-chip" onclick="toggleSeg(this)">VIP customers (156)</div>
+                    <div class="seg-chip" onclick="toggleSeg(this)">Inactive 30d (412)</div>
+                    <div class="seg-chip" onclick="toggleSeg(this)">Recent buyers (89)</div>
+                    <div class="seg-chip" onclick="toggleSeg(this)">Fashion lovers (934)</div>
+                  </div>
+                </div>
+                <div style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.15);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--muted2)">
+                  📊 Estimated reach: <strong style="color:var(--green)">2,341 contacts</strong><br>
+                  Estimated Meta cost: <strong style="color:var(--text)">~R 28 – R 42</strong>
+                </div>
+              </div>
+
+              <div class="builder-section">
+                <div class="builder-label">5. Schedule</div>
+                <div class="form-group">
+                  <label class="form-label">When to send</label>
+                  <select class="form-select" id="scheduleType" onchange="toggleSchedule()">
+                    <option value="now">Send immediately</option>
+                    <option value="later">Schedule for later</option>
+                    <option value="optimal">AI optimal time</option>
+                  </select>
+                </div>
+                <div id="scheduleFields" style="display:none">
+                  <div class="schedule-row">
+                    <div class="form-group"><label class="form-label">Date</label><input class="form-input" type="date"></div>
+                    <div class="form-group"><label class="form-label">Time</label><input class="form-input" type="time" value="09:00"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="builder-section">
+                <div class="builder-label">6. Template</div>
+                <div class="form-group">
+                  <label class="form-label">WhatsApp template name</label>
+                  <input class="form-input" placeholder="e.g. winter_sale_v2" value="winter_sale_v3">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Category</label>
+                  <select class="form-select">
+                    <option>Marketing</option>
+                    <option>Utility</option>
+                    <option>Authentication</option>
+                  </select>
+                </div>
+                <div style="background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:8px;padding:10px 12px;font-size:11.5px;color:var(--muted2)">
+                  ⚠️ Template must be approved in Meta WhatsApp Manager before sending to opted-in contacts outside a 24h window.
+                </div>
+              </div>
+
+              <button class="send-campaign-btn" onclick="launchCampaign()">
+                🚀 Launch Campaign
+              </button>
+              <button class="send-campaign-btn" style="background:var(--card2);color:var(--muted2);box-shadow:none;margin-top:8px" onclick="toast('Campaign saved as draft','success')">
+                💾 Save as Draft
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── CONTACTS ── -->
+        <div class="app-page" id="page-contacts">
+          <div style="padding:28px">
+            <div class="flex-between">
+              <div class="section-head" style="margin-bottom:0">
+                <h2>Contacts</h2>
+                <p>2,341 total · 2,189 opted in · 152 opted out</p>
+              </div>
+              <div style="display:flex;gap:8px">
+                <button class="btn-ghost" onclick="toast('CSV import coming soon!','success')">⬆️ Import CSV</button>
+                <button class="btn-primary" onclick="toast('Contact added!','success')">+ Add contact</button>
+              </div>
+            </div>
+            <div style="height:20px"></div>
+            <div class="contacts-toolbar">
+              <div class="search-input-wrap">
+                <span class="search-icon">🔍</span>
+                <input class="form-input" placeholder="Search by name or number..." style="padding-left:34px">
+              </div>
+              <select class="form-select" style="width:160px">
+                <option>All segments</option>
+                <option>VIP customers</option>
+                <option>Inactive 30d</option>
+                <option>Recent buyers</option>
+              </select>
+              <select class="form-select" style="width:140px">
+                <option>All status</option>
+                <option>Opted in</option>
+                <option>Opted out</option>
+              </select>
+            </div>
+            <div class="card">
+              <div class="card-body" style="padding:0">
+                <table class="contacts-table">
+                  <thead><tr>
+                    <th style="padding-left:20px">Name</th><th>WhatsApp</th><th>Segment</th><th>Last contacted</th><th>Messages</th><th style="padding-right:20px">Status</th>
+                  </tr></thead>
+                  <tbody>
+                    <tr><td style="padding-left:20px"><span class="contact-avatar">NM</span>Nomsa Mkhize</td><td style="font-family:var(--font-mono);font-size:12px">+27 82 345 6789</td><td><span class="tag-chip vip">VIP</span></td><td style="color:var(--muted2)">2 Jun 2026</td><td>24</td><td style="padding-right:20px"><span class="status-pill sent">Opted in</span></td></tr>
+                    <tr><td style="padding-left:20px"><span class="contact-avatar">TN</span>Thabo Nkosi</td><td style="font-family:var(--font-mono);font-size:12px">+27 83 901 2345</td><td><span class="tag-chip retail">Retail</span></td><td style="color:var(--muted2)">1 Jun 2026</td><td>12</td><td style="padding-right:20px"><span class="status-pill sent">Opted in</span></td></tr>
+                    <tr><td style="padding-left:20px"><span class="contact-avatar">LP</span>Lerato Phiri</td><td style="font-family:var(--font-mono);font-size:12px">+27 71 234 5678</td><td><span class="tag-chip new">New</span></td><td style="color:var(--muted2)">31 May 2026</td><td>3</td><td style="padding-right:20px"><span class="status-pill sent">Opted in</span></td></tr>
+                    <tr><td style="padding-left:20px"><span class="contact-avatar">SK</span>Sipho Khumalo</td><td style="font-family:var(--font-mono);font-size:12px">+27 79 567 8901</td><td><span class="tag-chip retail">Retail</span></td><td style="color:var(--muted2)">28 May 2026</td><td>8</td><td style="padding-right:20px"><span class="status-pill sent">Opted in</span></td></tr>
+                    <tr><td style="padding-left:20px"><span class="contact-avatar">AM</span>Ayanda Molefe</td><td style="font-family:var(--font-mono);font-size:12px">+27 84 123 4567</td><td><span class="tag-chip inactive">Inactive</span></td><td style="color:var(--muted2)">3 Apr 2026</td><td>5</td><td style="padding-right:20px"><span class="status-pill draft">Opted out</span></td></tr>
+                    <tr><td style="padding-left:20px"><span class="contact-avatar">ZD</span>Zanele Dlamini</td><td style="font-family:var(--font-mono);font-size:12px">+27 60 789 0123</td><td><span class="tag-chip vip">VIP</span></td><td style="color:var(--muted2)">2 Jun 2026</td><td>41</td><td style="padding-right:20px"><span class="status-pill sent">Opted in</span></td></tr>
+                    <tr><td style="padding-left:20px"><span class="contact-avatar">KN</span>Kabelo Nzama</td><td style="font-family:var(--font-mono);font-size:12px">+27 82 456 7890</td><td><span class="tag-chip new">New</span></td><td style="color:var(--muted2)">2 Jun 2026</td><td>1</td><td style="padding-right:20px"><span class="status-pill sent">Opted in</span></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── INBOX ── -->
+        <div class="app-page" id="page-inbox">
+          <div class="inbox-layout">
+            <div class="inbox-list">
+              <div class="inbox-search">
+                <input class="form-input" placeholder="🔍  Search conversations..." style="font-size:12.5px">
+              </div>
+              <div class="inbox-item active" onclick="loadConvo(this,'Nomsa Mkhize','👩🏾')">
+                <div class="inbox-avatar">👩🏾</div>
+                <div style="flex:1;overflow:hidden">
+                  <div class="inbox-name">Nomsa Mkhize</div>
+                  <div class="inbox-preview">Do you still have the red dress in size 12?</div>
+                </div>
+                <div class="inbox-meta">
+                  <div class="inbox-time">09:41</div>
+                  <div class="inbox-unread">3</div>
+                </div>
+              </div>
+              <div class="inbox-item" onclick="loadConvo(this,'Thabo Nkosi','👨🏿')">
+                <div class="inbox-avatar">👨🏿</div>
+                <div style="flex:1;overflow:hidden">
+                  <div class="inbox-name">Thabo Nkosi</div>
+                  <div class="inbox-preview">Thanks! Order received 👍</div>
+                </div>
+                <div class="inbox-meta"><div class="inbox-time">09:12</div></div>
+              </div>
+              <div class="inbox-item" onclick="loadConvo(this,'Zanele Dlamini','👩🏽')">
+                <div class="inbox-avatar">👩🏽</div>
+                <div style="flex:1;overflow:hidden">
+                  <div class="inbox-name">Zanele Dlamini</div>
+                  <div class="inbox-preview">When does the sale end?</div>
+                </div>
+                <div class="inbox-meta">
+                  <div class="inbox-time">08:55</div>
+                  <div class="inbox-unread">2</div>
+                </div>
+              </div>
+              <div class="inbox-item" onclick="loadConvo(this,'Lerato Phiri','👩')">
+                <div class="inbox-avatar">👩</div>
+                <div style="flex:1;overflow:hidden">
+                  <div class="inbox-name">Lerato Phiri</div>
+                  <div class="inbox-preview">I used code WINTER40 ✅</div>
+                </div>
+                <div class="inbox-meta"><div class="inbox-time">Yesterday</div></div>
+              </div>
+              <div class="inbox-item" onclick="loadConvo(this,'Sipho Khumalo','👨🏾')">
+                <div class="inbox-avatar">👨🏾</div>
+                <div style="flex:1;overflow:hidden">
+                  <div class="inbox-name">Sipho Khumalo</div>
+                  <div class="inbox-preview">Can I get free delivery?</div>
+                </div>
+                <div class="inbox-meta">
+                  <div class="inbox-time">Yesterday</div>
+                  <div class="inbox-unread">1</div>
+                </div>
+              </div>
+            </div>
+            <div class="inbox-convo">
+              <div class="convo-header">
+                <div class="inbox-avatar" id="convoAvatar">👩🏾</div>
+                <div>
+                  <div style="font-weight:600;font-size:14px" id="convoName">Nomsa Mkhize</div>
+                  <div style="font-size:11.5px;color:var(--muted2)">+27 82 345 6789 · Last seen today at 09:41</div>
+                </div>
+                <div style="margin-left:auto;display:flex;gap:8px">
+                  <div class="icon-btn" title="View contact">👤</div>
+                  <div class="icon-btn" title="Mark resolved">✅</div>
+                  <div class="icon-btn" title="Assign">📌</div>
+                </div>
+              </div>
+              <div class="convo-messages" id="convoMessages">
+                <div style="text-align:center;margin:8px 0;font-size:11px;color:var(--muted)">Today · Winter Sale campaign replied</div>
+                <div class="convo-bubble outgoing">Hi Nomsa! 🎉 Our Winter Sale is now live — 40% off everything! Use code WINTER40 at checkout 🛍️<div class="convo-time">09:15 ✓✓</div></div>
+                <div class="convo-bubble incoming">Wow! Do you still have the red dress in size 12?<div class="convo-time">09:38</div></div>
+                <div class="convo-bubble incoming">And what colours is it available in?<div class="convo-time">09:39</div></div>
+                <div class="convo-bubble incoming">Also is there free delivery?<div class="convo-time">09:41</div></div>
+              </div>
+              <div class="convo-reply">
+                <textarea class="convo-reply-input" id="replyInput" placeholder="Type your reply..." rows="2"></textarea>
+                <button class="reply-send-btn" onclick="sendReply()">➤</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── TEMPLATES ── -->
+        <div class="app-page" id="page-templates">
+          <div style="padding:28px">
+            <div class="flex-between">
+              <div class="section-head" style="margin-bottom:0"><h2>Template Library</h2><p>Pre-built & approved WhatsApp templates ready to use</p></div>
+              <button class="btn-primary" onclick="toast('Request new template submitted to Meta!','success')">+ Request new template</button>
+            </div>
+            <div style="height:20px"></div>
+            <div class="templates-grid">
+              <!-- Template 1 -->
+              <div class="template-card">
+                <div class="tpl-preview">
+                  <div class="tpl-bubble">
+                    <b>🔥 FLASH SALE — 6 HOURS!</b><br><br>
+                    Hi {{name}}, get {{discount}} off everything today!<br>Code: <b>{{code}}</b>
+                    <div class="tpl-bubble-btns"><div class="tpl-bubble-btn">🛒 Shop Now</div><div class="tpl-bubble-btn">📤 Share</div></div>
+                  </div>
+                </div>
+                <div class="tpl-info">
+                  <div class="tpl-name">Flash Sale Broadcast</div>
+                  <div class="tpl-meta">
+                    <span class="tpl-category marketing">Marketing</span>
+                    <span class="tpl-status">✓ Approved</span>
+                  </div>
+                  <div class="tpl-actions">
+                    <button class="tpl-btn use" onclick="toast('Template loaded in Campaign Builder!','success')">Use</button>
+                    <button class="tpl-btn edit" onclick="toast('Template editor coming soon!','success')">Edit</button>
+                  </div>
+                </div>
+              </div>
+              <!-- Template 2 -->
+              <div class="template-card">
+                <div class="tpl-preview">
+                  <div class="tpl-bubble">
+                    <b>📦 Order #{{order_id}} Shipped!</b><br><br>
+                    Your order is on its way 🚚 ETA: <b>{{eta}}</b>
+                    <div class="tpl-bubble-btns"><div class="tpl-bubble-btn">🗺️ Track Order</div></div>
+                  </div>
+                </div>
+                <div class="tpl-info">
+                  <div class="tpl-name">Order Shipped Notification</div>
+                  <div class="tpl-meta">
+                    <span class="tpl-category utility">Utility</span>
+                    <span class="tpl-status">✓ Approved</span>
+                  </div>
+                  <div class="tpl-actions">
+                    <button class="tpl-btn use" onclick="toast('Template loaded!','success')">Use</button>
+                    <button class="tpl-btn edit">Edit</button>
+                  </div>
+                </div>
+              </div>
+              <!-- Template 3 -->
+              <div class="template-card">
+                <div class="tpl-preview">
+                  <div class="tpl-bubble">
+                    <b>📅 Appointment Reminder</b><br><br>
+                    Hi {{name}}, your appointment is tomorrow at <b>{{time}}</b>. See you then!
+                    <div class="tpl-bubble-btns"><div class="tpl-bubble-btn">✅ Confirm</div><div class="tpl-bubble-btn">🔄 Reschedule</div></div>
+                  </div>
+                </div>
+                <div class="tpl-info">
+                  <div class="tpl-name">Appointment Reminder</div>
+                  <div class="tpl-meta">
+                    <span class="tpl-category utility">Utility</span>
+                    <span class="tpl-status">✓ Approved</span>
+                  </div>
+                  <div class="tpl-actions">
+                    <button class="tpl-btn use" onclick="toast('Template loaded!','success')">Use</button>
+                    <button class="tpl-btn edit">Edit</button>
+                  </div>
+                </div>
+              </div>
+              <!-- Template 4 -->
+              <div class="template-card">
+                <div class="tpl-preview">
+                  <div class="tpl-bubble">
+                    We miss you, <b>{{name}}</b>! 💤<br><br>
+                    It's been a while. Here's <b>{{discount}}</b> off your next order.<br>Code: <b>{{code}}</b> · Expires in 48h
+                    <div class="tpl-bubble-btns"><div class="tpl-bubble-btn">🎁 Claim Offer</div></div>
+                  </div>
+                </div>
+                <div class="tpl-info">
+                  <div class="tpl-name">Win-back Campaign</div>
+                  <div class="tpl-meta">
+                    <span class="tpl-category marketing">Marketing</span>
+                    <span class="tpl-status">✓ Approved</span>
+                  </div>
+                  <div class="tpl-actions">
+                    <button class="tpl-btn use" onclick="toast('Template loaded!','success')">Use</button>
+                    <button class="tpl-btn edit">Edit</button>
+                  </div>
+                </div>
+              </div>
+              <!-- Template 5 -->
+              <div class="template-card">
+                <div class="tpl-preview">
+                  <div class="tpl-bubble">
+                    🎁 <b>Congrats {{name}}!</b><br><br>
+                    You've earned <b>{{points}} points</b> — you're now a <b>{{tier}}</b> member!
+                    <div class="tpl-bubble-btns"><div class="tpl-bubble-btn">🏆 View Rewards</div></div>
+                  </div>
+                </div>
+                <div class="tpl-info">
+                  <div class="tpl-name">Loyalty Tier Upgrade</div>
+                  <div class="tpl-meta">
+                    <span class="tpl-category marketing">Marketing</span>
+                    <span class="tpl-status">✓ Approved</span>
+                  </div>
+                  <div class="tpl-actions">
+                    <button class="tpl-btn use" onclick="toast('Template loaded!','success')">Use</button>
+                    <button class="tpl-btn edit">Edit</button>
+                  </div>
+                </div>
+              </div>
+              <!-- Template 6 -->
+              <div class="template-card">
+                <div class="tpl-preview">
+                  <div class="tpl-bubble">
+                    Your OTP is: <b>{{otp}}</b><br><br>
+                    This code expires in 10 minutes. Do not share it with anyone.
+                  </div>
+                </div>
+                <div class="tpl-info">
+                  <div class="tpl-name">OTP Authentication</div>
+                  <div class="tpl-meta">
+                    <span class="tpl-category auth">Authentication</span>
+                    <span class="tpl-status">✓ Approved</span>
+                  </div>
+                  <div class="tpl-actions">
+                    <button class="tpl-btn use" onclick="toast('Template loaded!','success')">Use</button>
+                    <button class="tpl-btn edit">Edit</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── ANALYTICS ── -->
+        <div class="app-page" id="page-analytics">
+          <div style="padding:28px">
+            <div class="flex-between">
+              <div class="section-head" style="margin-bottom:0"><h2>Analytics</h2><p>Performance data for June 2026</p></div>
+              <select class="form-select" style="width:160px">
+                <option>Last 30 days</option>
+                <option>Last 7 days</option>
+                <option>This month</option>
+                <option>All time</option>
+              </select>
+            </div>
+            <div style="height:20px"></div>
+            <div class="big-chart">
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <div style="font-family:var(--font-head);font-size:16px;font-weight:700">Message performance over time</div>
+                <div class="chart-legend">
+                  <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div>Sent</div>
+                  <div class="legend-item"><div class="legend-dot" style="background:var(--blue)"></div>Read</div>
+                  <div class="legend-item"><div class="legend-dot" style="background:var(--warn)"></div>Replied</div>
+                </div>
+              </div>
+              <div class="big-chart-area">
+                <div class="big-ch-col"><div class="big-ch-bars"><div class="big-ch-bar" style="height:55%;background:var(--green)"></div><div class="big-ch-bar" style="height:44%;background:var(--blue)"></div><div class="big-ch-bar" style="height:12%;background:var(--warn)"></div></div><div class="big-ch-label">May 27</div></div>
+                <div class="big-ch-col"><div class="big-ch-bars"><div class="big-ch-bar" style="height:40%;background:var(--green)"></div><div class="big-ch-bar" style="height:32%;background:var(--blue)"></div><div class="big-ch-bar" style="height:9%;background:var(--warn)"></div></div><div class="big-ch-label">May 28</div></div>
+                <div class="big-ch-col"><div class="big-ch-bars"><div class="big-ch-bar" style="height:80%;background:var(--green)"></div><div class="big-ch-bar" style="height:65%;background:var(--blue)"></div><div class="big-ch-bar" style="height:22%;background:var(--warn)"></div></div><div class="big-ch-label">May 29</div></div>
+                <div class="big-ch-col"><div class="big-ch-bars"><div class="big-ch-bar" style="height:60%;background:var(--green)"></div><div class="big-ch-bar" style="height:48%;background:var(--blue)"></div><div class="big-ch-bar" style="height:15%;background:var(--warn)"></div></div><div class="big-ch-label">May 30</div></div>
+                <div class="big-ch-col"><div class="big-ch-bars"><div class="big-ch-bar" style="height:100%;background:var(--green)"></div><div class="big-ch-bar" style="height:84%;background:var(--blue)"></div><div class="big-ch-bar" style="height:28%;background:var(--warn)"></div></div><div class="big-ch-label">May 31</div></div>
+                <div class="big-ch-col"><div class="big-ch-bars"><div class="big-ch-bar" style="height:75%;background:var(--green)"></div><div class="big-ch-bar" style="height:60%;background:var(--blue)"></div><div class="big-ch-bar" style="height:19%;background:var(--warn)"></div></div><div class="big-ch-label">Jun 1</div></div>
+                <div class="big-ch-col"><div class="big-ch-bars"><div class="big-ch-bar" style="height:45%;background:var(--green)"></div><div class="big-ch-bar" style="height:38%;background:var(--blue)"></div><div class="big-ch-bar" style="height:11%;background:var(--warn)"></div></div><div class="big-ch-label">Jun 2</div></div>
+              </div>
+            </div>
+            <div style="height:16px"></div>
+            <div class="analytics-grid">
+              <div class="card">
+                <div class="card-header"><div class="card-title">Message funnel</div></div>
+                <div class="card-body">
+                  <div style="display:flex;align-items:center;gap:20px">
+                    <div class="donut-chart"><div class="donut-hole"><div class="donut-pct">84%</div><div class="donut-lbl">read rate</div></div></div>
+                    <div style="flex:1;display:flex;flex-direction:column;gap:10px">
+                      <div class="legend-item" style="flex-direction:column;align-items:flex-start;gap:3px">
+                        <div style="display:flex;gap:6px;align-items:center"><div class="legend-dot" style="background:var(--green)"></div><span>Delivered · 98%</span></div>
+                        <div class="kpi-bar-wrap" style="width:100%"><div class="kpi-bar-fill" style="width:98%"></div></div>
+                      </div>
+                      <div class="legend-item" style="flex-direction:column;align-items:flex-start;gap:3px">
+                        <div style="display:flex;gap:6px;align-items:center"><div class="legend-dot" style="background:var(--blue)"></div><span>Read · 84%</span></div>
+                        <div class="kpi-bar-wrap" style="width:100%"><div class="kpi-bar-fill" style="width:84%;background:linear-gradient(90deg,#1D4ED8,var(--blue))"></div></div>
+                      </div>
+                      <div class="legend-item" style="flex-direction:column;align-items:flex-start;gap:3px">
+                        <div style="display:flex;gap:6px;align-items:center"><div class="legend-dot" style="background:var(--warn)"></div><span>Replied · 18%</span></div>
+                        <div class="kpi-bar-wrap" style="width:100%"><div class="kpi-bar-fill" style="width:18%;background:linear-gradient(90deg,#B45309,var(--warn))"></div></div>
+                      </div>
+                      <div class="legend-item" style="flex-direction:column;align-items:flex-start;gap:3px">
+                        <div style="display:flex;gap:6px;align-items:center"><div class="legend-dot" style="background:var(--purple)"></div><span>Converted · 7%</span></div>
+                        <div class="kpi-bar-wrap" style="width:100%"><div class="kpi-bar-fill" style="width:7%;background:linear-gradient(90deg,#6D28D9,var(--purple))"></div></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="card">
+                <div class="card-header"><div class="card-title">Key metrics</div></div>
+                <div class="card-body">
+                  <div class="analytics-kpi">
+                    <div class="kpi-row"><div><div class="kpi-label">Total sent</div></div><div class="kpi-val" style="color:var(--green)">12,450</div></div>
+                    <div class="kpi-row"><div><div class="kpi-label">Opt-out rate</div></div><div class="kpi-val" style="color:var(--danger)">0.8%</div></div>
+                    <div class="kpi-row"><div><div class="kpi-label">Avg response time</div></div><div class="kpi-val">4.2 min</div></div>
+                    <div class="kpi-row"><div><div class="kpi-label">Revenue driven</div></div><div class="kpi-val" style="color:var(--warn)">R 48,230</div></div>
+                    <div class="kpi-row"><div><div class="kpi-label">Cost per conversion</div></div><div class="kpi-val">R 1.84</div></div>
+                    <div class="kpi-row"><div><div class="kpi-label">WhatsApp API spend</div></div><div class="kpi-val">R 312</div></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── SETTINGS ── -->
+        <div class="app-page" id="page-settings">
+          <div style="padding:28px">
+            <div class="section-head"><h2>Settings & API</h2><p>Configure your Meta WhatsApp Cloud API connection and account preferences</p></div>
+            <div class="meta-connect-banner">
+              <div class="meta-connect-icon">📱</div>
+              <div class="meta-connect-text">
+                <h4>Meta WhatsApp Cloud API — Connected ✅</h4>
+                <p>Phone: +27 21 000 1234 · WABA: 987654321098765 · API v21.0 · Quality: 🟢 High</p>
+              </div>
+              <button class="btn-ghost" style="margin-left:auto;flex-shrink:0">Reconnect</button>
+            </div>
+            <div class="settings-grid">
+              <div class="settings-card">
+                <div class="settings-card-header"><div class="card-title">Meta API Credentials</div></div>
+                <div class="settings-card-body">
+                  <div class="form-group">
+                    <label class="form-label">Phone Number ID</label>
+                    <input class="form-input" value="123456789012345" style="font-family:var(--font-mono)">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">WABA ID</label>
+                    <input class="form-input" value="987654321098765" style="font-family:var(--font-mono)">
+                  </div>
+                  <div class="form-group credential-field">
+                    <label class="form-label">Permanent Access Token</label>
+                    <input class="form-input" type="password" id="tokenField" value="EAAxxxxxxxxxxxxxxxx" style="font-family:var(--font-mono)">
+                    <button class="cred-toggle-btn" onclick="toggleToken()">👁</button>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Webhook Verify Token</label>
+                    <input class="form-input" value="wazify_verify_8x92k" style="font-family:var(--font-mono)">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Webhook URL (your endpoint)</label>
+                    <input class="form-input" value="https://app.wazify.co.za/webhook/acct_8x92k" style="font-family:var(--font-mono);font-size:11px">
+                  </div>
+                  <button class="save-btn" onclick="toast('API credentials saved & verified!','success')">Save credentials</button>
+                </div>
+              </div>
+              <div class="settings-card">
+                <div class="settings-card-header"><div class="card-title">Notifications & Automations</div></div>
+                <div class="settings-card-body">
+                  <div class="settings-row">
+                    <div><div style="font-size:13px;font-weight:500">New reply notifications</div><div class="settings-key">Get notified when customers reply</div></div>
+                    <div class="toggle" onclick="this.classList.toggle('off')"></div>
+                  </div>
+                  <div class="settings-row">
+                    <div><div style="font-size:13px;font-weight:500">Auto opt-out on STOP</div><div class="settings-key">Remove contacts who reply STOP</div></div>
+                    <div class="toggle" onclick="this.classList.toggle('off')"></div>
+                  </div>
+                  <div class="settings-row">
+                    <div><div style="font-size:13px;font-weight:500">Delivery receipt tracking</div><div class="settings-key">Track delivered & read statuses</div></div>
+                    <div class="toggle" onclick="this.classList.toggle('off')"></div>
+                  </div>
+                  <div class="settings-row">
+                    <div><div style="font-size:13px;font-weight:500">AI optimal send time</div><div class="settings-key">Let AI pick the best time to send</div></div>
+                    <div class="toggle off" onclick="this.classList.toggle('off')"></div>
+                  </div>
+                  <div class="settings-row">
+                    <div><div style="font-size:13px;font-weight:500">Weekly analytics email</div><div class="settings-key">Summary every Monday at 8am</div></div>
+                    <div class="toggle" onclick="this.classList.toggle('off')"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="settings-card">
+                <div class="settings-card-header"><div class="card-title">Billing & Plan</div></div>
+                <div class="settings-card-body">
+                  <div class="settings-row"><div class="settings-key">Current plan</div><div class="settings-val" style="color:var(--green)">Growth — R 799/mo</div></div>
+                  <div class="settings-row"><div class="settings-key">Next billing date</div><div class="settings-val">1 July 2026</div></div>
+                  <div class="settings-row"><div class="settings-key">Contacts used</div><div class="settings-val">4,312 / 10,000</div></div>
+                  <div class="settings-row"><div class="settings-key">Campaigns this month</div><div class="settings-val">Unlimited ✓</div></div>
+                  <div class="settings-row"><div class="settings-key">Meta conversation spend</div><div class="settings-val">R 312.40 (you pay Meta)</div></div>
+                  <div style="height:10px"></div>
+                  <button class="save-btn" onclick="toast('Upgrade page coming soon!','success')">Upgrade to Pro →</button>
+                </div>
+              </div>
+              <div class="settings-card">
+                <div class="settings-card-header"><div class="card-title">Business Profile</div></div>
+                <div class="settings-card-body">
+                  <div class="form-group">
+                    <label class="form-label">Business name</label>
+                    <input class="form-input" value="Mama Zinhle's Boutique">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Display name (on WhatsApp)</label>
+                    <input class="form-input" value="Mama Zinhle's">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Industry</label>
+                    <select class="form-select"><option selected>Fashion & Retail</option><option>Food & Restaurant</option><option>Healthcare</option><option>Services</option></select>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Contact email</label>
+                    <input class="form-input" value="zinhle@mamaboutique.co.za">
+                  </div>
+                  <button class="save-btn" onclick="toast('Business profile saved!','success')">Save profile</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /app-content -->
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <span class="t-icon">✓</span>
+  <span id="toastMsg">Done!</span>
+</div>
+
+<script>
+/* ── NAV ── */
+function showApp() {
+  document.getElementById('landing').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+}
+function showLanding() {
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('landing').style.display = 'block';
+  window.scrollTo(0,0);
+}
+function showPage(id, btn) {
+  document.querySelectorAll('.app-page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  document.querySelectorAll('.app-nav-item').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  const titles = { dashboard:'Dashboard', campaigns:'Campaign Builder', contacts:'Contacts', inbox:'Inbox', templates:'Template Library', analytics:'Analytics', settings:'Settings & API' };
+  document.getElementById('pageTitle').textContent = titles[id] || id;
+}
+
+/* ── CAMPAIGN BUILDER ── */
+function updatePreview() {
+  const header = document.getElementById('msgHeader').value;
+  const body   = document.getElementById('msgBody').value;
+  const footer = document.getElementById('msgFooter').value;
+  const msgType = document.querySelector('.msg-type-btn.active')?.dataset?.type || 'broadcast';
+
+  document.getElementById('previewHeader').textContent = header;
+  document.getElementById('previewBody').textContent = body
+    .replace(/\*([^*]+)\*/g, '$1');
+  document.getElementById('previewFooter').textContent = footer;
+
+  const img = document.getElementById('previewImg');
+  img.style.display = (msgType === 'media') ? 'flex' : 'none';
+
+  const btns = document.getElementById('previewBtns');
+  const inputs = document.querySelectorAll('#btnBuilder .btn-row input');
+  btns.innerHTML = [...inputs].map(i => i.value ? `<div class="bp-btn">${i.value}</div>` : '').join('');
+}
+
+function setMsgType(el, type) {
+  document.querySelectorAll('.msg-type-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  el.dataset.type = type;
+  const img = document.getElementById('previewImg');
+  img.style.display = type === 'media' ? 'flex' : 'none';
+}
+
+function addBtn() {
+  const builder = document.getElementById('btnBuilder');
+  if (builder.children.length >= 3) { toast('Maximum 3 buttons allowed', 'error'); return; }
+  const row = document.createElement('div');
+  row.className = 'btn-row';
+  row.innerHTML = `<input class="form-input" placeholder="Button text" oninput="updatePreview()"><button class="btn-remove" onclick="removeBtn(this)">✕</button>`;
+  builder.appendChild(row);
+  updatePreview();
+}
+
+function removeBtn(btn) {
+  btn.closest('.btn-row').remove();
+  updatePreview();
+}
+
+function toggleSeg(el) {
+  el.classList.toggle('active');
+}
+
+function toggleSchedule() {
+  const val = document.getElementById('scheduleType').value;
+  document.getElementById('scheduleFields').style.display = val === 'later' ? 'block' : 'none';
+}
+
+function launchCampaign() {
+  const name = document.getElementById('campName').value || 'Unnamed Campaign';
+  toast(`🚀 "${name}" is being sent to Meta API!`, 'success');
+  setTimeout(() => toast('✅ 2,341 messages queued successfully!', 'success'), 2000);
+}
+
+/* ── INBOX ── */
+function loadConvo(el, name, avatar) {
+  document.querySelectorAll('.inbox-item').forEach(i => i.classList.remove('active'));
+  el.classList.add('active');
+  el.querySelector('.inbox-unread')?.remove();
+  document.getElementById('convoName').textContent = name;
+  document.getElementById('convoAvatar').textContent = avatar;
+}
+
+function sendReply() {
+  const input = document.getElementById('replyInput');
+  const text = input.value.trim();
+  if (!text) return;
+  const msgs = document.getElementById('convoMessages');
+  const bubble = document.createElement('div');
+  bubble.className = 'convo-bubble outgoing';
+  bubble.innerHTML = text + `<div class="convo-time">${getTime()} ✓✓</div>`;
+  msgs.appendChild(bubble);
+  msgs.scrollTop = msgs.scrollHeight;
+  input.value = '';
+  toast('Reply sent via Meta Cloud API ✓', 'success');
+}
+
+function getTime() {
+  const now = new Date();
+  return now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+}
+
+/* ── SETTINGS ── */
+function toggleToken() {
+  const f = document.getElementById('tokenField');
+  f.type = f.type === 'password' ? 'text' : 'password';
+}
+
+/* ── TOAST ── */
+function toast(msg, type='success') {
+  const t = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  t.className = `toast ${type} show`;
+  t.querySelector('.t-icon').textContent = type === 'success' ? '✓' : '✕';
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+/* ── INIT ── */
+updatePreview();
+</script>
+</body>
+</html>

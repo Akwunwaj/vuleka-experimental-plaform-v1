@@ -1,0 +1,34 @@
+{
+  "name": "chatclan-saas-platform",
+  "version": "0.1.0",
+  "description": "ChatClan WhatsApp SaaS platform, converted from HTML prototype to a Node.js/MariaDB application.",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "worker": "node src/worker.js",
+    "worker:once": "node -r dotenv/config -e \"require('./src/worker').runOnce({ limit: Number(process.env.WORKER_BATCH_SIZE || 10) }).then((result) => { console.log(JSON.stringify(result)); })\"",
+    "dev": "node --watch src/server.js",
+    "check": "node --check src/server.js && node --check src/worker.js && node --check src/views.js && node --check src/routes/web.js && node --check src/routes/api.js && node --check src/routes/webhooks.js && node --check src/data/templateLibrary.js && node --check src/data/chatbotFlowLibrary.js && node --check src/services/metaWebhook.js && node --check src/services/payfast.js && node --check src/services/webhookEvents.js && node --check src/services/auth.js && node --check src/services/encryption.js && node --check src/services/metaCredentials.js && node --check src/services/setupWizard.js && node --check src/services/dataDeletion.js && node --check src/services/contactImport.js && node --check src/services/consent.js && node --check src/services/campaignRecipients.js && node --check src/services/broadcastDispatch.js && node --check src/services/dispatchRateLimiter.js && node --check src/services/jobQueue.js && node --check src/services/jobProcessor.js && node --check src/services/metaEventProcessor.js && node --check src/services/commerce.js && node --check src/services/metaCatalogSync.js && node --check src/services/users.js && node --check src/services/templates.js && node --check src/services/metaTemplates.js && node --check src/services/chatbotFlows.js && node --check src/services/chatbotRuntime.js && node --check src/services/analytics.js && node --check src/services/metaCosts.js && node --check src/services/inbox.js && node --check src/services/inboxEvents.js && node --check src/services/mailer.js && node --check src/services/billing.js && node --check src/services/demoStore.js && node --check src/services/planCatalog.js && node --check src/services/registration.js && node --check src/services/socialAuth.js && node --check src/services/subscriptionPolicy.js && node --check src/middleware/security.js && node --check src/middleware/auth.js && node --check public/js/app.js && node --check scripts/hash-password.js && node --check scripts/beta-smoke.js && node --check scripts/production-preflight.js && node --check scripts/db-verify.js && node --check scripts/db-backup.js && node --check scripts/db-apply.js && node --check scripts/startup-check.js && node --check scripts/vendor-check.js && node --check scripts/release-candidate.js",
+    "test": "node --test",
+    "smoke:beta": "node scripts/beta-smoke.js",
+    "ops:preflight": "node scripts/production-preflight.js",
+    "ops:startup-check": "node scripts/startup-check.js",
+    "ops:vendor-check": "node scripts/vendor-check.js",
+    "ops:release-candidate": "node scripts/release-candidate.js",
+    "auth:hash": "node scripts/hash-password.js",
+    "db:verify": "node scripts/db-verify.js",
+    "db:backup": "node scripts/db-backup.js",
+    "db:schema": "node scripts/db-apply.js schema",
+    "db:seed": "node scripts/db-apply.js seed"
+  },
+  "dependencies": {
+    "csv-parse": "^6.2.1",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "mysql2": "^3.15.3",
+    "nodemailer": "^8.0.10"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

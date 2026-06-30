@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WhatsApp Chatbot Flow — 19 Industries</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --wa-green: #25D366;
+  --wa-dark-green: #128C7E;
+  --wa-teal: #075E54;
+  --wa-light-green: #DCF8C6;
+  --wa-bg: #ECE5DD;
+  --wa-bg-pattern: #D4C5B0;
+  --wa-white: #FFFFFF;
+  --wa-panel: #F0F0F0;
+  --wa-bubble-in: #FFFFFF;
+  --wa-bubble-out: #DCF8C6;
+  --wa-text: #111B21;
+  --wa-muted: #667781;
+  --wa-border: #E9EDEF;
+  --wa-btn: #F0F2F5;
+  --wa-btn-hover: #E2E5E9;
+  --wa-tick: #53BDEB;
+  --transition: 0.2s ease;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #1a1a2e;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  overflow: hidden;
+}
+
+/* Animated background */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: 
+    radial-gradient(ellipse 80% 60% at 20% 30%, rgba(37, 211, 102, 0.15) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 80% at 80% 70%, rgba(7, 94, 84, 0.2) 0%, transparent 60%);
+  z-index: 0;
+}
+
+.scene {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 2.5rem;
+  align-items: flex-start;
+  max-width: 1100px;
+  width: 100%;
+}
+
+/* Left panel — industry selector */
+.industry-panel {
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 20px;
+  padding: 1.25rem;
+  width: 220px;
+  flex-shrink: 0;
+}
+
+.panel-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: rgba(255,255,255,0.45);
+  text-transform: uppercase;
+  margin-bottom: 0.75rem;
+  padding: 0 0.25rem;
+}
+
+.industry-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 560px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.2) transparent;
+}
+
+.industry-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background var(--transition);
+  border: none;
+  background: transparent;
+  text-align: left;
+  width: 100%;
+  color: rgba(255,255,255,0.7);
+  font-size: 12.5px;
+  font-family: inherit;
+}
+
+.industry-item:hover { background: rgba(255,255,255,0.08); color: #fff; }
+.industry-item.active { background: rgba(37,211,102,0.2); color: #25D366; }
+
+.industry-item .ind-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.08);
+}
+.industry-item.active .ind-icon {
+  background: rgba(37,211,102,0.25);
+}
+
+/* Phone frame */
+.phone-frame {
+  width: 375px;
+  flex-shrink: 0;
+  border-radius: 44px;
+  background: #1C1C1E;
+  padding: 10px;
+  box-shadow: 
+    0 0 0 1px rgba(255,255,255,0.12),
+    0 40px 80px rgba(0,0,0,0.6),
+    inset 0 1px 0 rgba(255,255,255,0.1);
+}
+
+.phone-screen {
+  border-radius: 36px;
+  overflow: hidden;
+  background: var(--wa-bg);
+  height: 780px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* Status bar */
+.status-bar {
+  background: var(--wa-teal);
+  padding: 10px 20px 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: white;
+}
+.status-time { font-size: 12px; font-weight: 600; }
+.status-icons { display: flex; gap: 4px; align-items: center; font-size: 10px; }
+.status-icons svg { width: 14px; height: 14px; fill: white; }
+
+/* Chat header */
+.chat-header {
+  background: var(--wa-teal);
+  padding: 8px 12px 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.header-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--wa-green);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.header-info { flex: 1; }
+.header-name { font-size: 14px; font-weight: 600; color: white; }
+.header-status { font-size: 11px; color: rgba(255,255,255,0.75); }
+
+.header-icons { display: flex; gap: 16px; }
+.header-icons svg { width: 20px; height: 20px; fill: white; opacity: 0.9; cursor: pointer; }
+
+/* Chat background pattern */
+.chat-bg {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px 10px 6px;
+  background-color: #ECE5DD;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cpath d='M0 40 Q20 20 40 40 Q60 60 80 40' fill='none' stroke='%23D4C5B0' stroke-width='1'/%3E%3C/svg%3E");
+  scroll-behavior: smooth;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Date stamp */
+.date-stamp {
+  text-align: center;
+  margin: 8px 0;
+}
+.date-stamp span {
+  background: rgba(225,245,254,0.92);
+  color: #54656F;
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+/* Message bubbles */
+.msg-row {
+  display: flex;
+  margin-bottom: 2px;
+  animation: msgIn 0.25s ease-out forwards;
+  opacity: 0;
+  transform: translateY(10px);
+}
+@keyframes msgIn {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.msg-row.bot { justify-content: flex-start; }
+.msg-row.user { justify-content: flex-end; }
+
+.bubble {
+  max-width: 78%;
+  padding: 6px 10px 18px;
+  border-radius: 8px;
+  position: relative;
+  font-size: 13.5px;
+  line-height: 1.45;
+  word-break: break-word;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.12);
+}
+
+.bubble.bot {
+  background: var(--wa-bubble-in);
+  color: var(--wa-text);
+  border-top-left-radius: 2px;
+}
+.bubble.bot::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -8px;
+  width: 0; height: 0;
+  border-right: 8px solid var(--wa-bubble-in);
+  border-bottom: 8px solid transparent;
+}
+
+.bubble.user {
+  background: var(--wa-bubble-out);
+  color: var(--wa-text);
+  border-top-right-radius: 2px;
+}
+.bubble.user::after {
+  content: '';
+  position: absolute;
+  top: 0; right: -8px;
+  width: 0; height: 0;
+  border-left: 8px solid var(--wa-bubble-out);
+  border-bottom: 8px solid transparent;
+}
+
+.bubble-time {
+  position: absolute;
+  bottom: 4px;
+  right: 8px;
+  font-size: 10px;
+  color: var(--wa-muted);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.tick svg { width: 14px; height: 14px; fill: var(--wa-tick); }
+
+/* Quick reply buttons */
+.quick-replies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0 4px 8px;
+  max-width: 88%;
+  animation: msgIn 0.3s 0.1s ease-out forwards;
+  opacity: 0;
+}
+
+.qr-btn {
+  background: white;
+  border: 1.5px solid var(--wa-dark-green);
+  color: var(--wa-dark-green);
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+  font-family: inherit;
+  white-space: nowrap;
+}
+.qr-btn:hover {
+  background: var(--wa-dark-green);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(18,140,126,0.3);
+}
+.qr-btn:active { transform: translateY(0); }
+.qr-btn.selected {
+  background: var(--wa-dark-green);
+  color: white;
+  pointer-events: none;
+}
+
+/* Typing indicator */
+.typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0 4px 0;
+}
+.typing-bubble {
+  background: white;
+  border-radius: 12px;
+  padding: 8px 12px;
+  display: flex;
+  gap: 3px;
+  align-items: center;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.12);
+  border-top-left-radius: 2px;
+}
+.dot {
+  width: 7px; height: 7px;
+  background: #90A4AE;
+  border-radius: 50%;
+  animation: bounce 1.2s infinite;
+}
+.dot:nth-child(2) { animation-delay: 0.2s; }
+.dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes bounce {
+  0%,80%,100% { transform: scale(1); opacity: 0.4; }
+  40% { transform: scale(1.25); opacity: 1; }
+}
+
+/* Input bar */
+.input-bar {
+  background: var(--wa-panel);
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid var(--wa-border);
+}
+.input-box {
+  flex: 1;
+  background: white;
+  border-radius: 24px;
+  padding: 9px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+}
+.input-placeholder {
+  font-size: 13px;
+  color: var(--wa-muted);
+  flex: 1;
+}
+.input-icon svg { width: 20px; height: 20px; fill: var(--wa-muted); }
+.mic-btn {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: var(--wa-green);
+  display: flex; align-items: center; justify-content: center;
+  border: none; cursor: pointer;
+  box-shadow: 0 2px 6px rgba(37,211,102,0.4);
+  flex-shrink: 0;
+}
+.mic-btn svg { width: 20px; height: 20px; fill: white; }
+
+/* Right info panel */
+.info-panel {
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 20px;
+  padding: 1.25rem;
+  width: 220px;
+  flex-shrink: 0;
+}
+
+.info-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: rgba(255,255,255,0.45);
+  text-transform: uppercase;
+  margin-bottom: 0.75rem;
+}
+
+.use-case-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 280px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.2) transparent;
+}
+
+.use-case-item {
+  padding: 7px 10px;
+  border-radius: 8px;
+  font-size: 11.5px;
+  color: rgba(255,255,255,0.65);
+  cursor: pointer;
+  transition: background var(--transition);
+  border: none;
+  background: transparent;
+  text-align: left;
+  font-family: inherit;
+  line-height: 1.3;
+  width: 100%;
+}
+.use-case-item:hover { background: rgba(255,255,255,0.08); color: #fff; }
+.use-case-item.active { background: rgba(37,211,102,0.18); color: #7DFFA8; }
+
+.reset-btn {
+  margin-top: 1rem;
+  width: 100%;
+  padding: 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(37,211,102,0.4);
+  background: transparent;
+  color: #25D366;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+  font-family: inherit;
+}
+.reset-btn:hover { background: rgba(37,211,102,0.15); }
+
+.flow-progress {
+  margin-top: 1.25rem;
+}
+.progress-label {
+  font-size: 11px;
+  color: rgba(255,255,255,0.45);
+  margin-bottom: 0.5rem;
+}
+.progress-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.progress-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: rgba(255,255,255,0.4);
+}
+.progress-step.done { color: rgba(37,211,102,0.8); }
+.progress-step.current { color: rgba(255,255,255,0.9); }
+.step-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  flex-shrink: 0;
+}
+.progress-step.done .step-dot { background: #25D366; }
+.progress-step.current .step-dot { background: white; box-shadow: 0 0 0 2px rgba(255,255,255,0.3); }
+
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+
+/* Bold in bubble */
+.bubble b { font-weight: 600; }
+.bubble ul { padding-left: 1.1em; margin: 4px 0; }
+.bubble li { margin-bottom: 2px; }
+</style>
+</head>
+<body>
+
+<div class="scene">
+
+  <!-- Left: Industry Selector -->
+  <div class="industry-panel">
+    <div class="panel-title">Industries</div>
+    <div class="industry-list" id="industryList"></div>
+  </div>
+
+  <!-- Center: Phone -->
+  <div class="phone-frame">
+    <div class="phone-screen">
+      <!-- Status bar -->
+      <div class="status-bar">
+        <span class="status-time" id="clockTime">9:41</span>
+        <div class="status-icons">
+          <svg viewBox="0 0 24 24"><path d="M1 1l22 22M16.72 11.06A10.94 10.94 0 0 1 19 12.55M5 12.55a10.94 10.94 0 0 1 5.17-2.39M10.71 5.05A16 16 0 0 1 22.56 9M1.42 9a15.91 15.91 0 0 1 4.7-2.88M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg viewBox="0 0 24 24"><rect x="1" y="6" width="15" height="12" rx="2" fill="white"/><path d="M23 13V11a2 2 0 0 0-2-2H17v6h4a2 2 0 0 0 2-2z" fill="white" opacity=".5"/></svg>
+        </div>
+      </div>
+
+      <!-- Chat header -->
+      <div class="chat-header">
+        <div class="header-avatar" id="headerAvatar">🤖</div>
+        <div class="header-info">
+          <div class="header-name" id="headerName">Select an industry</div>
+          <div class="header-status" id="headerStatus">Choose from the left panel</div>
+        </div>
+        <div class="header-icons">
+          <svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.8a19.79 19.79 0 01-3.07-8.7A2 2 0 012.18 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.91a16 16 0 006.72 6.72l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z" fill="white"/></svg>
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+        </div>
+      </div>
+
+      <!-- Chat area -->
+      <div class="chat-bg" id="chatArea">
+        <div class="date-stamp"><span>Today</span></div>
+        <div id="messagesFeed"></div>
+      </div>
+
+      <!-- Input bar -->
+      <div class="input-bar">
+        <div class="input-box">
+          <div class="input-icon"><svg viewBox="0 0 24 24"><path d="M12 22a10 10 0 100-20 10 10 0 000 20zm0-3.5c-3.59 0-6.5-2.91-6.5-6.5S8.41 5.5 12 5.5s6.5 2.91 6.5 6.5-2.91 6.5-6.5 6.5zM12 8l-4 4h3v4h2v-4h3L12 8z" fill="#90A4AE"/></svg></div>
+          <span class="input-placeholder">Message</span>
+          <div class="input-icon"><svg viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" fill="none" stroke="#90A4AE" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <button class="mic-btn">
+          <svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Info Panel -->
+  <div class="info-panel">
+    <div class="info-section-title">Use Cases</div>
+    <div class="use-case-list" id="useCaseList">
+      <div style="font-size:11.5px;color:rgba(255,255,255,0.35);padding:6px 10px;">Select an industry to see use cases</div>
+    </div>
+    <button class="reset-btn" onclick="resetChat()">↺ Reset conversation</button>
+    <div class="flow-progress" id="flowProgress" style="display:none">
+      <div class="progress-label">Conversation steps</div>
+      <div class="progress-steps" id="progressSteps"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const industries = [
+  { id:"ecom",   icon:"🛒", label:"E-commerce & Retail",     color:"#25D366" },
+  { id:"health", icon:"🏥", label:"Healthcare",               color:"#E91E63" },
+  { id:"bank",   icon:"🏦", label:"Banking & Finance",        color:"#1976D2" },
+  { id:"travel", icon:"✈️", label:"Travel & Hospitality",     color:"#FF9800" },
+  { id:"edu",    icon:"🎓", label:"Education",                color:"#4CAF50" },
+  { id:"real",   icon:"🏠", label:"Real Estate",              color:"#9C27B0" },
+  { id:"gov",    icon:"🏛️", label:"Government & Public",      color:"#F44336" },
+  { id:"ins",    icon:"🛡️", label:"Insurance",                color:"#009688" },
+  { id:"telco",  icon:"📱", label:"Telecom & Tech",           color:"#3F51B5" },
+  { id:"hr",     icon:"👥", label:"HR & Recruitment",         color:"#FF5722" },
+  { id:"log",    icon:"🚚", label:"Logistics & Supply",       color:"#607D8B" },
+  { id:"food",   icon:"🍽️", label:"Food & Restaurant",       color:"#F44336" },
+  { id:"media",  icon:"📰", label:"Media & News",             color:"#795548" },
+  { id:"ngo",    icon:"❤️", label:"NGO & Nonprofit",         color:"#E91E63" },
+  { id:"auto",   icon:"🚗", label:"Automotive",               color:"#37474F" },
+  { id:"agri",   icon:"🌱", label:"Agriculture",              color:"#388E3C" },
+  { id:"legal",  icon:"⚖️", label:"Legal & Professional",    color:"#5D4037" },
+  { id:"mfg",    icon:"⚙️", label:"Manufacturing",           color:"#455A64" },
+  { id:"sport",  icon:"🏆", label:"Sports & Events",          color:"#FF6F00" },
+];
+
+const flows = {
+  ecom: {
+    name: "ShopBot 🛍️",
+    status: "Online · E-commerce Assistant",
+    avatar: "🛒",
+    useCases: ["Product discovery","Order tracking","Returns & refunds","Flash sale alerts","In-chat checkout","Post-purchase reviews","Stock enquiries"],
+    steps: [
+      { label: "Welcome & menu" },
+      { label: "Category selection" },
+      { label: "Product detail" },
+      { label: "Cart & checkout" },
+      { label: "Order confirmation" },
+    ],
+    conversation: [
+      { type:"bot", text:"👋 Welcome to *ShopBot*! I'm your personal shopping assistant.\n\nHow can I help you today?", delay:600 },
+      { type:"qr", options:["🔍 Find products","📦 Track my order","↩️ Return & refund","🔥 Today's deals","💬 Talk to agent"], delay:800 },
+      { type:"user", text:"🔍 Find products", trigger: 1 },
+      { type:"bot", text:"Great! Let's find the perfect product for you. 🛍️\n\nWhich *category* interests you?", delay:500 },
+      { type:"qr", options:["👗 Fashion","📱 Electronics","🏠 Home & Living","💄 Beauty","🏃 Sports","🍕 Food & Grocery"], delay:700 },
+      { type:"user", text:"📱 Electronics", trigger: 2 },
+      { type:"bot", text:"Excellent choice! Here are our *top picks in Electronics* 🔥\n\n1. iPhone 15 Pro — R 22,999\n2. Samsung S24 Ultra — R 21,499\n3. MacBook Air M3 — R 34,999\n\nWould you like details on any of these?", delay:600 },
+      { type:"qr", options:["iPhone 15 Pro","Samsung S24 Ultra","MacBook Air M3","🔙 Back to categories"], delay:900 },
+      { type:"user", text:"iPhone 15 Pro", trigger: 3 },
+      { type:"bot", text:"📱 *iPhone 15 Pro*\n💰 Price: R 22,999\n⭐ Rating: 4.8 (2,341 reviews)\n✅ In stock: 14 units left\n\n🚚 Free delivery in 2–3 days\n↩️ 30-day return policy\n\nReady to add to cart?", delay:700 },
+      { type:"qr", options:["🛒 Add to cart","❤️ Save for later","🔁 Compare models","🔙 Back"], delay:900 },
+      { type:"user", text:"🛒 Add to cart", trigger: 4 },
+      { type:"bot", text:"✅ *iPhone 15 Pro* added to your cart!\n\n🛒 Cart total: *R 22,999*\n\nChoose a payment method to complete your order:", delay:500 },
+      { type:"qr", options:["💳 Credit/Debit card","📲 Instant EFT","🏦 Pay later (Payflex)"], delay:700 },
+      { type:"user", text:"💳 Credit/Debit card", trigger: 5 },
+      { type:"bot", text:"🎉 *Order Confirmed!*\n\nOrder #WA-2891044\n📱 iPhone 15 Pro × 1\n💰 R 22,999\n\n🚚 Estimated delivery: *Wed, 4 June*\n\nYou'll receive tracking updates here. Anything else I can help with?", delay:800 },
+    ]
+  },
+
+  health: {
+    name: "HealthBot 🏥",
+    status: "Online · Healthcare Assistant",
+    avatar: "🏥",
+    useCases: ["Appointment booking","Symptom triage","Medication reminders","Lab results delivery","Chronic disease mgmt","Mental health support","Vaccination campaigns"],
+    steps: [
+      { label: "Welcome & triage" },
+      { label: "Symptom check" },
+      { label: "Appointment booking" },
+      { label: "Doctor selection" },
+      { label: "Confirmation & reminders" },
+    ],
+    conversation: [
+      { type:"bot", text:"👋 Hello! I'm *HealthBot*, your digital health assistant.\n\nYour health is our priority. How can I assist you today?", delay:600 },
+      { type:"qr", options:["📅 Book appointment","🤒 Check symptoms","💊 Medication reminder","🧪 Get lab results","🧠 Mental health support"], delay:800 },
+      { type:"user", text:"📅 Book appointment", trigger: 1 },
+      { type:"bot", text:"I'd be happy to help you book an appointment. 📋\n\nWhat *type of consultation* do you need?", delay:500 },
+      { type:"qr", options:["👨‍⚕️ General Practitioner","❤️ Cardiologist","🦴 Orthopaedic","🧠 Neurologist","👁️ Ophthalmologist","🦷 Dentist"], delay:700 },
+      { type:"user", text:"👨‍⚕️ General Practitioner", trigger: 2 },
+      { type:"bot", text:"Great. Do you have a *preferred doctor*, or shall I show you available GPs near you?", delay:500 },
+      { type:"qr", options:["📍 Show doctors near me","🔍 Search by name","📅 First available slot"], delay:700 },
+      { type:"user", text:"📍 Show doctors near me", trigger: 3 },
+      { type:"bot", text:"📍 *GPs available near Cape Town CBD:*\n\n1. Dr. Sarah Mokoena — ⭐ 4.9 · Next slot: *Today 14:30*\n2. Dr. James Louw — ⭐ 4.7 · Next slot: *Tomorrow 09:00*\n3. Dr. Anita Patel — ⭐ 4.8 · Next slot: *Tomorrow 11:00*\n\nWhich doctor would you prefer?", delay:800 },
+      { type:"qr", options:["Dr. Sarah Mokoena","Dr. James Louw","Dr. Anita Patel"], delay:900 },
+      { type:"user", text:"Dr. Sarah Mokoena", trigger: 4 },
+      { type:"bot", text:"✅ *Appointment Confirmed!*\n\n👩‍⚕️ Dr. Sarah Mokoena\n📅 Today at 14:30\n📍 Cape Town Medical Centre, Adderley St\n\n⏰ You'll receive a reminder 30 mins before.\n\nWould you like to add a note for the doctor?", delay:700 },
+      { type:"qr", options:["✏️ Add a note","📋 My medical history","📞 Contact clinic","✅ All done"], delay:900 },
+      { type:"user", text:"✅ All done", trigger: 5 },
+      { type:"bot", text:"All set! 🎉 Take care and feel better soon.\n\n📲 Your appointment summary has been saved. You can reschedule any time by typing *RESCHEDULE*.", delay:600 },
+    ]
+  },
+
+  bank: {
+    name: "BankBot 🏦",
+    status: "Online · Banking Assistant",
+    avatar: "🏦",
+    useCases: ["Balance & mini-statement","Fund transfers","Loan applications","Fraud alerts","Account opening","FX & rates","Card management"],
+    steps: [
+      { label: "Secure greeting" },
+      { label: "Service selection" },
+      { label: "Authentication" },
+      { label: "Transaction" },
+      { label: "Confirmation" },
+    ],
+    conversation: [
+      { type:"bot", text:"🏦 Welcome to *SecureBank WhatsApp Banking*!\n\nThis channel is *end-to-end encrypted* 🔒.\n\nHow can I assist you today?", delay:600 },
+      { type:"qr", options:["💰 Check balance","💸 Transfer funds","📊 Mini statement","💳 Card services","🏠 Apply for loan"], delay:800 },
+      { type:"user", text:"💸 Transfer funds", trigger: 1 },
+      { type:"bot", text:"To keep your account safe, please confirm the *last 4 digits of your ID number* to proceed.\n\n🔒 This is a secure, encrypted channel.", delay:500 },
+      { type:"user", text:"****", trigger: 2 },
+      { type:"bot", text:"✅ Identity verified!\n\nEnter transfer details:\n\nWho would you like to transfer to?", delay:600 },
+      { type:"qr", options:["📱 Saved beneficiary","🆕 New recipient","💵 Buy airtime/data","↩️ Back"], delay:800 },
+      { type:"user", text:"📱 Saved beneficiary", trigger: 3 },
+      { type:"bot", text:"Your saved beneficiaries:\n\n1. *Mom* — Cheque acc ending 4521\n2. *Rent — Landlord* — Cheque acc ending 8832\n3. *Netflix* — ending 1174\n\nSelect a recipient:", delay:600 },
+      { type:"qr", options:["Mom","Rent — Landlord","Netflix"], delay:800 },
+      { type:"user", text:"Mom", trigger: 4 },
+      { type:"bot", text:"💸 *Transfer to Mom*\n\nAvailable balance: *R 12,450.00*\n\nHow much would you like to send?\n\n_(Type the amount, e.g. 500)_", delay:600 },
+      { type:"user", text:"R 1,500", trigger: 5 },
+      { type:"bot", text:"✅ *Transfer Successful!*\n\n📤 R 1,500.00 sent to Mom\n🕐 Reference: WA20260601-88234\n💰 Remaining balance: R 10,950.00\n\nSend a notification to Mom? 📲", delay:700 },
+      { type:"qr", options:["📲 Yes, notify them","✅ Done, thanks","📊 View statement"], delay:900 },
+    ]
+  },
+
+  travel: {
+    name: "TravelBot ✈️",
+    status: "Online · Travel Assistant",
+    avatar: "✈️",
+    useCases: ["Flight search & booking","Hotel reservations","Visa information","Itinerary planning","Check-in assistance","Lost baggage","Travel insurance"],
+    steps: [
+      { label: "Destination enquiry" },
+      { label: "Date & passenger info" },
+      { label: "Flight selection" },
+      { label: "Seat & add-ons" },
+      { label: "Booking confirmation" },
+    ],
+    conversation: [
+      { type:"bot", text:"✈️ Welcome to *TravelBot*! Your personal travel concierge.\n\nWhere would you like to go?", delay:600 },
+      { type:"qr", options:["🛫 Book flights","🏨 Book hotel","🗺️ Plan itinerary","📋 Manage booking","🛂 Visa info"], delay:800 },
+      { type:"user", text:"🛫 Book flights", trigger: 1 },
+      { type:"bot", text:"Let's find your perfect flight! ✈️\n\nWhat's your *departure city?*\n\n_(Type a city or airport code, e.g. Cape Town / CPT)_", delay:500 },
+      { type:"user", text:"Cape Town", trigger: 2 },
+      { type:"bot", text:"Great! And where are you *flying to?*", delay:400 },
+      { type:"user", text:"Johannesburg", trigger: 3 },
+      { type:"bot", text:"📅 *CPT → JNB*\n\nHere are the *best flights for June 5, 2026:*\n\n1. 🟢 FlySafair 06:00 → 08:05 — *R 899*\n2. 🟡 Kulula 09:30 → 11:35 — R 1,099\n3. 🟢 Comair 14:00 → 16:05 — R 985\n\nWhich flight would you like?", delay:900 },
+      { type:"qr", options:["FlySafair 06:00 · R 899","Kulula 09:30 · R 1,099","Comair 14:00 · R 985"], delay:1000 },
+      { type:"user", text:"FlySafair 06:00 · R 899", trigger: 4 },
+      { type:"bot", text:"✅ *FlySafair FA123 selected*\n\nWould you like to select a seat and add-ons?", delay:500 },
+      { type:"qr", options:["💺 Choose seat","🧳 Add baggage","🍽️ Add meal","✅ Confirm booking"], delay:700 },
+      { type:"user", text:"✅ Confirm booking", trigger: 5 },
+      { type:"bot", text:"🎉 *Booking Confirmed!*\n\n✈️ FlySafair FA123\n📅 Thu, 5 June · 06:00 → 08:05\n🛫 CPT → JNB\n💰 R 899.00\n🎟️ Booking ref: *FS-WA-44821*\n\nYour e-ticket has been saved. Check-in opens 24 hrs before departure.\n\nSafe travels! 🌍", delay:800 },
+    ]
+  },
+
+  food: {
+    name: "FoodBot 🍽️",
+    status: "Online · Restaurant & Delivery",
+    avatar: "🍽️",
+    useCases: ["Table reservations","Food ordering & delivery","Menu browsing","Dietary filtering","Loyalty rewards","Special offers","Order tracking"],
+    steps: [
+      { label: "Welcome & intent" },
+      { label: "Menu browsing" },
+      { label: "Order building" },
+      { label: "Delivery details" },
+      { label: "Order confirmed" },
+    ],
+    conversation: [
+      { type:"bot", text:"🍽️ Hey there! I'm *FoodBot* from Bistro Cape Town.\n\n*What's your craving today?* 😋", delay:600 },
+      { type:"qr", options:["🛵 Order delivery","🍽️ Book a table","📋 View menu","🎁 Loyalty rewards","🔥 Today's specials"], delay:800 },
+      { type:"user", text:"🛵 Order delivery", trigger: 1 },
+      { type:"bot", text:"Yum! 😍 Let's build your order.\n\nWhat category would you like?", delay:500 },
+      { type:"qr", options:["🍕 Pizza","🍔 Burgers","🥗 Salads","🍜 Pasta","🌮 Tacos","🍰 Desserts"], delay:700 },
+      { type:"user", text:"🍕 Pizza", trigger: 2 },
+      { type:"bot", text:"🍕 *Our Pizzas:*\n\n1. Margherita — R 89\n2. BBQ Chicken — R 119\n3. Pepperoni Feast — R 129\n4. Veggie Supreme — R 109\n\n_Any dietary requirements? Type GLUTEN FREE or VEGAN._", delay:600 },
+      { type:"qr", options:["BBQ Chicken · R 119","Pepperoni Feast · R 129","Veggie Supreme · R 109","Margherita · R 89"], delay:900 },
+      { type:"user", text:"BBQ Chicken · R 119", trigger: 3 },
+      { type:"bot", text:"🍕 *BBQ Chicken Pizza* added!\n\nWould you like to add anything else?", delay:500 },
+      { type:"qr", options:["🥤 Add drinks","🍟 Add sides","✅ Go to checkout"], delay:700 },
+      { type:"user", text:"✅ Go to checkout", trigger: 4 },
+      { type:"bot", text:"🛒 *Your Order:*\nBBQ Chicken Pizza × 1 — R 119\n🚚 Delivery fee — R 25\n*Total: R 144*\n\nDelivery to your saved address?\n📍 12 Long Street, Cape Town", delay:700 },
+      { type:"qr", options:["✅ Deliver here","📍 Change address","💳 Pay now"], delay:900 },
+      { type:"user", text:"💳 Pay now", trigger: 5 },
+      { type:"bot", text:"🎉 *Order Placed!*\n\nOrder #BISTRO-7823\n⏱️ Estimated delivery: *35–45 minutes*\n🛵 Track your rider live [tap here]\n\nEnjoy your meal! Bon appétit 😋🍕", delay:800 },
+    ]
+  },
+
+  hr: {
+    name: "HRBot 👥",
+    status: "Online · HR & Recruitment",
+    avatar: "👥",
+    useCases: ["Job applications","Interview scheduling","Onboarding assistance","Leave requests","Payslip access","Policy FAQs","Employee referrals"],
+    steps: [
+      { label: "Role enquiry" },
+      { label: "Application screening" },
+      { label: "Assessment" },
+      { label: "Interview scheduling" },
+      { label: "Offer & onboarding" },
+    ],
+    conversation: [
+      { type:"bot", text:"👋 Welcome to *TechCorp HR Bot*!\n\nI can help with job applications, employee queries, and onboarding.\n\nWhat brings you here today?", delay:600 },
+      { type:"qr", options:["💼 Apply for a job","📅 My interview","🗓️ Request leave","💰 Get payslip","📋 HR policies"], delay:800 },
+      { type:"user", text:"💼 Apply for a job", trigger: 1 },
+      { type:"bot", text:"Exciting! 🚀 We have *14 open positions* right now.\n\nWhich area interests you most?", delay:500 },
+      { type:"qr", options:["💻 Engineering","📊 Data & Analytics","🎨 Design & UX","📣 Marketing","💼 Sales","🔧 Operations"], delay:700 },
+      { type:"user", text:"💻 Engineering", trigger: 2 },
+      { type:"bot", text:"💻 *Engineering Roles:*\n\n1. Senior Backend Engineer (Node.js) — Remote\n2. React Frontend Developer — Cape Town\n3. DevOps Engineer — Hybrid\n4. ML Engineer — Cape Town\n\nWhich role interests you?", delay:600 },
+      { type:"qr", options:["Senior Backend Engineer","React Frontend Developer","DevOps Engineer","ML Engineer"], delay:900 },
+      { type:"user", text:"React Frontend Developer", trigger: 3 },
+      { type:"bot", text:"Great choice! 🎯 *React Frontend Developer*\n📍 Cape Town · 💰 R 55k–R 75k/month\n\nBefore we proceed, quick screening:\n\n*Years of React experience?*", delay:600 },
+      { type:"qr", options:["< 1 year","1–2 years","3–5 years","5+ years"], delay:800 },
+      { type:"user", text:"3–5 years", trigger: 4 },
+      { type:"bot", text:"Excellent! 🌟 You're a strong fit.\n\nLet's schedule your *first interview*. Pick a slot:", delay:500 },
+      { type:"qr", options:["Mon 9 June, 10:00","Tue 10 June, 14:00","Wed 11 June, 11:00"], delay:700 },
+      { type:"user", text:"Mon 9 June, 10:00", trigger: 5 },
+      { type:"bot", text:"✅ *Interview Confirmed!*\n\n📅 Monday, 9 June at 10:00\n🎥 Google Meet link sent to your email\n👤 Interviewer: Sarah Kim (Engineering Lead)\n\nPlease come prepared with a portfolio or GitHub link. Good luck! 🤞", delay:800 },
+    ]
+  },
+
+  edu: {
+    name: "EduBot 🎓",
+    status: "Online · Education Assistant",
+    avatar: "🎓",
+    useCases: ["Course enrolment","Assignment submissions","Exam schedules","Fee payments","Library access","Student support","Certificate requests"],
+    steps: [
+      { label: "Student welcome" },
+      { label: "Service selection" },
+      { label: "Course enquiry" },
+      { label: "Enrolment process" },
+      { label: "Confirmation" },
+    ],
+    conversation: [
+      { type:"bot", text:"🎓 Welcome to *UCT Student Bot*!\n\nI'm here to help with all your academic needs.\n\nWhat can I assist you with?", delay:600 },
+      { type:"qr", options:["📚 Enrol in course","📅 Exam schedule","💰 Pay fees","📋 Assignment help","🏛️ Library services","📜 Get certificate"], delay:800 },
+      { type:"user", text:"📚 Enrol in course", trigger: 1 },
+      { type:"bot", text:"Let's get you enrolled! 📚\n\nWhich *faculty* are you looking at?", delay:500 },
+      { type:"qr", options:["💻 Computer Science","⚕️ Health Sciences","⚖️ Law","💼 Commerce","🎨 Humanities","🔬 Science"], delay:700 },
+      { type:"user", text:"💻 Computer Science", trigger: 2 },
+      { type:"bot", text:"🖥️ *Computer Science Courses — 2026 Semester 2:*\n\n1. CSC3002F — Operating Systems\n2. CSC3003S — Algorithms\n3. CSC4002W — ML & AI\n4. CSC3005F — Web Dev\n\nWhich course?", delay:600 },
+      { type:"qr", options:["CSC3002F OS","CSC3003S Algorithms","CSC4002W ML & AI","CSC3005F Web Dev"], delay:900 },
+      { type:"user", text:"CSC4002W ML & AI", trigger: 3 },
+      { type:"bot", text:"🤖 *CSC4002W — Machine Learning & AI*\n\n📅 Starts: 15 July 2026\n⏰ Tue & Thu, 13:00–15:00\n📍 Leslie Commerce Building\n💰 Course fee: R 18,500\n🎯 Prerequisites: CSC3003S\n\nShall I proceed with enrolment?", delay:800 },
+      { type:"qr", options:["✅ Enrol me","💰 Pay fee now","❓ More details","↩️ Back"], delay:1000 },
+      { type:"user", text:"✅ Enrol me", trigger: 4 },
+      { type:"bot", text:"✅ *Enrolled Successfully!*\n\nStudent: #STUD-2022-04432\n📚 CSC4002W ML & AI\n📅 15 July 2026\n\n📲 Course materials will be shared via this channel.\n📧 Confirmation sent to your student email.\n\nGood luck with your studies! 🚀", delay:800 },
+    ]
+  },
+
+  log: {
+    name: "LogiBot 🚚",
+    status: "Online · Logistics Assistant",
+    avatar: "🚚",
+    useCases: ["Shipment tracking","Delivery scheduling","Customs status","Warehouse inventory","Driver dispatch","Returns logistics","Proof of delivery"],
+    steps: [
+      { label: "Tracking enquiry" },
+      { label: "Shipment lookup" },
+      { label: "Live status" },
+      { label: "Issue resolution" },
+      { label: "Delivery confirmed" },
+    ],
+    conversation: [
+      { type:"bot", text:"🚚 Welcome to *SwiftLog Tracking Bot*!\n\nI can track your shipments, schedule deliveries, and resolve issues.\n\nWhat do you need?", delay:600 },
+      { type:"qr", options:["📦 Track shipment","📅 Schedule delivery","🔄 Redeliver","🚨 Report issue","📋 Proof of delivery"], delay:800 },
+      { type:"user", text:"📦 Track shipment", trigger: 1 },
+      { type:"bot", text:"Please share your *tracking number* or order reference.\n\n_(e.g. SL-2026-88432)_", delay:500 },
+      { type:"user", text:"SL-2026-88432", trigger: 2 },
+      { type:"bot", text:"📦 *Shipment SL-2026-88432*\n\n🟢 Status: *Out for delivery*\n📅 Estimated arrival: *Today by 17:00*\n🚛 Driver: Themba M.\n📍 Last scan: Bellville depot — 11:23 AM\n\nWould you like to track in real-time?", delay:800 },
+      { type:"qr", options:["📍 Live map tracking","📞 Call driver","🔄 Change delivery time","✅ All good"], delay:900 },
+      { type:"user", text:"🔄 Change delivery time", trigger: 3 },
+      { type:"bot", text:"When would you prefer your delivery? We have these slots available:", delay:500 },
+      { type:"qr", options:["Today 17:00–19:00","Tomorrow 08:00–12:00","Tomorrow 13:00–17:00","Leave at door"], delay:700 },
+      { type:"user", text:"Tomorrow 08:00–12:00", trigger: 4 },
+      { type:"bot", text:"✅ *Delivery rescheduled!*\n\nNew slot: *Tomorrow, 8:00 – 12:00*\n📲 The driver will WhatsApp you 30 mins before arrival.\n\nIs there a safe place to leave the parcel if you're not home?", delay:600 },
+      { type:"qr", options:["🚪 Leave at door","🏠 With neighbour","📦 At security","📅 I'll be home"], delay:800 },
+      { type:"user", text:"🚪 Leave at door", trigger: 5 },
+      { type:"bot", text:"👍 *Noted!* Parcel will be left safely at your door.\n\nYou'll receive a *photo proof of delivery* via WhatsApp. 📸\n\nAnything else I can help with?", delay:600 },
+    ]
+  },
+};
+
+// Default to ecom
+let currentIndustry = null;
+let conversationData = [];
+let msgIndex = 0;
+let isTyping = false;
+let selectedButtons = {};
+
+function updateClock() {
+  const now = new Date();
+  const h = now.getHours().toString().padStart(2,'0');
+  const m = now.getMinutes().toString().padStart(2,'0');
+  document.getElementById('clockTime').textContent = h + ':' + m;
+}
+updateClock();
+setInterval(updateClock, 30000);
+
+function renderIndustryList() {
+  const list = document.getElementById('industryList');
+  list.innerHTML = industries.map(ind => `
+    <button class="industry-item ${currentIndustry === ind.id ? 'active' : ''}" onclick="selectIndustry('${ind.id}')">
+      <span class="ind-icon">${ind.icon}</span>
+      ${ind.label}
+    </button>
+  `).join('');
+}
+
+function selectIndustry(id) {
+  currentIndustry = id;
+  renderIndustryList();
+  loadFlow(id);
+}
+
+function loadFlow(id) {
+  const flow = flows[id];
+  if (!flow) return;
+
+  // Update header
+  document.getElementById('headerAvatar').textContent = flow.avatar;
+  document.getElementById('headerName').textContent = flow.name;
+  document.getElementById('headerStatus').textContent = flow.status;
+
+  // Update use cases
+  const useCaseList = document.getElementById('useCaseList');
+  useCaseList.innerHTML = flow.useCases.map((uc, i) => `
+    <button class="use-case-item" onclick="jumpToUseCase(${i})">${uc}</button>
+  `).join('');
+
+  // Show progress
+  const progressContainer = document.getElementById('flowProgress');
+  progressContainer.style.display = 'block';
+  renderProgress(flow, -1);
+
+  // Clear chat
+  document.getElementById('messagesFeed').innerHTML = '';
+  conversationData = flow.conversation;
+  msgIndex = 0;
+  selectedButtons = {};
+
+  // Start conversation
+  playNext();
+}
+
+function renderProgress(flow, currentStep) {
+  const steps = document.getElementById('progressSteps');
+  steps.innerHTML = flow.steps.map((step, i) => `
+    <div class="progress-step ${i < currentStep ? 'done' : i === currentStep ? 'current' : ''}">
+      <div class="step-dot"></div>
+      <span>${step.label}</span>
+    </div>
+  `).join('');
+}
+
+function getTime() {
+  const now = new Date();
+  return now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+}
+
+function showTyping() {
+  const feed = document.getElementById('messagesFeed');
+  const typing = document.createElement('div');
+  typing.className = 'typing-indicator';
+  typing.id = 'typingIndicator';
+  typing.innerHTML = `<div class="typing-bubble"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
+  feed.appendChild(typing);
+  scrollDown();
+  return typing;
+}
+
+function removeTyping() {
+  const t = document.getElementById('typingIndicator');
+  if (t) t.remove();
+}
+
+function addMessage(type, text, delay = 0) {
+  return new Promise(resolve => {
+    setTimeout(() => {
+      removeTyping();
+      const feed = document.getElementById('messagesFeed');
+      const row = document.createElement('div');
+      row.className = `msg-row ${type}`;
+
+      const formattedText = text
+        .replace(/\*(.*?)\*/g, '<b>$1</b>')
+        .replace(/\n/g, '<br>');
+
+      row.innerHTML = `
+        <div class="bubble ${type}">
+          ${formattedText}
+          <div class="bubble-time">
+            ${getTime()}
+            ${type === 'user' ? `<span class="tick"><svg viewBox="0 0 16 11"><path d="M1 5.5l4 4L15 1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 9.5L15 1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" opacity=".6"/></svg></span>` : ''}
+          </div>
+        </div>
+      `;
+      feed.appendChild(row);
+      scrollDown();
+      resolve();
+    }, delay);
+  });
+}
+
+function addQuickReplies(options, onSelect) {
+  return new Promise(resolve => {
+    setTimeout(() => {
+      const feed = document.getElementById('messagesFeed');
+      const container = document.createElement('div');
+      container.className = 'quick-replies';
+      container.id = 'currentQR';
+
+      options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = 'qr-btn';
+        btn.textContent = opt;
+        btn.onclick = () => {
+          // Disable all buttons
+          container.querySelectorAll('.qr-btn').forEach(b => {
+            b.style.opacity = '0.4';
+            b.style.pointerEvents = 'none';
+          });
+          btn.classList.add('selected');
+          btn.style.opacity = '1';
+          onSelect(opt);
+        };
+        container.appendChild(btn);
+      });
+
+      feed.appendChild(container);
+      scrollDown();
+      resolve();
+    }, 200);
+  });
+}
+
+function scrollDown() {
+  const area = document.getElementById('chatArea');
+  setTimeout(() => area.scrollTop = area.scrollHeight, 50);
+}
+
+async function playNext() {
+  if (msgIndex >= conversationData.length) return;
+
+  const msg = conversationData[msgIndex];
+  msgIndex++;
+
+  if (msg.type === 'bot') {
+    showTyping();
+    await addMessage('bot', msg.text, msg.delay || 600);
+    setTimeout(playNext, 200);
+  }
+  else if (msg.type === 'qr') {
+    await addQuickReplies(msg.options, async (selected) => {
+      await addMessage('user', selected, 200);
+
+      // Update progress based on how many user messages sent
+      const flow = flows[currentIndustry];
+      if (flow) {
+        const userMsgsSent = conversationData.slice(0, msgIndex).filter(m => m.type === 'user').length;
+        renderProgress(flow, userMsgsSent);
+      }
+
+      setTimeout(playNext, 400);
+    });
+  }
+  else if (msg.type === 'user') {
+    // Auto-play user message (for demo continuity)
+    await addMessage('user', msg.text, 200);
+    setTimeout(playNext, 400);
+  }
+}
+
+function resetChat() {
+  if (!currentIndustry) return;
+  document.getElementById('messagesFeed').innerHTML = '';
+  const dateStamp = document.createElement('div');
+  dateStamp.className = 'date-stamp';
+  dateStamp.innerHTML = '<span>Today</span>';
+  conversationData = flows[currentIndustry].conversation;
+  msgIndex = 0;
+  selectedButtons = {};
+  renderProgress(flows[currentIndustry], -1);
+  playNext();
+}
+
+function jumpToUseCase(index) {
+  // Highlight the clicked use case
+  document.querySelectorAll('.use-case-item').forEach((el, i) => {
+    el.classList.toggle('active', i === index);
+  });
+}
+
+// Init
+renderIndustryList();
+// Auto-load e-commerce on start
+setTimeout(() => selectIndustry('ecom'), 500);
+</script>
+</body>
+</html>

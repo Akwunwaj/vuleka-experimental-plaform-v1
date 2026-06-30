@@ -1,0 +1,1985 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wazify — Billing & Payments</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300;12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Geist+Mono:wght@300;400;500&family=Lato:ital,wght@0,300;0,400;0,700;1,300&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════
+   TOKENS
+═══════════════════════════════════════════ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:    #0C0E12;
+  --ink2:   #14181F;
+  --ink3:   #1C2230;
+  --border: rgba(255,255,255,.07);
+  --bord2:  rgba(255,255,255,.13);
+  --bord3:  rgba(255,255,255,.22);
+  --text:   #E8ECF5;
+  --dim:    #8896B0;
+  --dim2:   #B0BCCE;
+
+  --g:      #22C55E;   /* Wazify green */
+  --g2:     #15803D;
+  --g3:     rgba(34,197,94,.1);
+
+  /* Provider accent colours */
+  --pf:     #00AEEF;   /* PayFast blue */
+  --pp:     #E84393;   /* Peach pink */
+  --oz:     #1A1A5E;   /* Ozow navy */
+  --oz-a:   #6C63FF;   /* Ozow purple */
+  --pg:     #E8282B;   /* PayGate red */
+  --yc:     #FFD200;   /* Yoco yellow */
+
+  --warn:   #F59E0B;
+  --danger: #EF4444;
+  --blue:   #3B82F6;
+  --purple: #A78BFA;
+
+  --fh: 'Bricolage Grotesque', sans-serif;
+  --fb: 'Lato', sans-serif;
+  --fm: 'Geist Mono', monospace;
+  --r8: 8px; --r12: 12px; --r16: 16px; --r20: 20px;
+}
+html{scroll-behavior:smooth}
+body{font-family:var(--fb);background:var(--ink);color:var(--text);min-height:100vh;overflow-x:hidden}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-thumb{background:var(--ink3);border-radius:8px}
+button,input,select,textarea{font-family:inherit}
+a{color:inherit;text-decoration:none}
+
+/* ═══════════════════════════════════════════
+   SHELL
+═══════════════════════════════════════════ */
+.shell{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
+
+/* Sidebar */
+.sidebar{
+  background:var(--ink2);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto
+}
+.sb-logo{
+  padding:20px 18px 0;display:flex;align-items:center;gap:9px
+}
+.sb-mark{
+  width:30px;height:30px;border-radius:8px;
+  background:linear-gradient(135deg,#22C55E,#0D9488);
+  display:flex;align-items:center;justify-content:center;font-size:14px
+}
+.sb-name{font-family:var(--fh);font-size:17px;font-weight:700}
+.sb-name span{color:var(--g)}
+
+.sb-biz{
+  margin:14px 12px 0;background:var(--ink3);border:1px solid var(--bord2);
+  border-radius:var(--r8);padding:9px 11px;display:flex;align-items:center;gap:7px
+}
+.sb-biz-av{
+  width:26px;height:26px;border-radius:6px;background:rgba(34,197,94,.15);
+  display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0
+}
+.sb-biz-name{font-size:12px;font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.sb-nav{padding:18px 8px;flex:1;display:flex;flex-direction:column;gap:1px}
+.sb-lbl{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);padding:10px 10px 5px}
+.sb-item{
+  display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--r8);
+  font-size:13px;font-weight:500;color:var(--dim2);cursor:pointer;
+  border:none;background:transparent;width:100%;text-align:left;transition:all .13s
+}
+.sb-item:hover{background:var(--ink3);color:var(--text)}
+.sb-item.active{background:rgba(34,197,94,.1);color:var(--g)}
+.sb-item.active.billing-item{background:rgba(34,197,94,.15);color:var(--g)}
+.sb-icon{font-size:15px;width:18px;text-align:center;flex-shrink:0}
+.sb-badge{
+  margin-left:auto;background:var(--g);color:#fff;
+  font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;min-width:16px;text-align:center
+}
+
+.plan-bar-wrap{margin:0 12px 18px}
+.plan-bar-inner{
+  background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.18);
+  border-radius:var(--r8);padding:11px 13px
+}
+.plan-nm{font-size:10.5px;font-weight:700;color:var(--g);text-transform:uppercase;letter-spacing:.06em}
+.plan-bg{height:3px;background:var(--ink3);border-radius:4px;margin:7px 0}
+.plan-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--g2),var(--g))}
+.plan-stat{font-size:10.5px;color:var(--dim2);display:flex;justify-content:space-between}
+
+/* Topbar */
+.main{display:flex;flex-direction:column}
+.topbar{
+  height:54px;border-bottom:1px solid var(--border);background:var(--ink2);
+  display:flex;align-items:center;justify-content:space-between;padding:0 28px;
+  position:sticky;top:0;z-index:50;flex-shrink:0
+}
+.topbar-left{display:flex;align-items:center;gap:10px}
+.page-title{font-family:var(--fh);font-size:17px;font-weight:700}
+.breadcrumb{font-size:12px;color:var(--dim);font-family:var(--fm)}
+.topbar-right{display:flex;align-items:center;gap:8px}
+.icon-btn{
+  width:34px;height:34px;border-radius:var(--r8);background:var(--ink3);
+  border:1px solid var(--bord2);display:flex;align-items:center;justify-content:center;
+  font-size:15px;cursor:pointer;transition:all .13s
+}
+.icon-btn:hover{border-color:var(--g)}
+.ua{
+  width:32px;height:32px;border-radius:50%;
+  background:linear-gradient(135deg,#22C55E,#0D9488);
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:700;cursor:pointer
+}
+
+/* Content */
+.content{flex:1;overflow-y:auto;padding:28px}
+
+/* ═══════════════════════════════════════════
+   PAGES
+═══════════════════════════════════════════ */
+.page{display:none}
+.page.active{display:block}
+
+/* ═══════════════════════════════════════════
+   BILLING PAGE
+═══════════════════════════════════════════ */
+
+/* Status banner */
+.billing-banner{
+  display:flex;align-items:center;gap:16px;
+  background:linear-gradient(135deg,rgba(34,197,94,.1) 0%,rgba(13,148,136,.08) 100%);
+  border:1px solid rgba(34,197,94,.25);border-radius:var(--r16);
+  padding:20px 24px;margin-bottom:24px;position:relative;overflow:hidden
+}
+.billing-banner::before{
+  content:'';position:absolute;right:-40px;top:-40px;
+  width:160px;height:160px;border-radius:50%;
+  background:radial-gradient(rgba(34,197,94,.12),transparent 70%)
+}
+.bb-icon{font-size:36px;flex-shrink:0}
+.bb-info{flex:1}
+.bb-plan{font-family:var(--fh);font-size:20px;font-weight:700;margin-bottom:3px}
+.bb-meta{font-size:13px;color:var(--dim2);line-height:1.6}
+.bb-actions{display:flex;gap:8px;flex-shrink:0}
+
+/* Stat cards row */
+.billing-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px}
+.bstat{
+  background:var(--ink2);border:1px solid var(--bord2);border-radius:var(--r12);
+  padding:18px;position:relative;overflow:hidden
+}
+.bstat-icon{font-size:18px;margin-bottom:10px}
+.bstat-val{font-family:var(--fh);font-size:26px;font-weight:800;line-height:1}
+.bstat-lbl{font-size:11.5px;color:var(--dim);margin-top:4px}
+.bstat-sub{font-size:11px;margin-top:8px;display:flex;align-items:center;gap:4px}
+.up{color:var(--g)} .dn{color:var(--danger)}
+
+/* Two-col layout */
+.billing-grid{display:grid;grid-template-columns:1fr 380px;gap:20px;margin-bottom:24px}
+
+/* Card */
+.card{background:var(--ink2);border:1px solid var(--bord2);border-radius:var(--r16);overflow:hidden}
+.card-hdr{
+  padding:16px 20px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between
+}
+.card-ttl{font-family:var(--fh);font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px}
+.card-act{
+  font-size:12px;color:var(--g);background:transparent;border:none;cursor:pointer;
+  font-weight:700;padding:4px 10px;border-radius:6px;transition:background .13s
+}
+.card-act:hover{background:rgba(34,197,94,.1)}
+.card-body{padding:20px}
+
+/* ── Payment Provider Cards ── */
+.providers-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px}
+.provider-card{
+  background:var(--ink2);border:1px solid var(--bord2);border-radius:var(--r16);
+  overflow:hidden;cursor:pointer;transition:all .18s;position:relative
+}
+.provider-card::after{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:var(--p-color,var(--g));opacity:0;transition:opacity .18s
+}
+.provider-card:hover{border-color:var(--p-color,var(--g));transform:translateY(-2px)}
+.provider-card:hover::after{opacity:1}
+.provider-card.active-provider{border-color:var(--p-color,var(--g));box-shadow:0 0 0 1px var(--p-color,var(--g)),0 8px 24px rgba(0,0,0,.3)}
+.provider-card.active-provider::after{opacity:1}
+
+.pc-header{
+  padding:16px 18px;display:flex;align-items:flex-start;justify-content:space-between;
+  border-bottom:1px solid var(--border)
+}
+.pc-logo{
+  width:44px;height:44px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0
+}
+.pc-badge{
+  font-size:9.5px;font-weight:700;padding:3px 8px;border-radius:20px;
+  font-family:var(--fm);letter-spacing:.03em
+}
+.pc-badge.recommended{background:rgba(34,197,94,.12);color:var(--g);border:1px solid rgba(34,197,94,.25)}
+.pc-badge.active{background:rgba(59,130,246,.12);color:var(--blue);border:1px solid rgba(59,130,246,.25)}
+.pc-badge.available{background:rgba(255,255,255,.05);color:var(--dim);border:1px solid var(--border)}
+
+.pc-body{padding:14px 18px}
+.pc-name{font-family:var(--fh);font-size:15px;font-weight:700;margin-bottom:4px}
+.pc-desc{font-size:12px;color:var(--dim2);line-height:1.5;margin-bottom:12px}
+.pc-features{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
+.pc-feat{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--dim2)}
+.pc-feat::before{content:'✓';color:var(--g);font-weight:700;flex-shrink:0}
+.pc-feat.no::before{content:'✕';color:var(--dim)}
+.pc-feat.no{color:var(--dim)}
+.pc-pricing{
+  display:flex;align-items:center;justify-content:space-between;
+  padding-top:12px;border-top:1px solid var(--border);font-size:11.5px
+}
+.pc-rate{font-family:var(--fm);color:var(--text);font-weight:500}
+.pc-rate span{color:var(--dim)}
+.pc-connect-btn{
+  padding:7px 14px;border-radius:var(--r8);border:none;cursor:pointer;
+  font-size:12px;font-weight:700;transition:all .15s;font-family:inherit
+}
+.pc-connect-btn.connected{background:rgba(34,197,94,.12);color:var(--g);border:1px solid rgba(34,197,94,.25)}
+.pc-connect-btn.connect{background:var(--ink3);color:var(--dim2);border:1px solid var(--bord2)}
+.pc-connect-btn.connect:hover{border-color:var(--p-color,var(--g));color:var(--text)}
+
+/* ── Subscription plans ── */
+.plans-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.plan-card{
+  background:var(--ink3);border:1px solid var(--bord2);border-radius:var(--r12);
+  padding:20px;position:relative;transition:all .18s
+}
+.plan-card.current{
+  border-color:rgba(34,197,94,.4);
+  background:linear-gradient(160deg,var(--ink3),rgba(34,197,94,.06));
+  box-shadow:0 0 0 1px rgba(34,197,94,.15)
+}
+.plan-current-badge{
+  position:absolute;top:-10px;left:50%;transform:translateX(-50%);
+  background:linear-gradient(135deg,#22C55E,#0D9488);
+  color:#fff;font-size:10px;font-weight:700;padding:3px 12px;border-radius:20px;white-space:nowrap
+}
+.plan-name{font-family:var(--fh);font-size:16px;font-weight:700;margin-bottom:4px}
+.plan-price{font-family:var(--fh);font-size:32px;font-weight:900;line-height:1;margin:12px 0 4px}
+.plan-price span{font-size:14px;color:var(--dim);font-weight:400}
+.plan-desc{font-size:12px;color:var(--dim);margin-bottom:14px}
+.plan-feats{list-style:none;display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.plan-feats li{display:flex;align-items:center;gap:7px;font-size:12.5px}
+.plan-feats li::before{content:'✓';color:var(--g);font-weight:700;flex-shrink:0}
+.plan-btn{
+  width:100%;padding:10px;border-radius:var(--r8);border:none;cursor:pointer;
+  font-size:13px;font-weight:700;transition:all .15s;font-family:inherit
+}
+.plan-btn.primary{background:linear-gradient(135deg,#22C55E,#15803D);color:#fff;box-shadow:0 2px 12px rgba(34,197,94,.25)}
+.plan-btn.outline{background:transparent;border:1px solid var(--bord2);color:var(--dim2)}
+.plan-btn.current-btn{background:rgba(34,197,94,.1);color:var(--g);border:1px solid rgba(34,197,94,.25);pointer-events:none}
+.plan-btn:hover:not(.current-btn){transform:translateY(-1px)}
+
+/* ── Checkout modal ── */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .2s
+}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal{
+  background:var(--ink2);border:1px solid var(--bord2);border-radius:var(--r20);
+  width:520px;max-height:90vh;overflow-y:auto;
+  box-shadow:0 24px 80px rgba(0,0,0,.6);
+  transform:translateY(16px);transition:transform .25s cubic-bezier(.4,0,.2,1)
+}
+.modal-overlay.open .modal{transform:translateY(0)}
+.modal-hdr{
+  padding:22px 24px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between
+}
+.modal-ttl{font-family:var(--fh);font-size:18px;font-weight:700}
+.modal-close{
+  width:30px;height:30px;border-radius:var(--r8);background:var(--ink3);
+  border:none;color:var(--dim);font-size:16px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:all .13s
+}
+.modal-close:hover{background:rgba(239,68,68,.15);color:var(--danger)}
+.modal-body{padding:24px}
+.modal-footer{padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px}
+.modal-btn{
+  flex:1;padding:12px;border-radius:var(--r12);border:none;cursor:pointer;
+  font-size:14px;font-weight:700;font-family:inherit;transition:all .15s
+}
+.modal-btn.primary{background:linear-gradient(135deg,#22C55E,#15803D);color:#fff;box-shadow:0 2px 16px rgba(34,197,94,.3)}
+.modal-btn.primary:hover{transform:translateY(-1px);box-shadow:0 4px 24px rgba(34,197,94,.4)}
+.modal-btn.ghost{background:var(--ink3);color:var(--dim2)}
+
+/* Checkout steps */
+.checkout-steps{display:flex;align-items:center;gap:0;margin-bottom:24px}
+.cs{display:flex;align-items:center;flex:1}
+.cs-num{
+  width:28px;height:28px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:700;flex-shrink:0;font-family:var(--fm);
+  transition:all .2s
+}
+.cs-num.done{background:var(--g);color:#fff}
+.cs-num.active{background:rgba(34,197,94,.15);color:var(--g);border:1.5px solid var(--g)}
+.cs-num.pending{background:var(--ink3);color:var(--dim);border:1px solid var(--bord2)}
+.cs-lbl{font-size:11px;color:var(--dim);margin-left:7px;white-space:nowrap}
+.cs-line{flex:1;height:1px;background:var(--border);margin:0 8px}
+.cs-line.done{background:var(--g)}
+
+/* Provider selector in checkout */
+.checkout-providers{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
+.cp-btn{
+  background:var(--ink3);border:1.5px solid var(--bord2);border-radius:var(--r12);
+  padding:14px;display:flex;flex-direction:column;align-items:center;gap:7px;
+  cursor:pointer;transition:all .15s;font-size:12px;font-weight:600;color:var(--dim2)
+}
+.cp-btn:hover{border-color:var(--dim2)}
+.cp-btn.selected{border-color:var(--p-color,var(--g));background:rgba(34,197,94,.07);color:var(--text)}
+.cp-logo{font-size:24px}
+.cp-name{font-size:11.5px;font-weight:700}
+.cp-method{font-size:10px;color:var(--dim)}
+
+/* Payment methods tabs */
+.pm-tabs{display:flex;gap:6px;margin-bottom:16px}
+.pm-tab{
+  flex:1;padding:9px 6px;border-radius:var(--r8);border:1.5px solid var(--bord2);
+  background:var(--ink3);font-size:11.5px;font-weight:600;color:var(--dim2);
+  cursor:pointer;text-align:center;transition:all .15s;display:flex;flex-direction:column;align-items:center;gap:3px
+}
+.pm-tab:hover{border-color:var(--dim2)}
+.pm-tab.active{border-color:var(--pf);background:rgba(0,174,239,.07);color:var(--pf)}
+.pm-tab .pm-icon{font-size:16px}
+
+/* Form inputs */
+.fg{margin-bottom:14px}
+.fl{font-size:11.5px;color:var(--dim2);margin-bottom:5px;display:block;font-weight:500}
+.fi{
+  width:100%;background:var(--ink3);border:1px solid var(--bord2);
+  border-radius:var(--r8);padding:10px 12px;font-size:13px;color:var(--text);
+  outline:none;transition:border-color .13s;font-family:var(--fb)
+}
+.fi:focus{border-color:var(--g)}
+.fi::placeholder{color:var(--dim)}
+.fi-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fi-row3{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px}
+
+/* Card display */
+.card-display{
+  background:linear-gradient(135deg,#1A2535 0%,#0D1520 100%);
+  border:1px solid var(--bord2);border-radius:var(--r12);
+  padding:20px;margin-bottom:18px;position:relative;overflow:hidden
+}
+.card-display::before{
+  content:'';position:absolute;top:-30px;right:-30px;
+  width:120px;height:120px;border-radius:50%;
+  background:radial-gradient(rgba(34,197,94,.15),transparent 70%)
+}
+.cd-chip{width:36px;height:26px;background:linear-gradient(135deg,#FFD700,#FFA500);border-radius:4px;margin-bottom:16px}
+.cd-number{font-family:var(--fm);font-size:16px;letter-spacing:3px;margin-bottom:14px;color:#fff}
+.cd-row{display:flex;justify-content:space-between;align-items:flex-end}
+.cd-label{font-size:9px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.1em}
+.cd-val{font-family:var(--fm);font-size:13px;color:#fff;margin-top:3px}
+
+/* Ozow redirect */
+.ozow-redirect{
+  background:linear-gradient(135deg,rgba(108,99,255,.1),rgba(26,26,94,.3));
+  border:1px solid rgba(108,99,255,.25);border-radius:var(--r12);
+  padding:20px;text-align:center;margin-bottom:18px
+}
+.ozow-icon{font-size:40px;margin-bottom:10px}
+.ozow-title{font-family:var(--fh);font-size:16px;font-weight:700;margin-bottom:6px}
+.ozow-desc{font-size:12.5px;color:var(--dim2);line-height:1.6}
+.banks-grid{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px}
+.bank-chip{
+  background:var(--ink3);border:1px solid var(--bord2);border-radius:6px;
+  padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;transition:all .13s
+}
+.bank-chip:hover{border-color:var(--oz-a);color:var(--oz-a)}
+
+/* EFT info */
+.eft-info{
+  background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);
+  border-radius:var(--r12);padding:16px;margin-bottom:18px
+}
+.eft-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(245,158,11,.1);font-size:12.5px}
+.eft-row:last-child{border-bottom:none}
+.eft-key{color:var(--dim2)}
+.eft-val{font-family:var(--fm);font-weight:500;font-size:12px}
+
+/* Order summary */
+.order-summary{
+  background:var(--ink3);border:1px solid var(--bord2);border-radius:var(--r12);
+  padding:16px;margin-bottom:18px
+}
+.os-title{font-size:12px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px}
+.os-row{display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid var(--border)}
+.os-row:last-child{border-bottom:none;font-weight:700;color:var(--text);font-size:14px;padding-top:10px}
+.os-row.total{border-top:1px solid var(--bord2);margin-top:4px}
+.os-key{color:var(--dim2)}
+.os-val{font-family:var(--fm)}
+
+/* Security badge */
+.security-badge{
+  display:flex;align-items:center;gap:6px;justify-content:center;
+  font-size:11px;color:var(--dim);margin-top:8px
+}
+
+/* ── API Payload viewer ── */
+.payload-section{margin-bottom:24px}
+.payload-tabs{display:flex;gap:2px;margin-bottom:0;border-bottom:1px solid var(--border);padding:0}
+.payload-tab{
+  padding:9px 16px;font-size:12.5px;font-weight:600;cursor:pointer;
+  border:none;background:transparent;color:var(--dim2);
+  border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .13s
+}
+.payload-tab:hover{color:var(--text)}
+.payload-tab.active{color:var(--g);border-bottom-color:var(--g)}
+.code-wrap{
+  background:var(--ink);border:1px solid var(--bord2);border-radius:0 0 var(--r12) var(--r12);
+  overflow:hidden
+}
+.code-hdr{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 16px;background:var(--ink2);border-bottom:1px solid var(--border)
+}
+.code-lang{
+  display:flex;align-items:center;gap:6px;
+  font-family:var(--fm);font-size:11px;color:var(--dim)
+}
+.lang-dot{width:8px;height:8px;border-radius:50%}
+.copy-btn{
+  font-size:11px;color:var(--dim);background:var(--ink3);border:1px solid var(--bord2);
+  border-radius:5px;padding:3px 10px;cursor:pointer;transition:all .13s
+}
+.copy-btn:hover{color:var(--text)}
+.copy-btn.copied{color:var(--g);border-color:rgba(34,197,94,.3)}
+pre.code{
+  padding:18px;font-family:var(--fm);font-size:11.5px;line-height:1.75;
+  overflow-x:auto;color:var(--text);max-height:360px;overflow-y:auto;margin:0
+}
+.k{color:#FF79C6}.s{color:#F1FA8C}.n{color:#8BE9FD}.c{color:var(--dim);font-style:italic}
+.f{color:#50FA7B}.p{color:var(--dim2)}.url{color:#BD93F9}.num{color:#FFB86C}
+
+/* ── Invoice table ── */
+.inv-table{width:100%;border-collapse:collapse}
+.inv-table th{
+  text-align:left;font-size:10.5px;font-weight:700;color:var(--dim);
+  text-transform:uppercase;letter-spacing:.07em;
+  padding:0 0 10px;border-bottom:1px solid var(--border)
+}
+.inv-table td{padding:12px 0;border-bottom:1px solid var(--border);font-size:13px}
+.inv-table tr:last-child td{border-bottom:none}
+.inv-table tr:hover td{background:rgba(255,255,255,.01)}
+.inv-status{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px}
+.inv-status.paid{background:rgba(34,197,94,.1);color:var(--g)}
+.inv-status.pending{background:rgba(245,158,11,.1);color:var(--warn)}
+.inv-status.failed{background:rgba(239,68,68,.1);color:var(--danger)}
+.inv-status::before{content:'●';font-size:7px}
+.inv-dl{
+  font-size:11px;color:var(--dim2);background:var(--ink3);
+  border:1px solid var(--bord2);border-radius:5px;padding:3px 8px;cursor:pointer;
+  transition:all .13s
+}
+.inv-dl:hover{color:var(--text)}
+.provider-tag{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:10.5px;padding:2px 8px;border-radius:4px;font-weight:600;font-family:var(--fm)
+}
+
+/* ── Usage meter ── */
+.usage-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}
+.usage-row:last-child{border-bottom:none}
+.usage-icon{font-size:16px;flex-shrink:0;width:20px;text-align:center}
+.usage-info{flex:1}
+.usage-name{font-size:12.5px;font-weight:600;margin-bottom:3px}
+.usage-bar-bg{height:5px;background:var(--ink3);border-radius:4px;overflow:hidden}
+.usage-bar-fill{height:100%;border-radius:4px}
+.usage-nums{font-size:11px;color:var(--dim2);margin-top:3px}
+.usage-pct{font-size:12px;font-weight:700;font-family:var(--fm);flex-shrink:0;width:36px;text-align:right}
+
+/* ── Toast ── */
+.toast{
+  position:fixed;bottom:24px;right:24px;z-index:999;
+  background:var(--ink2);border:1px solid var(--bord2);border-radius:var(--r12);
+  padding:13px 20px;display:flex;align-items:center;gap:10px;
+  box-shadow:0 8px 40px rgba(0,0,0,.5);font-size:13.5px;font-weight:500;
+  transform:translateY(20px);opacity:0;pointer-events:none;
+  transition:all .3s cubic-bezier(.4,0,.2,1);max-width:360px
+}
+.toast.show{transform:translateY(0);opacity:1;pointer-events:all}
+.toast.success{border-color:rgba(34,197,94,.3)}
+.toast.error{border-color:rgba(239,68,68,.3)}
+.t-icon{font-size:18px;flex-shrink:0}
+
+/* ── Misc ── */
+.flex-between{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;gap:12px;flex-wrap:wrap}
+.section-hd h2{font-family:var(--fh);font-size:21px;font-weight:800;letter-spacing:-.3px}
+.section-hd p{font-size:13px;color:var(--dim2);margin-top:3px}
+.btn-primary{
+  padding:9px 20px;border-radius:var(--r8);border:none;
+  background:linear-gradient(135deg,#22C55E,#15803D);color:#fff;font-size:13px;font-weight:700;
+  cursor:pointer;transition:all .15s;box-shadow:0 2px 12px rgba(34,197,94,.25)
+}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 20px rgba(34,197,94,.35)}
+.btn-ghost{
+  padding:9px 18px;border-radius:var(--r8);border:1px solid var(--bord2);
+  background:transparent;color:var(--dim2);font-size:13px;font-weight:500;
+  cursor:pointer;transition:all .13s
+}
+.btn-ghost:hover{border-color:var(--bord3);color:var(--text)}
+.tag{display:inline-flex;align-items:center;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;font-family:var(--fm)}
+.tag.green{background:rgba(34,197,94,.1);color:var(--g);border:1px solid rgba(34,197,94,.2)}
+.tag.blue{background:rgba(59,130,246,.1);color:var(--blue);border:1px solid rgba(59,130,246,.2)}
+.tag.orange{background:rgba(245,158,11,.1);color:var(--warn);border:1px solid rgba(245,158,11,.2)}
+.tag.purple{background:rgba(167,139,250,.1);color:var(--purple);border:1px solid rgba(167,139,250,.2)}
+
+/* Divider */
+.divider{height:1px;background:var(--border);margin:20px 0}
+
+/* Next billing countdown */
+.countdown-ring{
+  width:90px;height:90px;border-radius:50%;
+  background:conic-gradient(var(--g) 0% 40%,var(--ink3) 40% 100%);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0
+}
+.cr-inner{
+  width:70px;height:70px;border-radius:50%;background:var(--ink2);
+  display:flex;flex-direction:column;align-items:center;justify-content:center
+}
+.cr-days{font-family:var(--fh);font-size:20px;font-weight:800;color:var(--g);line-height:1}
+.cr-lbl{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em}
+
+/* ─ Next billing card ─ */
+.next-bill-row{display:flex;align-items:center;gap:16px}
+.nb-info{flex:1}
+.nb-date{font-family:var(--fh);font-size:16px;font-weight:700;margin-bottom:4px}
+.nb-sub{font-size:12px;color:var(--dim2);line-height:1.6}
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- ── Sidebar ── -->
+  <nav class="sidebar">
+    <div class="sb-logo">
+      <div class="sb-mark">💬</div>
+      <div class="sb-name">Wazi<span>fy</span></div>
+    </div>
+    <div class="sb-biz">
+      <div class="sb-biz-av">🏪</div>
+      <div class="sb-biz-name">Mama Zinhle's Boutique</div>
+    </div>
+    <div class="sb-nav">
+      <div class="sb-lbl">Main</div>
+      <button class="sb-item" onclick="toast('Navigate to Dashboard','success')"><span class="sb-icon">📊</span>Dashboard</button>
+      <button class="sb-item" onclick="toast('Navigate to Campaigns','success')"><span class="sb-icon">📣</span>Campaigns</button>
+      <button class="sb-item" onclick="toast('Navigate to Contacts','success')"><span class="sb-icon">👥</span>Contacts<span class="sb-badge">2,341</span></button>
+      <button class="sb-item" onclick="toast('Navigate to Inbox','success')"><span class="sb-icon">💬</span>Inbox<span class="sb-badge" style="background:var(--warn)">7</span></button>
+      <div class="sb-lbl">Content</div>
+      <button class="sb-item" onclick="toast('Navigate to Templates','success')"><span class="sb-icon">📋</span>Templates</button>
+      <button class="sb-item" onclick="toast('Navigate to Analytics','success')"><span class="sb-icon">📈</span>Analytics</button>
+      <div class="sb-lbl">Account</div>
+      <button class="sb-item active billing-item" onclick="showPage('billing')"><span class="sb-icon">💳</span>Billing & Payments</button>
+      <button class="sb-item" onclick="showPage('api')"><span class="sb-icon">🔌</span>API Payloads</button>
+      <button class="sb-item" onclick="toast('Navigate to Settings','success')"><span class="sb-icon">⚙️</span>Settings</button>
+    </div>
+    <div class="plan-bar-wrap">
+      <div class="plan-bar-inner">
+        <div class="plan-nm">Growth Plan · Active</div>
+        <div class="plan-bg"><div class="plan-fill" style="width:43%"></div></div>
+        <div class="plan-stat"><span>4,312 / 10,000</span><span>43%</span></div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── Main ── -->
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-left">
+        <div class="page-title" id="pageTitle">Billing & Payments</div>
+        <div class="breadcrumb">Wazify / Billing</div>
+      </div>
+      <div class="topbar-right">
+        <div class="icon-btn">🔔</div>
+        <div class="icon-btn">❓</div>
+        <div class="ua">MZ</div>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- ═══ BILLING PAGE ═══ -->
+      <div class="page active" id="page-billing">
+
+        <!-- Status banner -->
+        <div class="billing-banner">
+          <div class="bb-icon">🟢</div>
+          <div class="bb-info">
+            <div class="bb-plan">Growth Plan — Active</div>
+            <div class="bb-meta">
+              R 799/month · Renews <strong>1 July 2026</strong> · Paid via <strong>PayFast</strong> (card ending 4521) · Auto-renewal on
+            </div>
+          </div>
+          <div class="bb-actions">
+            <button class="btn-ghost" onclick="openModal('upgrade')">Upgrade plan</button>
+            <button class="btn-primary" onclick="openModal('checkout')">+ Pay now</button>
+          </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="billing-stats">
+          <div class="bstat">
+            <div class="bstat-icon">💰</div>
+            <div class="bstat-val" style="color:var(--g)">R 799</div>
+            <div class="bstat-lbl">Monthly plan fee</div>
+            <div class="bstat-sub"><span style="color:var(--dim)">Next payment: 1 July 2026</span></div>
+          </div>
+          <div class="bstat">
+            <div class="bstat-icon">📲</div>
+            <div class="bstat-val" style="color:var(--blue)">R 312.40</div>
+            <div class="bstat-lbl">Meta API spend (June)</div>
+            <div class="bstat-sub up">↑ 18% vs last month</div>
+          </div>
+          <div class="bstat">
+            <div class="bstat-icon">🧾</div>
+            <div class="bstat-val">R 1,111.40</div>
+            <div class="bstat-lbl">Total spend this month</div>
+            <div class="bstat-sub"><span style="color:var(--dim)">Platform + API costs</span></div>
+          </div>
+          <div class="bstat">
+            <div class="bstat-icon">📈</div>
+            <div class="bstat-val" style="color:var(--warn)">R 48,230</div>
+            <div class="bstat-lbl">Revenue attributed</div>
+            <div class="bstat-sub up">43× return on spend</div>
+          </div>
+        </div>
+
+        <!-- Main billing grid -->
+        <div class="billing-grid">
+          <!-- Left: subscription + usage -->
+          <div style="display:flex;flex-direction:column;gap:16px">
+
+            <!-- Plans -->
+            <div class="card">
+              <div class="card-hdr">
+                <div class="card-ttl">📦 Subscription Plans</div>
+                <button class="card-act" onclick="openModal('upgrade')">Change plan →</button>
+              </div>
+              <div class="card-body">
+                <div class="plans-row">
+                  <div class="plan-card">
+                    <div class="plan-name">Starter</div>
+                    <div class="plan-price">R 299<span>/mo</span></div>
+                    <div class="plan-desc">Side hustles & solo traders</div>
+                    <ul class="plan-feats">
+                      <li>1 WhatsApp number</li>
+                      <li>2,000 contacts</li>
+                      <li>5 campaigns/month</li>
+                    </ul>
+                    <button class="plan-btn outline" onclick="openModal('checkout','299','Starter')">Downgrade</button>
+                  </div>
+                  <div class="plan-card current">
+                    <div class="plan-current-badge">✓ Current Plan</div>
+                    <div class="plan-name">Growth</div>
+                    <div class="plan-price">R 799<span>/mo</span></div>
+                    <div class="plan-desc">Growing shops & services</div>
+                    <ul class="plan-feats">
+                      <li>3 WhatsApp numbers</li>
+                      <li>10,000 contacts</li>
+                      <li>Unlimited campaigns</li>
+                      <li>Team inbox (5 seats)</li>
+                    </ul>
+                    <button class="plan-btn current-btn">Current plan</button>
+                  </div>
+                  <div class="plan-card">
+                    <div class="plan-name">Pro</div>
+                    <div class="plan-price">R 1,999<span>/mo</span></div>
+                    <div class="plan-desc">Agencies & multi-location</div>
+                    <ul class="plan-feats">
+                      <li>Unlimited numbers</li>
+                      <li>Unlimited contacts</li>
+                      <li>Full API access</li>
+                      <li>White-label option</li>
+                    </ul>
+                    <button class="plan-btn primary" onclick="openModal('checkout','1999','Pro')">Upgrade →</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Usage meters -->
+            <div class="card">
+              <div class="card-hdr">
+                <div class="card-ttl">📊 Current Usage</div>
+                <span class="tag green">Growth limits</span>
+              </div>
+              <div class="card-body">
+                <div class="usage-row">
+                  <div class="usage-icon">👥</div>
+                  <div class="usage-info">
+                    <div class="usage-name">Contacts</div>
+                    <div class="usage-bar-bg"><div class="usage-bar-fill" style="width:43%;background:linear-gradient(90deg,var(--g2),var(--g))"></div></div>
+                    <div class="usage-nums">4,312 of 10,000 used</div>
+                  </div>
+                  <div class="usage-pct" style="color:var(--g)">43%</div>
+                </div>
+                <div class="usage-row">
+                  <div class="usage-icon">📱</div>
+                  <div class="usage-info">
+                    <div class="usage-name">WhatsApp Numbers</div>
+                    <div class="usage-bar-bg"><div class="usage-bar-fill" style="width:33%;background:linear-gradient(90deg,#1D4ED8,var(--blue))"></div></div>
+                    <div class="usage-nums">1 of 3 connected</div>
+                  </div>
+                  <div class="usage-pct" style="color:var(--blue)">33%</div>
+                </div>
+                <div class="usage-row">
+                  <div class="usage-icon">👤</div>
+                  <div class="usage-info">
+                    <div class="usage-name">Team Seats (Inbox)</div>
+                    <div class="usage-bar-bg"><div class="usage-bar-fill" style="width:60%;background:linear-gradient(90deg,#B45309,var(--warn))"></div></div>
+                    <div class="usage-nums">3 of 5 seats active</div>
+                  </div>
+                  <div class="usage-pct" style="color:var(--warn)">60%</div>
+                </div>
+                <div class="usage-row">
+                  <div class="usage-icon">📣</div>
+                  <div class="usage-info">
+                    <div class="usage-name">Campaigns this month</div>
+                    <div class="usage-bar-bg"><div class="usage-bar-fill" style="width:100%;background:linear-gradient(90deg,var(--g2),var(--g))"></div></div>
+                    <div class="usage-nums">Unlimited — 14 sent so far</div>
+                  </div>
+                  <div class="usage-pct" style="color:var(--g)">∞</div>
+                </div>
+                <div class="usage-row">
+                  <div class="usage-icon">📲</div>
+                  <div class="usage-info">
+                    <div class="usage-name">Meta API conversations</div>
+                    <div class="usage-bar-bg"><div class="usage-bar-fill" style="width:62%;background:linear-gradient(90deg,#6D28D9,var(--purple))"></div></div>
+                    <div class="usage-nums">6,225 of ~10,000 est. (R312.40 spent)</div>
+                  </div>
+                  <div class="usage-pct" style="color:var(--purple)">62%</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Invoice history -->
+            <div class="card">
+              <div class="card-hdr">
+                <div class="card-ttl">🧾 Invoice History</div>
+                <button class="card-act" onclick="toast('Downloading all invoices as ZIP...','success')">Download all ↓</button>
+              </div>
+              <div class="card-body" style="padding:0 20px">
+                <table class="inv-table">
+                  <thead><tr>
+                    <th>Invoice</th><th>Date</th><th>Plan</th><th>Provider</th><th>Amount</th><th>Status</th><th></th>
+                  </tr></thead>
+                  <tbody>
+                    <tr>
+                      <td style="font-family:var(--fm);font-size:12px;color:var(--dim2)">#WZ-2026-0006</td>
+                      <td>1 Jun 2026</td>
+                      <td>Growth</td>
+                      <td><span class="provider-tag" style="background:rgba(0,174,239,.1);color:var(--pf)">💳 PayFast</span></td>
+                      <td style="font-family:var(--fm);font-weight:600">R 799.00</td>
+                      <td><span class="inv-status paid">Paid</span></td>
+                      <td><button class="inv-dl" onclick="toast('Invoice #WZ-2026-0006 downloaded','success')">PDF ↓</button></td>
+                    </tr>
+                    <tr>
+                      <td style="font-family:var(--fm);font-size:12px;color:var(--dim2)">#WZ-2026-0005</td>
+                      <td>1 May 2026</td>
+                      <td>Growth</td>
+                      <td><span class="provider-tag" style="background:rgba(0,174,239,.1);color:var(--pf)">💳 PayFast</span></td>
+                      <td style="font-family:var(--fm);font-weight:600">R 799.00</td>
+                      <td><span class="inv-status paid">Paid</span></td>
+                      <td><button class="inv-dl" onclick="toast('Invoice downloaded','success')">PDF ↓</button></td>
+                    </tr>
+                    <tr>
+                      <td style="font-family:var(--fm);font-size:12px;color:var(--dim2)">#WZ-2026-0004</td>
+                      <td>1 Apr 2026</td>
+                      <td>Growth</td>
+                      <td><span class="provider-tag" style="background:rgba(228,67,147,.1);color:var(--pp)">🍑 Peach</span></td>
+                      <td style="font-family:var(--fm);font-weight:600">R 799.00</td>
+                      <td><span class="inv-status paid">Paid</span></td>
+                      <td><button class="inv-dl" onclick="toast('Invoice downloaded','success')">PDF ↓</button></td>
+                    </tr>
+                    <tr>
+                      <td style="font-family:var(--fm);font-size:12px;color:var(--dim2)">#WZ-2026-0003</td>
+                      <td>1 Mar 2026</td>
+                      <td>Starter</td>
+                      <td><span class="provider-tag" style="background:rgba(108,99,255,.1);color:var(--oz-a)">🏦 Ozow</span></td>
+                      <td style="font-family:var(--fm);font-weight:600">R 299.00</td>
+                      <td><span class="inv-status paid">Paid</span></td>
+                      <td><button class="inv-dl" onclick="toast('Invoice downloaded','success')">PDF ↓</button></td>
+                    </tr>
+                    <tr>
+                      <td style="font-family:var(--fm);font-size:12px;color:var(--dim2)">#WZ-2026-0002</td>
+                      <td>1 Feb 2026</td>
+                      <td>Starter</td>
+                      <td><span class="provider-tag" style="background:rgba(232,40,43,.1);color:var(--pg)">🔴 PayGate</span></td>
+                      <td style="font-family:var(--fm);font-weight:600">R 299.00</td>
+                      <td><span class="inv-status failed">Failed → retried</span></td>
+                      <td><button class="inv-dl" onclick="toast('Invoice downloaded','success')">PDF ↓</button></td>
+                    </tr>
+                    <tr>
+                      <td style="font-family:var(--fm);font-size:12px;color:var(--dim2)">#WZ-2026-0001</td>
+                      <td>1 Jan 2026</td>
+                      <td>Starter</td>
+                      <td><span class="provider-tag" style="background:rgba(255,210,0,.1);color:#B8960A">🟡 Yoco</span></td>
+                      <td style="font-family:var(--fm);font-weight:600">R 299.00</td>
+                      <td><span class="inv-status paid">Paid</span></td>
+                      <td><button class="inv-dl" onclick="toast('Invoice downloaded','success')">PDF ↓</button></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Right: next billing + providers -->
+          <div style="display:flex;flex-direction:column;gap:16px">
+
+            <!-- Next billing -->
+            <div class="card">
+              <div class="card-hdr"><div class="card-ttl">📅 Next Billing</div></div>
+              <div class="card-body">
+                <div class="next-bill-row">
+                  <div class="countdown-ring">
+                    <div class="cr-inner">
+                      <div class="cr-days">28</div>
+                      <div class="cr-lbl">days left</div>
+                    </div>
+                  </div>
+                  <div class="nb-info">
+                    <div class="nb-date">1 July 2026</div>
+                    <div class="nb-sub">
+                      Growth Plan · <strong style="color:var(--g)">R 799.00</strong><br>
+                      Auto-charge via PayFast<br>
+                      Card ending <strong>4521</strong>
+                    </div>
+                  </div>
+                </div>
+                <div class="divider"></div>
+                <div style="display:flex;gap:8px">
+                  <button class="btn-ghost" style="flex:1;font-size:12px" onclick="toast('Auto-renewal paused','success')">Pause renewal</button>
+                  <button class="btn-ghost" style="flex:1;font-size:12px" onclick="openModal('checkout')">Update card</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Payment method on file -->
+            <div class="card">
+              <div class="card-hdr">
+                <div class="card-ttl">💳 Payment Method</div>
+                <button class="card-act" onclick="openModal('checkout')">Change</button>
+              </div>
+              <div class="card-body">
+                <div class="card-display">
+                  <div class="cd-chip"></div>
+                  <div class="cd-number">•••• •••• •••• 4521</div>
+                  <div class="cd-row">
+                    <div><div class="cd-label">Card holder</div><div class="cd-val">Zinhle Mkhize</div></div>
+                    <div><div class="cd-label">Expires</div><div class="cd-val">09/28</div></div>
+                    <div><div class="cd-label">Provider</div><div class="cd-val" style="font-size:11px;color:var(--pf)">PayFast</div></div>
+                  </div>
+                </div>
+                <button class="btn-ghost" style="width:100%;font-size:12.5px" onclick="openModal('checkout')">➕ Add another payment method</button>
+              </div>
+            </div>
+
+            <!-- SA Providers quick ref -->
+            <div class="card">
+              <div class="card-hdr"><div class="card-ttl">🇿🇦 SA Providers</div><button class="card-act" onclick="showPage('providers')">Manage →</button></div>
+              <div class="card-body" style="padding:12px 16px;display:flex;flex-direction:column;gap:10px">
+                <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+                  <span style="font-size:18px">💳</span>
+                  <div style="flex:1"><div style="font-size:13px;font-weight:600">PayFast</div><div style="font-size:11px;color:var(--dim2)">Cards, EFT, SnapScan, Zapper</div></div>
+                  <span class="tag green">Active</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+                  <span style="font-size:18px">🍑</span>
+                  <div style="flex:1"><div style="font-size:13px;font-weight:600">Peach Payments</div><div style="font-size:11px;color:var(--dim2)">Cards, multi-currency, tokenization</div></div>
+                  <span class="tag blue">Available</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+                  <span style="font-size:18px">🏦</span>
+                  <div style="flex:1"><div style="font-size:13px;font-weight:600">Ozow</div><div style="font-size:11px;color:var(--dim2)">Instant EFT · 47M+ bank accounts</div></div>
+                  <span class="tag blue">Available</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+                  <span style="font-size:18px">🔴</span>
+                  <div style="flex:1"><div style="font-size:13px;font-weight:600">PayGate</div><div style="font-size:11px;color:var(--dim2)">Enterprise, recurring, multi-currency</div></div>
+                  <span class="tag blue">Available</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;padding:8px 0">
+                  <span style="font-size:18px">🟡</span>
+                  <div style="flex:1"><div style="font-size:13px;font-weight:600">Yoco</div><div style="font-size:11px;color:var(--dim2)">Payment links, mobile-first</div></div>
+                  <span class="tag blue">Available</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Provider Cards (full) ── -->
+        <div class="flex-between">
+          <div class="section-hd"><h2>SA Payment Providers</h2><p>Connect the gateway that works best for your business. Switch at any time.</p></div>
+        </div>
+        <div class="providers-grid">
+
+          <!-- PayFast -->
+          <div class="provider-card active-provider" style="--p-color:var(--pf)" onclick="selectProvider(this,'payfast')">
+            <div class="pc-header">
+              <div class="pc-logo" style="background:rgba(0,174,239,.1)">💳</div>
+              <span class="pc-badge recommended">✓ Connected</span>
+            </div>
+            <div class="pc-body">
+              <div class="pc-name" style="color:var(--pf)">PayFast</div>
+              <div class="pc-desc">South Africa's most popular payment gateway for SMEs. Zero setup fee, instant onboarding, and native subscription support — perfect for Wazify's monthly billing.</div>
+              <div class="pc-features">
+                <div class="pc-feat">Cards (Visa, Mastercard, Amex)</div>
+                <div class="pc-feat">Instant EFT</div>
+                <div class="pc-feat">SnapScan & Zapper QR</div>
+                <div class="pc-feat">Native subscriptions & tokenization</div>
+                <div class="pc-feat">PCI DSS Level 1 compliant</div>
+              </div>
+              <div class="pc-pricing">
+                <div><div style="font-size:10px;color:var(--dim);margin-bottom:2px">Transaction fees</div><div class="pc-rate">3.5% + R2 <span>(cards)</span> · 2% <span>(EFT)</span></div></div>
+                <button class="pc-connect-btn connected">✓ Active</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Peach Payments -->
+          <div class="provider-card" style="--p-color:var(--pp)" onclick="selectProvider(this,'peach')">
+            <div class="pc-header">
+              <div class="pc-logo" style="background:rgba(228,67,147,.1)">🍑</div>
+              <span class="pc-badge available">Available</span>
+            </div>
+            <div class="pc-body">
+              <div class="pc-name" style="color:var(--pp)">Peach Payments</div>
+              <div class="pc-desc">Enterprise-grade gateway with multi-currency support and advanced tokenization. Ideal for scaling businesses or those selling internationally.</div>
+              <div class="pc-features">
+                <div class="pc-feat">Cards + 3D Secure</div>
+                <div class="pc-feat">Multi-currency (ZAR, USD, EUR, GBP)</div>
+                <div class="pc-feat">Card tokenization & stored cards</div>
+                <div class="pc-feat">WooCommerce & Shopify plugins</div>
+                <div class="pc-feat">Fraud protection engine</div>
+              </div>
+              <div class="pc-pricing">
+                <div><div style="font-size:10px;color:var(--dim);margin-bottom:2px">Transaction fees</div><div class="pc-rate">Custom quote <span>(volume-based)</span></div></div>
+                <button class="pc-connect-btn connect" onclick="event.stopPropagation();openModal('connect_peach')">Connect</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Ozow -->
+          <div class="provider-card" style="--p-color:var(--oz-a)" onclick="selectProvider(this,'ozow')">
+            <div class="pc-header">
+              <div class="pc-logo" style="background:rgba(108,99,255,.1)">🏦</div>
+              <span class="pc-badge available">Available</span>
+            </div>
+            <div class="pc-body">
+              <div class="pc-name" style="color:var(--oz-a)">Ozow</div>
+              <div class="pc-desc">Pure instant EFT gateway connecting to 47M+ SA bank accounts. Zero chargeback risk and instant settlement — ideal for high-value transactions and EFT-preferring customers.</div>
+              <div class="pc-features">
+                <div class="pc-feat">Instant EFT (all major SA banks)</div>
+                <div class="pc-feat">Zero chargeback risk</div>
+                <div class="pc-feat">Instant settlement</div>
+                <div class="pc-feat">No card details needed</div>
+                <div class="pc-feat no">No credit card support</div>
+              </div>
+              <div class="pc-pricing">
+                <div><div style="font-size:10px;color:var(--dim);margin-bottom:2px">Transaction fees</div><div class="pc-rate">1.5% <span>per transaction</span></div></div>
+                <button class="pc-connect-btn connect" onclick="event.stopPropagation();openModal('connect_ozow')">Connect</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- PayGate -->
+          <div class="provider-card" style="--p-color:var(--pg)" onclick="selectProvider(this,'paygate')">
+            <div class="pc-header">
+              <div class="pc-logo" style="background:rgba(232,40,43,.1)">🔴</div>
+              <span class="pc-badge available">Available</span>
+            </div>
+            <div class="pc-body">
+              <div class="pc-name" style="color:var(--pg)">PayGate</div>
+              <div class="pc-desc">South Africa's most established enterprise gateway (formerly PayFast + DPO Group). Offers negotiable rates for high volume and robust recurring billing architecture.</div>
+              <div class="pc-features">
+                <div class="pc-feat">Cards (Visa, MC, Amex, Diners)</div>
+                <div class="pc-feat">Native recurring billing</div>
+                <div class="pc-feat">Multi-currency transactions</div>
+                <div class="pc-feat">Negotiable rates (high volume)</div>
+                <div class="pc-feat">Enterprise SLA support</div>
+              </div>
+              <div class="pc-pricing">
+                <div><div style="font-size:10px;color:var(--dim);margin-bottom:2px">Transaction fees</div><div class="pc-rate">Negotiable <span>(quote-based)</span></div></div>
+                <button class="pc-connect-btn connect" onclick="event.stopPropagation();openModal('connect_paygate')">Connect</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Yoco -->
+          <div class="provider-card" style="--p-color:var(--yc)" onclick="selectProvider(this,'yoco')">
+            <div class="pc-header">
+              <div class="pc-logo" style="background:rgba(255,210,0,.1)">🟡</div>
+              <span class="pc-badge available">Available</span>
+            </div>
+            <div class="pc-body">
+              <div class="pc-name" style="color:#B8960A">Yoco</div>
+              <div class="pc-desc">Mobile-first payment links and online checkout — great for service businesses already using Yoco POS terminals. Quick setup, no technical integration needed.</div>
+              <div class="pc-features">
+                <div class="pc-feat">Payment links (no code needed)</div>
+                <div class="pc-feat">Cards & tap-to-pay</div>
+                <div class="pc-feat">Same Yoco ecosystem as POS</div>
+                <div class="pc-feat">Same-day settlement</div>
+                <div class="pc-feat no">Limited recurring billing</div>
+              </div>
+              <div class="pc-pricing">
+                <div><div style="font-size:10px;color:var(--dim);margin-bottom:2px">Transaction fees</div><div class="pc-rate">2.95% <span>per transaction</span></div></div>
+                <button class="pc-connect-btn connect" onclick="event.stopPropagation();openModal('connect_yoco')">Connect</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Netcash (bonus) -->
+          <div class="provider-card" style="--p-color:#00A651">
+            <div class="pc-header">
+              <div class="pc-logo" style="background:rgba(0,166,81,.1)">🔗</div>
+              <span class="pc-badge available">Coming soon</span>
+            </div>
+            <div class="pc-body">
+              <div class="pc-name" style="color:#00A651">Netcash</div>
+              <div class="pc-desc">Debit order and batch payment processing for businesses collecting recurring payments from multiple customers at fixed intervals — popular with gyms and schools.</div>
+              <div class="pc-features">
+                <div class="pc-feat">Debit order collections</div>
+                <div class="pc-feat">Batch payments</div>
+                <div class="pc-feat">NAEDO & DebiCheck</div>
+                <div class="pc-feat">Salary & supplier payments</div>
+              </div>
+              <div class="pc-pricing">
+                <div><div style="font-size:10px;color:var(--dim);margin-bottom:2px">Integration</div><div class="pc-rate">API + portal <span>(monthly fee)</span></div></div>
+                <button class="pc-connect-btn connect" onclick="toast('Netcash integration coming Q3 2026!','success')">Notify me</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ═══ API PAYLOAD PAGE ═══ -->
+      <div class="page" id="page-api">
+        <div class="flex-between">
+          <div class="section-hd"><h2>Payment API Payloads</h2><p>Real integration code for all 5 SA payment providers — copy, adapt, deploy.</p></div>
+          <div style="display:flex;gap:8px">
+            <select class="fi" style="width:180px" onchange="switchProvider(this.value)">
+              <option value="payfast">PayFast</option>
+              <option value="peach">Peach Payments</option>
+              <option value="ozow">Ozow</option>
+              <option value="paygate">PayGate</option>
+              <option value="yoco">Yoco</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- PayFast payloads -->
+        <div id="api-payfast" class="payload-section">
+          <div class="card" style="margin-bottom:20px">
+            <div class="card-hdr">
+              <div class="card-ttl">💳 PayFast — Subscription Setup</div>
+              <span class="tag green">Recommended for Wazify</span>
+            </div>
+            <div style="border-bottom:1px solid var(--border)">
+              <div class="payload-tabs" id="pf-tabs">
+                <button class="payload-tab active" onclick="switchTab('pf','subscription')">Subscription POST</button>
+                <button class="payload-tab" onclick="switchTab('pf','notify')">ITN Notify</button>
+                <button class="payload-tab" onclick="switchTab('pf','api')">Subscription API</button>
+                <button class="payload-tab" onclick="switchTab('pf','cancel')">Cancel / Pause</button>
+              </div>
+            </div>
+            <div class="code-wrap">
+              <div class="code-hdr">
+                <div class="code-lang"><div class="lang-dot" style="background:#F8D853"></div>JavaScript / Node.js · POST https://www.payfast.co.za/eng/process</div>
+                <button class="copy-btn" id="pf-copy" onclick="copyCode('pf-code','pf-copy')">Copy</button>
+              </div>
+              <pre class="code" id="pf-code"></pre>
+            </div>
+          </div>
+          <div style="background:rgba(0,174,239,.06);border:1px solid rgba(0,174,239,.2);border-radius:var(--r12);padding:16px 20px;font-size:12.5px;color:var(--dim2);line-height:1.7">
+            <strong style="color:var(--pf)">💡 PayFast Subscription Flow:</strong> Submit the form to <code style="font-family:var(--fm);background:var(--ink);padding:1px 5px;border-radius:3px">payfast.co.za/eng/process</code>. On success, PayFast sends an ITN (Instant Transaction Notification) to your <code style="font-family:var(--fm);background:var(--ink);padding:1px 5px;border-radius:3px">notify_url</code> with a <code style="font-family:var(--fm);background:var(--ink);padding:1px 5px;border-radius:3px">token</code>. Store that token — you use it with the Subscriptions API to pause, cancel, or charge adhoc. Frequency 3 = monthly.
+          </div>
+        </div>
+
+        <!-- Peach payloads -->
+        <div id="api-peach" class="payload-section" style="display:none">
+          <div class="card" style="margin-bottom:20px">
+            <div class="card-hdr"><div class="card-ttl">🍑 Peach Payments — Tokenized Recurring</div><span class="tag" style="background:rgba(228,67,147,.1);color:var(--pp);border:1px solid rgba(228,67,147,.2)">Enterprise</span></div>
+            <div style="border-bottom:1px solid var(--border)">
+              <div class="payload-tabs" id="pp-tabs">
+                <button class="payload-tab active" onclick="switchTab('pp','initial')">Initial checkout</button>
+                <button class="payload-tab" onclick="switchTab('pp','recurring')">Recurring charge</button>
+                <button class="payload-tab" onclick="switchTab('pp','status')">Status check</button>
+              </div>
+            </div>
+            <div class="code-wrap">
+              <div class="code-hdr">
+                <div class="code-lang"><div class="lang-dot" style="background:#E84393"></div>JavaScript / Node.js · POST https://testsecure.peachpayments.com/v1/checkouts</div>
+                <button class="copy-btn" id="pp-copy" onclick="copyCode('pp-code','pp-copy')">Copy</button>
+              </div>
+              <pre class="code" id="pp-code"></pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ozow payloads -->
+        <div id="api-ozow" class="payload-section" style="display:none">
+          <div class="card" style="margin-bottom:20px">
+            <div class="card-hdr"><div class="card-ttl">🏦 Ozow — Instant EFT</div><span class="tag" style="background:rgba(108,99,255,.1);color:var(--oz-a);border:1px solid rgba(108,99,255,.2)">Instant EFT</span></div>
+            <div style="border-bottom:1px solid var(--border)">
+              <div class="payload-tabs" id="oz-tabs">
+                <button class="payload-tab active" onclick="switchTab('oz','payment')">Payment request</button>
+                <button class="payload-tab" onclick="switchTab('oz','notify')">Webhook notify</button>
+              </div>
+            </div>
+            <div class="code-wrap">
+              <div class="code-hdr">
+                <div class="code-lang"><div class="lang-dot" style="background:#6C63FF"></div>JavaScript / Node.js · POST https://api.ozow.com/postpaymentrequest</div>
+                <button class="copy-btn" id="oz-copy" onclick="copyCode('oz-code','oz-copy')">Copy</button>
+              </div>
+              <pre class="code" id="oz-code"></pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- PayGate payloads -->
+        <div id="api-paygate" class="payload-section" style="display:none">
+          <div class="card" style="margin-bottom:20px">
+            <div class="card-hdr"><div class="card-ttl">🔴 PayGate — Recurring Billing</div><span class="tag" style="background:rgba(232,40,43,.1);color:var(--pg);border:1px solid rgba(232,40,43,.2)">Enterprise</span></div>
+            <div style="border-bottom:1px solid var(--border)">
+              <div class="payload-tabs" id="pg-tabs">
+                <button class="payload-tab active" onclick="switchTab('pg','initiate')">Initiate payment</button>
+                <button class="payload-tab" onclick="switchTab('pg','query')">Query status</button>
+              </div>
+            </div>
+            <div class="code-wrap">
+              <div class="code-hdr">
+                <div class="code-lang"><div class="lang-dot" style="background:#E8282B"></div>JavaScript · POST https://secure.paygate.co.za/payweb3/initiate.trans</div>
+                <button class="copy-btn" id="pg-copy" onclick="copyCode('pg-code','pg-copy')">Copy</button>
+              </div>
+              <pre class="code" id="pg-code"></pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- Yoco payloads -->
+        <div id="api-yoco" class="payload-section" style="display:none">
+          <div class="card" style="margin-bottom:20px">
+            <div class="card-hdr"><div class="card-ttl">🟡 Yoco — Payment Link / Charge</div><span class="tag" style="background:rgba(255,210,0,.1);color:#B8960A;border:1px solid rgba(255,210,0,.2)">Mobile-first</span></div>
+            <div style="border-bottom:1px solid var(--border)">
+              <div class="payload-tabs" id="yc-tabs">
+                <button class="payload-tab active" onclick="switchTab('yc','charge')">Charge card</button>
+                <button class="payload-tab" onclick="switchTab('yc','link')">Payment link</button>
+              </div>
+            </div>
+            <div class="code-wrap">
+              <div class="code-hdr">
+                <div class="code-lang"><div class="lang-dot" style="background:#FFD200"></div>JavaScript · POST https://payments.yoco.com/api/checkouts</div>
+                <button class="copy-btn" id="yc-copy" onclick="copyCode('yc-code','yc-copy')">Copy</button>
+              </div>
+              <pre class="code" id="yc-code"></pre>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /shell -->
+
+<!-- ═══ CHECKOUT MODAL ═══ -->
+<div class="modal-overlay" id="checkoutModal">
+  <div class="modal">
+    <div class="modal-hdr">
+      <div class="modal-ttl" id="modalTitle">💳 Complete Payment</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody">
+      <!-- Dynamic content -->
+    </div>
+    <div class="modal-footer" id="modalFooter">
+      <button class="modal-btn ghost" onclick="closeModal()">Cancel</button>
+      <button class="modal-btn primary" id="modalPrimaryBtn" onclick="processPayment()">Pay now</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <span class="t-icon">✓</span>
+  <span id="toastMsg">Done!</span>
+</div>
+
+<script>
+/* ═══ PAYLOADS DATA ═══ */
+const PAYLOADS = {
+  pf: {
+    subscription: `<span class="c">// PayFast Subscription — form POST to payfast.co.za/eng/process
+// Step 1: Generate MD5 signature from all fields + passphrase
+// Step 2: POST form (or redirect user to PayFast hosted page)</span>
+
+<span class="k">const</span> crypto = <span class="f">require</span>(<span class="s">'crypto'</span>);
+
+<span class="k">const</span> pfData = {
+  <span class="c">// Merchant credentials</span>
+  merchant_id:   <span class="s">'10000100'</span>,
+  merchant_key:  <span class="s">'46f0cd694581a'</span>,
+
+  <span class="c">// Return URLs</span>
+  return_url:  <span class="s">'https://app.wazify.co.za/billing/success'</span>,
+  cancel_url:  <span class="s">'https://app.wazify.co.za/billing/cancel'</span>,
+  notify_url:  <span class="s">'https://app.wazify.co.za/webhooks/payfast'</span>,
+
+  <span class="c">// Buyer info</span>
+  name_first:    <span class="s">'Zinhle'</span>,
+  name_last:     <span class="s">'Mkhize'</span>,
+  email_address: <span class="s">'zinhle@mamaboutique.co.za'</span>,
+
+  <span class="c">// Payment</span>
+  m_payment_id:  <span class="s">'WAZIFY-GROWTH-001'</span>,
+  amount:        <span class="s">'799.00'</span>,
+  item_name:     <span class="s">'Wazify Growth Plan'</span>,
+  item_description: <span class="s">'WhatsApp marketing platform - monthly subscription'</span>,
+
+  <span class="c">// ★ Subscription fields</span>
+  subscription_type: <span class="s">'1'</span>,          <span class="c">// 1 = subscription, 2 = tokenize</span>
+  billing_date:      <span class="s">'2026-07-01'</span>,  <span class="c">// First charge date</span>
+  recurring_amount:  <span class="s">'799.00'</span>,     <span class="c">// Amount per cycle</span>
+  frequency:         <span class="s">'3'</span>,           <span class="c">// 3=monthly, 4=quarterly, 6=annual</span>
+  cycles:            <span class="s">'0'</span>,           <span class="c">// 0 = indefinite until cancelled</span>
+
+  <span class="c">// Notification settings</span>
+  subscription_notify_email:   <span class="s">'true'</span>,
+  subscription_notify_webhook: <span class="s">'true'</span>,
+  subscription_notify_buyer:   <span class="s">'true'</span>,
+};
+
+<span class="c">// Generate MD5 signature</span>
+<span class="k">const</span> signatureStr = Object.entries(pfData)
+  .<span class="f">map</span>(([k,v]) => \`\${k}=\${<span class="f">encodeURIComponent</span>(v)}\`)
+  .<span class="f">join</span>(<span class="s">'&'</span>) + <span class="s">\`&passphrase=\${<span class="f">encodeURIComponent</span>('yourPassphrase')}\`</span>;
+
+pfData.signature = crypto
+  .<span class="f">createHash</span>(<span class="s">'md5'</span>)
+  .<span class="f">update</span>(signatureStr)
+  .<span class="f">digest</span>(<span class="s">'hex'</span>);
+
+<span class="c">// Redirect user to PayFast</span>
+<span class="k">const</span> queryStr = Object.entries(pfData)
+  .<span class="f">map</span>(([k,v]) => \`\${k}=\${<span class="f">encodeURIComponent</span>(v)}\`)
+  .<span class="f">join</span>(<span class="s">'&'</span>);
+res.<span class="f">redirect</span>(\`https://www.payfast.co.za/eng/process?\${queryStr}\`);`,
+
+    notify: `<span class="c">// PayFast ITN (Instant Transaction Notification)
+// Meta sends a POST to your notify_url on every event
+// You MUST respond 200 OK within 10 seconds</span>
+
+app.<span class="f">post</span>(<span class="s">'/webhooks/payfast'</span>, <span class="k">async</span> (req, res) => {
+  <span class="k">const</span> data = req.body;
+
+  <span class="c">// 1. Acknowledge immediately</span>
+  res.<span class="f">sendStatus</span>(<span class="num">200</span>);
+
+  <span class="c">// 2. Verify the payment (validate signature)</span>
+  <span class="k">const</span> isValid = <span class="k">await</span> <span class="f">verifyPayFastITN</span>(data);
+  <span class="k">if</span> (!isValid) <span class="k">return</span>;
+
+  <span class="c">// 3. Handle payment status</span>
+  <span class="k">if</span> (data.payment_status === <span class="s">'COMPLETE'</span>) {
+    <span class="k">const</span> token = data.token; <span class="c">// ← STORE THIS for future API calls</span>
+    <span class="k">await</span> db.subscriptions.<span class="f">upsert</span>({
+      customer_id: data.m_payment_id,
+      payfast_token: token,
+      plan: <span class="s">'growth'</span>,
+      status: <span class="s">'active'</span>,
+      next_billing: data.billing_date,
+      amount: data.amount_gross,
+    });
+    <span class="k">await</span> <span class="f">activatePlan</span>(data.m_payment_id);
+  }
+
+  <span class="k">if</span> (data.payment_status === <span class="s">'FAILED'</span>) {
+    <span class="k">await</span> <span class="f">sendPaymentFailedEmail</span>(data.email_address);
+    <span class="k">await</span> <span class="f">downgradeToFree</span>(data.m_payment_id);
+  }
+
+  <span class="c">// ITN fields reference:</span>
+  <span class="c">// data.m_payment_id   — your internal order ID</span>
+  <span class="c">// data.pf_payment_id  — PayFast's transaction ID</span>
+  <span class="c">// data.payment_status — COMPLETE | FAILED | PENDING</span>
+  <span class="c">// data.amount_gross   — amount charged</span>
+  <span class="c">// data.token          — subscription token (recurring)</span>
+});`,
+
+    api: `<span class="c">// PayFast Subscriptions REST API
+// Base URL: https://api.payfast.co.za/subscriptions/v1/{token}/
+// Requires: merchant-id + timestamp + version + API signature header</span>
+
+<span class="k">const</span> PF_API = <span class="s">'https://api.payfast.co.za/subscriptions/v1'</span>;
+
+<span class="c">// Helper: build required headers</span>
+<span class="k">function</span> <span class="f">pfHeaders</span>(merchantId, passphrase, body = {}) {
+  <span class="k">const</span> ts = <span class="k">new</span> <span class="f">Date</span>().<span class="f">toISOString</span>();
+  <span class="k">const</span> sig = <span class="f">md5</span>(\`merchant-id=\${merchantId}&version=v1&timestamp=\${ts}&passphrase=\${passphrase}\`);
+  <span class="k">return</span> {
+    <span class="s">'merchant-id'</span>:   merchantId,
+    <span class="s">'version'</span>:        <span class="s">'v1'</span>,
+    <span class="s">'timestamp'</span>:      ts,
+    <span class="s">'signature'</span>:      sig,
+    <span class="s">'Content-Type'</span>:   <span class="s">'application/json'</span>,
+  };
+}
+
+<span class="k">const</span> token = <span class="s">'2afa4575-5628-051a-d0ed-4e071b56a7b0'</span>; <span class="c">// from ITN</span>
+<span class="k">const</span> hdrs  = <span class="f">pfHeaders</span>(<span class="s">'10000100'</span>, <span class="s">'yourPassphrase'</span>);
+
+<span class="c">// Fetch subscription details</span>
+<span class="k">const</span> detail = <span class="k">await</span> <span class="f">fetch</span>(\`\${PF_API}/\${token}/fetch\`, { headers: hdrs });
+
+<span class="c">// Pause subscription (e.g. on plan downgrade)</span>
+<span class="k">await</span> <span class="f">fetch</span>(\`\${PF_API}/\${token}/pause\`, {
+  method: <span class="s">'PUT'</span>, headers: hdrs,
+  body: <span class="f">JSON.stringify</span>({ cycles: <span class="num">1</span> }) <span class="c">// pause for 1 cycle</span>
+});
+
+<span class="c">// Resume subscription</span>
+<span class="k">await</span> <span class="f">fetch</span>(\`\${PF_API}/\${token}/unpause\`, { method: <span class="s">'PUT'</span>, headers: hdrs });
+
+<span class="c">// Cancel subscription</span>
+<span class="k">await</span> <span class="f">fetch</span>(\`\${PF_API}/\${token}/cancel\`, { method: <span class="s">'PUT'</span>, headers: hdrs });
+
+<span class="c">// Adhoc charge (e.g. one-off upgrade fee)</span>
+<span class="k">await</span> <span class="f">fetch</span>(\`\${PF_API}/\${token}/adhoc\`, {
+  method: <span class="s">'POST'</span>, headers: hdrs,
+  body: <span class="f">JSON.stringify</span>({ amount: <span class="num">120000</span>, item_name: <span class="s">'Pro upgrade fee'</span> })
+});`,
+
+    cancel: `<span class="c">// Cancel or pause via API + handle dunning (failed payments)</span>
+
+<span class="c">// ─── Cancel (user requests) ───</span>
+<span class="k">async function</span> <span class="f">cancelSubscription</span>(customerId) {
+  <span class="k">const</span> { payfast_token } = <span class="k">await</span> db.subscriptions.<span class="f">findOne</span>({ customer_id: customerId });
+  
+  <span class="k">await</span> <span class="f">fetch</span>(\`https://api.payfast.co.za/subscriptions/v1/\${payfast_token}/cancel\`, {
+    method: <span class="s">'PUT'</span>,
+    headers: <span class="f">pfHeaders</span>(<span class="s">'10000100'</span>, <span class="s">'yourPassphrase'</span>)
+  });
+
+  <span class="k">await</span> db.subscriptions.<span class="f">update</span>({ customer_id: customerId }, { status: <span class="s">'cancelled'</span> });
+  <span class="k">await</span> <span class="f">sendCancellationEmail</span>(customerId);
+}
+
+<span class="c">// ─── Dunning: ITN on failed payment ───</span>
+<span class="c">// PayFast retries 3× before locking the subscription</span>
+<span class="c">// Your notify_url receives:</span>
+<span class="p">{</span>
+  payment_status: <span class="s">"FAILED"</span>,
+  token:          <span class="s">"2afa4575-..."</span>,
+  m_payment_id:   <span class="s">"WAZIFY-GROWTH-001"</span>,
+  amount_gross:   <span class="s">"799.00"</span>
+<span class="p">}</span>
+
+<span class="c">// Your dunning flow:</span>
+<span class="k">if</span> (data.payment_status === <span class="s">'FAILED'</span>) {
+  <span class="k">await</span> <span class="f">sendEmail</span>({ template: <span class="s">'payment_failed'</span>, retry_in: <span class="s">'3 days'</span> });
+  <span class="k">await</span> <span class="f">sendWhatsApp</span>(customer.phone, <span class="s">'payment_failed_wa_template'</span>); <span class="c">// use Wazify!</span>
+  <span class="k">if</span> (failCount >= <span class="num">3</span>) <span class="k">await</span> <span class="f">downgradeToFree</span>(customerId);
+}`
+  },
+
+  pp: {
+    initial: `<span class="c">// Peach Payments — Create checkout session + tokenize card
+// Sandbox: https://testsecure.peachpayments.com
+// Production: https://secure.peachpayments.com</span>
+
+<span class="k">const</span> response = <span class="k">await</span> <span class="f">fetch</span>(
+  <span class="s">'https://testsecure.peachpayments.com/v1/checkouts'</span>,
+  {
+    method: <span class="s">'POST'</span>,
+    headers: {
+      <span class="s">'Authorization'</span>: <span class="s">'Bearer YOUR_ACCESS_TOKEN'</span>,
+      <span class="s">'Content-Type'</span>: <span class="s">'application/json'</span>
+    },
+    body: <span class="f">JSON.stringify</span>({
+      <span class="n">'authentication.entityId'</span>: <span class="s">'YOUR_ENTITY_ID'</span>,
+      <span class="n">'amount'</span>:                   <span class="s">'799.00'</span>,
+      <span class="n">'currency'</span>:                 <span class="s">'ZAR'</span>,
+      <span class="n">'paymentType'</span>:              <span class="s">'DB'</span>,       <span class="c">// DB=debit, PA=preauth</span>
+      <span class="n">'recurringType'</span>:            <span class="s">'INITIAL'</span>, <span class="c">// INITIAL for first payment</span>
+      <span class="n">'createRegistration'</span>:       <span class="s">'true'</span>,    <span class="c">// ← Tokenize the card</span>
+      <span class="n">'customer.email'</span>:           <span class="s">'zinhle@mamaboutique.co.za'</span>,
+      <span class="n">'customer.givenName'</span>:       <span class="s">'Zinhle'</span>,
+      <span class="n">'customer.surname'</span>:         <span class="s">'Mkhize'</span>,
+      <span class="n">'merchantTransactionId'</span>:    <span class="s">'WAZIFY-PP-001'</span>,
+      <span class="n">'description'</span>:              <span class="s">'Wazify Growth Plan'</span>,
+      <span class="n">'shopperResultUrl'</span>:         <span class="s">'https://app.wazify.co.za/billing/success'</span>,
+    })
+  }
+);
+<span class="k">const</span> { id: checkoutId } = <span class="k">await</span> response.<span class="f">json</span>();
+
+<span class="c">// Embed Peach widget in your page:</span>
+<span class="c">// &lt;script src="https://testsecure.peachpayments.com/v1/paymentWidgets.js?checkoutId={checkoutId}"&gt;&lt;/script&gt;
+// &lt;form action="/billing/success" class="paymentWidgets" data-brands="VISA MASTER AMEX"&gt;&lt;/form&gt;</span>`,
+
+    recurring: `<span class="c">// Peach Payments — Charge using stored registration token
+// After INITIAL checkout, Peach returns a registrationId
+// Use it to charge monthly without user interaction</span>
+
+<span class="k">async function</span> <span class="f">chargeMonthly</span>(registrationId, customerId) {
+  <span class="k">const</span> res = <span class="k">await</span> <span class="f">fetch</span>(
+    \`https://secure.peachpayments.com/v1/registrations/\${registrationId}/payments\`,
+    {
+      method: <span class="s">'POST'</span>,
+      headers: { <span class="s">'Authorization'</span>: <span class="s">'Bearer YOUR_TOKEN'</span>, <span class="s">'Content-Type'</span>: <span class="s">'application/json'</span> },
+      body: <span class="f">JSON.stringify</span>({
+        <span class="n">'authentication.entityId'</span>: <span class="s">'YOUR_ENTITY_ID'</span>,
+        <span class="n">'amount'</span>:          <span class="s">'799.00'</span>,
+        <span class="n">'currency'</span>:        <span class="s">'ZAR'</span>,
+        <span class="n">'paymentType'</span>:     <span class="s">'DB'</span>,
+        <span class="n">'recurringType'</span>:   <span class="s">'REPEATED'</span>,  <span class="c">// ← Key field for recurring</span>
+        <span class="n">'merchantTransactionId'</span>: \`WAZIFY-\${customerId}-\${<span class="f">Date.now</span>()}\`,
+      })
+    }
+  );
+  <span class="k">const</span> result = <span class="k">await</span> res.<span class="f">json</span>();
+  <span class="c">// result.result.code === '000.000.000' = success</span>
+  <span class="k">return</span> result;
+}`,
+
+    status: `<span class="c">// Peach Payments — Query payment status</span>
+<span class="k">const</span> statusRes = <span class="k">await</span> <span class="f">fetch</span>(
+  \`https://secure.peachpayments.com/v1/query/\${resourcePath}\`,
+  { headers: { <span class="s">'Authorization'</span>: <span class="s">'Bearer YOUR_TOKEN'</span> } }
+);
+<span class="k">const</span> { result, amount, currency, paymentBrand } = <span class="k">await</span> statusRes.<span class="f">json</span>();
+
+<span class="c">// Success codes (regex match):</span>
+<span class="c">// /^(000\.000\.|000\.100\.1|000\.[36])/ = success</span>
+<span class="c">// /^(000\.400\.0[^3]|000\.400\.100)/ = pending</span>
+<span class="k">const</span> success = /^(<span class="num">000</span>\.000\.|<span class="num">000</span>\.100\.1|<span class="num">000</span>\.[<span class="num">36</span>])/<span class="f">.test</span>(result.code);`
+  },
+
+  oz: {
+    payment: `<span class="c">// Ozow — Instant EFT payment request
+// No card details needed — customer pays from their banking app
+// Zero chargeback risk — bank-verified payment</span>
+
+<span class="k">const</span> crypto = <span class="f">require</span>(<span class="s">'crypto'</span>);
+
+<span class="k">const</span> siteCode    = <span class="s">'YOUR_SITE_CODE'</span>;
+<span class="k">const</span> countryCode = <span class="s">'ZA'</span>;
+<span class="k">const</span> currencyCode= <span class="s">'ZAR'</span>;
+<span class="k">const</span> amount      = <span class="s">'799.00'</span>;
+<span class="k">const</span> transRef    = <span class="s">'WAZIFY-OZ-001'</span>;
+<span class="k">const</span> apiKey      = <span class="s">'YOUR_API_KEY'</span>;
+
+<span class="c">// Build SHA512 hash for security</span>
+<span class="k">const</span> hashInput = [
+  siteCode, countryCode, currencyCode, amount,
+  transRef, <span class="s">'https://app.wazify.co.za/billing/success'</span>,
+  <span class="s">'https://app.wazify.co.za/billing/error'</span>,
+  <span class="s">'https://app.wazify.co.za/billing/cancel'</span>,
+  <span class="s">'https://app.wazify.co.za/webhooks/ozow'</span>,
+  <span class="s">'false'</span>, apiKey
+].<span class="f">join</span>(<span class="s">''</span>).<span class="f">toLowerCase</span>();
+
+<span class="k">const</span> hashCheck = crypto
+  .<span class="f">createHash</span>(<span class="s">'sha512'</span>)
+  .<span class="f">update</span>(hashInput)
+  .<span class="f">digest</span>(<span class="s">'base64'</span>);
+
+<span class="k">const</span> payload = {
+  SiteCode:          siteCode,
+  CountryCode:       countryCode,
+  CurrencyCode:      currencyCode,
+  Amount:            amount,
+  TransactionReference: transRef,
+  BankReference:     <span class="s">'Wazify Growth Plan'</span>,
+  Customer:          <span class="s">'zinhle@mamaboutique.co.za'</span>,
+  SuccessUrl:        <span class="s">'https://app.wazify.co.za/billing/success'</span>,
+  ErrorUrl:          <span class="s">'https://app.wazify.co.za/billing/error'</span>,
+  CancelUrl:         <span class="s">'https://app.wazify.co.za/billing/cancel'</span>,
+  NotifyUrl:         <span class="s">'https://app.wazify.co.za/webhooks/ozow'</span>,
+  IsTest:            <span class="s">'false'</span>,
+  HashCheck:         hashCheck,
+};
+
+<span class="c">// POST to Ozow or redirect user:</span>
+<span class="k">const</span> res = <span class="k">await</span> <span class="f">fetch</span>(<span class="s">'https://api.ozow.com/postpaymentrequest'</span>, {
+  method: <span class="s">'POST'</span>,
+  headers: { <span class="s">'ApiKey'</span>: apiKey, <span class="s">'Content-Type'</span>: <span class="s">'application/json'</span> },
+  body: <span class="f">JSON.stringify</span>(payload)
+});
+<span class="k">const</span> { paymentRequestId, url } = <span class="k">await</span> res.<span class="f">json</span>();
+res.<span class="f">redirect</span>(url); <span class="c">// Send user to Ozow bank selection page</span>`,
+
+    notify: `<span class="c">// Ozow — Webhook notification handler
+// Ozow POSTs to your NotifyUrl on payment completion</span>
+
+app.<span class="f">post</span>(<span class="s">'/webhooks/ozow'</span>, (req, res) => {
+  <span class="k">const</span> data = req.body;
+  res.<span class="f">sendStatus</span>(<span class="num">200</span>); <span class="c">// Always acknowledge first</span>
+
+  <span class="c">// Verify hash to prevent spoofing</span>
+  <span class="k">const</span> expectedHash = crypto
+    .<span class="f">createHash</span>(<span class="s">'sha512'</span>)
+    .<span class="f">update</span>((data.SiteCode + data.TransactionId + data.TransactionReference +
+      data.Amount + data.Status + data.Optional1 + apiKey).<span class="f">toLowerCase</span>())
+    .<span class="f">digest</span>(<span class="s">'base64'</span>);
+
+  <span class="k">if</span> (data.Hash !== expectedHash) <span class="k">return</span>;
+
+  <span class="c">// Handle status</span>
+  <span class="k">switch</span> (data.Status) {
+    <span class="k">case</span> <span class="s">'Complete'</span>:
+      <span class="f">activatePlan</span>(data.TransactionReference); <span class="k">break</span>;
+    <span class="k">case</span> <span class="s">'Cancelled'</span>:
+      <span class="f">sendCancelledNotice</span>(data.TransactionReference); <span class="k">break</span>;
+    <span class="k">case</span> <span class="s">'Error'</span>:
+      <span class="f">handlePaymentError</span>(data.TransactionReference); <span class="k">break</span>;
+  }
+
+  <span class="c">// data fields: SiteCode, TransactionId, TransactionReference,
+  // Amount, Status, Optional1-5, CurrencyCode, IsTest, Hash</span>
+});`
+  },
+
+  pg: {
+    initiate: `<span class="c">// PayGate — Initiate payment (PayWeb 3)
+// Step 1: Initiate → get CHECKSUM + PAY_REQUEST_ID
+// Step 2: Redirect user to PayGate with those values</span>
+
+<span class="k">const</span> qs     = <span class="f">require</span>(<span class="s">'querystring'</span>);
+<span class="k">const</span> crypto = <span class="f">require</span>(<span class="s">'crypto'</span>);
+
+<span class="k">const</span> pgData = {
+  PAYGATE_ID:    <span class="s">'10011072130'</span>,
+  REFERENCE:     <span class="s">'WAZIFY-PG-001'</span>,
+  AMOUNT:        <span class="s">'79900'</span>,           <span class="c">// In cents! R799.00 = 79900</span>
+  CURRENCY:      <span class="s">'ZAR'</span>,
+  RETURN_URL:    <span class="s">'https://app.wazify.co.za/billing/success'</span>,
+  TRANSACTION_DATE: <span class="k">new</span> <span class="f">Date</span>().<span class="f">toISOString</span>().<span class="f">slice</span>(<span class="num">0</span>,<span class="num">19</span>),
+  LOCALE:        <span class="s">'en-za'</span>,
+  COUNTRY:       <span class="s">'ZAF'</span>,
+  EMAIL:         <span class="s">'zinhle@mamaboutique.co.za'</span>,
+
+  <span class="c">// Recurring billing fields</span>
+  SUBSCRIPTION_TYPE:     <span class="s">'1'</span>,
+  BILLING_DATE:          <span class="s">'2026-07-01'</span>,
+  RECURRING_AMOUNT:      <span class="s">'79900'</span>,
+  FREQUENCY:             <span class="s">'4'</span>,           <span class="c">// 4=monthly</span>
+  SUBSCRIPTION_CYCLE:    <span class="s">'0'</span>,           <span class="c">// 0=indefinite</span>
+};
+
+<span class="c">// Calculate CHECKSUM (MD5 of all values + secret)</span>
+<span class="k">const</span> checksumStr = Object.values(pgData).<span class="f">join</span>(<span class="s">''</span>) + <span class="s">'your_encryption_key'</span>;
+pgData.CHECKSUM = crypto.<span class="f">createHash</span>(<span class="s">'md5'</span>).<span class="f">update</span>(checksumStr).<span class="f">digest</span>(<span class="s">'hex'</span>);
+
+<span class="c">// Step 1: POST to initiate</span>
+<span class="k">const</span> initRes = <span class="k">await</span> <span class="f">fetch</span>(<span class="s">'https://secure.paygate.co.za/payweb3/initiate.trans'</span>, {
+  method: <span class="s">'POST'</span>, body: <span class="f">qs.stringify</span>(pgData),
+  headers: { <span class="s">'Content-Type'</span>: <span class="s">'application/x-www-form-urlencoded'</span> }
+});
+<span class="k">const</span> { PAY_REQUEST_ID, CHECKSUM: pgChecksum } = <span class="f">qs.parse</span>(<span class="k">await</span> initRes.<span class="f">text</span>());
+
+<span class="c">// Step 2: Redirect user to PayGate payment page</span>
+res.<span class="f">redirect</span>(\`https://secure.paygate.co.za/payweb3/process.trans?PAY_REQUEST_ID=\${PAY_REQUEST_ID}&CHECKSUM=\${pgChecksum}\`);`,
+
+    query: `<span class="c">// PayGate — Query transaction result
+// Called after user returns to RETURN_URL</span>
+
+<span class="k">const</span> queryData = {
+  PAYGATE_ID:     <span class="s">'10011072130'</span>,
+  PAY_REQUEST_ID: req.body.PAY_REQUEST_ID,
+  REFERENCE:      req.body.REFERENCE,
+};
+<span class="k">const</span> checksumStr = Object.values(queryData).<span class="f">join</span>(<span class="s">''</span>) + <span class="s">'your_encryption_key'</span>;
+queryData.CHECKSUM = crypto.<span class="f">createHash</span>(<span class="s">'md5'</span>).<span class="f">update</span>(checksumStr).<span class="f">digest</span>(<span class="s">'hex'</span>);
+
+<span class="k">const</span> res2 = <span class="k">await</span> <span class="f">fetch</span>(<span class="s">'https://secure.paygate.co.za/payweb3/query.trans'</span>, {
+  method: <span class="s">'POST'</span>, body: <span class="f">qs.stringify</span>(queryData),
+  headers: { <span class="s">'Content-Type'</span>: <span class="s">'application/x-www-form-urlencoded'</span> }
+});
+<span class="k">const</span> result = <span class="f">qs.parse</span>(<span class="k">await</span> res2.<span class="f">text</span>());
+
+<span class="c">// TRANSACTION_STATUS: 1=Approved, 2=Declined, 4=Cancelled</span>
+<span class="k">if</span> (result.TRANSACTION_STATUS === <span class="s">'1'</span>) {
+  <span class="k">await</span> <span class="f">activatePlan</span>(result.REFERENCE);
+}`
+  },
+
+  yc: {
+    charge: `<span class="c">// Yoco — Charge card via Payments API
+// Ideal for payment links + mobile-first merchants</span>
+
+<span class="k">const</span> response = <span class="k">await</span> <span class="f">fetch</span>(<span class="s">'https://payments.yoco.com/api/checkouts'</span>, {
+  method: <span class="s">'POST'</span>,
+  headers: {
+    <span class="s">'Authorization'</span>: <span class="s">'Bearer YOUR_SECRET_KEY'</span>,
+    <span class="s">'Content-Type'</span>: <span class="s">'application/json'</span>,
+    <span class="s">'Idempotency-Key'</span>: <span class="s">'WAZIFY-YC-\${customerId}-\${month}'</span>,
+  },
+  body: <span class="f">JSON.stringify</span>({
+    amount:      <span class="num">79900</span>,   <span class="c">// In cents</span>
+    currency:    <span class="s">'ZAR'</span>,
+    successUrl:  <span class="s">'https://app.wazify.co.za/billing/success'</span>,
+    cancelUrl:   <span class="s">'https://app.wazify.co.za/billing/cancel'</span>,
+    failureUrl:  <span class="s">'https://app.wazify.co.za/billing/failed'</span>,
+    metadata: {
+      orderId:    <span class="s">'WAZIFY-YC-001'</span>,
+      customerId: <span class="s">'cust_mz_001'</span>,
+      plan:       <span class="s">'growth'</span>,
+    }
+  })
+});
+<span class="k">const</span> { id, redirectUrl } = <span class="k">await</span> response.<span class="f">json</span>();
+res.<span class="f">redirect</span>(redirectUrl); <span class="c">// Redirect to Yoco-hosted checkout</span>
+
+<span class="c">// Yoco sends webhook to your endpoint on completion:
+// POST https://app.wazify.co.za/webhooks/yoco
+// {
+//   "type": "payment.succeeded",
+//   "payload": { "id": "...", "amount": 79900, "status": "succeeded", "metadata": {...} }
+// }</span>`,
+
+    link: `<span class="c">// Yoco — Generate reusable payment link
+// Shareable via WhatsApp (perfect with Wazify!)</span>
+
+<span class="k">const</span> linkRes = <span class="k">await</span> <span class="f">fetch</span>(<span class="s">'https://payments.yoco.com/api/payment-links'</span>, {
+  method: <span class="s">'POST'</span>,
+  headers: {
+    <span class="s">'Authorization'</span>: <span class="s">'Bearer YOUR_SECRET_KEY'</span>,
+    <span class="s">'Content-Type'</span>: <span class="s">'application/json'</span>,
+  },
+  body: <span class="f">JSON.stringify</span>({
+    name:        <span class="s">'Wazify Growth Plan'</span>,
+    description: <span class="s">'Monthly WhatsApp marketing platform subscription'</span>,
+    amount:      <span class="num">79900</span>,
+    currency:    <span class="s">'ZAR'</span>,
+    type:        <span class="s">'one_time'</span>, <span class="c">// or 'multiple'</span>
+    metadata:    { plan: <span class="s">'growth'</span> }
+  })
+});
+<span class="k">const</span> { url, id } = <span class="k">await</span> linkRes.<span class="f">json</span>();
+
+<span class="c">// Send payment link via WhatsApp using Wazify! 🚀</span>
+<span class="k">await</span> <span class="f">sendWhatsAppMessage</span>(customer.phone, {
+  type: <span class="s">'text'</span>,
+  body: \`Hi \${customer.name}! 🎉 Your Wazify Growth Plan is ready.\\n\\nPay securely here:\\n\${url}\\n\\nValid for 24 hours.\`
+});`
+  }
+};
+
+const TAB_PAYLOADS = { pf: 'subscription', pp: 'initial', oz: 'payment', pg: 'initiate', yc: 'charge' };
+
+/* ═══ INIT ═══ */
+function init() {
+  Object.keys(PAYLOADS).forEach(p => {
+    const firstKey = Object.keys(PAYLOADS[p])[0];
+    const el = document.getElementById(p+'-code');
+    if (el) el.innerHTML = PAYLOADS[p][firstKey];
+  });
+}
+
+/* ═══ NAV ═══ */
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.sb-item').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  const titles = { billing:'Billing & Payments', api:'API Payloads', providers:'Payment Providers' };
+  document.getElementById('pageTitle').textContent = titles[id] || id;
+  const breadcrumbs = { billing:'Wazify / Billing', api:'Wazify / Billing / API Payloads' };
+  document.querySelector('.breadcrumb').textContent = breadcrumbs[id] || 'Wazify / Billing';
+}
+
+/* ═══ PROVIDER SELECTION ═══ */
+function selectProvider(el, name) { document.querySelectorAll('.provider-card').forEach(c=>c.classList.remove('active-provider')); el.classList.add('active-provider'); }
+
+/* ═══ TAB SWITCHING ═══ */
+function switchTab(provider, tab) {
+  TAB_PAYLOADS[provider] = tab;
+  const tabEls = document.querySelectorAll(`#${provider}-tabs .payload-tab`);
+  tabEls.forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById(provider+'-code').innerHTML = PAYLOADS[provider][tab];
+}
+
+function switchProvider(val) {
+  ['payfast','peach','ozow','paygate','yoco'].forEach(p => {
+    document.getElementById('api-'+p).style.display = 'none';
+  });
+  const map = { payfast:'payfast', peach:'peach', ozow:'ozow', paygate:'paygate', yoco:'yoco' };
+  document.getElementById('api-'+map[val]).style.display = 'block';
+}
+
+/* ═══ COPY CODE ═══ */
+function copyCode(codeId, btnId) {
+  const text = document.getElementById(codeId).innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById(btnId);
+    btn.textContent = '✓ Copied'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+/* ═══ MODAL ═══ */
+let currentModal = null;
+let selectedPaymentMethod = 'card';
+let selectedProvider = 'payfast';
+let checkoutStep = 1;
+
+function openModal(type, amount, plan) {
+  currentModal = type;
+  const overlay = document.getElementById('checkoutModal');
+  overlay.classList.add('open');
+
+  if (type === 'checkout') { renderCheckout(amount||'799', plan||'Growth'); }
+  else if (type === 'upgrade') { renderUpgrade(); }
+  else if (type.startsWith('connect_')) { renderConnect(type.replace('connect_','')); }
+}
+
+function closeModal() {
+  document.getElementById('checkoutModal').classList.remove('open');
+  checkoutStep = 1;
+}
+
+function renderCheckout(amount, plan) {
+  document.getElementById('modalTitle').innerHTML = `💳 Pay for ${plan} Plan`;
+  document.getElementById('modalPrimaryBtn').textContent = `Pay R ${amount}`;
+  document.getElementById('modalFooter').style.display = 'flex';
+
+  document.getElementById('modalBody').innerHTML = `
+    <!-- Steps -->
+    <div class="checkout-steps">
+      <div class="cs"><div class="cs-num ${checkoutStep>=1?'done':'pending'}" id="cs1">${checkoutStep>1?'✓':'1'}</div><div class="cs-lbl">Provider</div></div>
+      <div class="cs-line ${checkoutStep>1?'done':''}"></div>
+      <div class="cs"><div class="cs-num ${checkoutStep>=2?'active':'pending'}" id="cs2">2</div><div class="cs-lbl">Method</div></div>
+      <div class="cs-line ${checkoutStep>2?'done':''}"></div>
+      <div class="cs"><div class="cs-num ${checkoutStep>=3?'active':'pending'}" id="cs3">3</div><div class="cs-lbl">Details</div></div>
+      <div class="cs-line"></div>
+      <div class="cs"><div class="cs-num pending" id="cs4">4</div><div class="cs-lbl">Confirm</div></div>
+    </div>
+
+    <!-- Order summary -->
+    <div class="order-summary">
+      <div class="os-title">Order Summary</div>
+      <div class="os-row"><div class="os-key">Wazify ${plan} Plan</div><div class="os-val">R ${amount}.00/mo</div></div>
+      <div class="os-row"><div class="os-key">VAT (15%)</div><div class="os-val">R ${(parseFloat(amount)*0.15).toFixed(2)}</div></div>
+      <div class="os-row total"><div class="os-key">Total today</div><div class="os-val" style="color:var(--g)">R ${(parseFloat(amount)*1.15).toFixed(2)}</div></div>
+    </div>
+
+    <!-- Provider selection -->
+    <div class="fg">
+      <label class="fl">Choose payment provider</label>
+      <div class="checkout-providers">
+        <div class="cp-btn selected" style="--p-color:var(--pf)" onclick="selectCProv(this,'payfast')">
+          <div class="cp-logo">💳</div>
+          <div class="cp-name">PayFast</div>
+          <div class="cp-method">Card · EFT · SnapScan</div>
+        </div>
+        <div class="cp-btn" style="--p-color:var(--pp)" onclick="selectCProv(this,'peach')">
+          <div class="cp-logo">🍑</div>
+          <div class="cp-name">Peach Payments</div>
+          <div class="cp-method">Card · Multi-currency</div>
+        </div>
+        <div class="cp-btn" style="--p-color:var(--oz-a)" onclick="selectCProv(this,'ozow')">
+          <div class="cp-logo">🏦</div>
+          <div class="cp-name">Ozow</div>
+          <div class="cp-method">Instant EFT only</div>
+        </div>
+        <div class="cp-btn" style="--p-color:var(--yc)" onclick="selectCProv(this,'yoco')">
+          <div class="cp-logo">🟡</div>
+          <div class="cp-name">Yoco</div>
+          <div class="cp-method">Card · Payment link</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Payment method tabs -->
+    <div class="fg">
+      <label class="fl">Payment method</label>
+      <div class="pm-tabs">
+        <div class="pm-tab active" onclick="selectPM(this,'card')"><div class="pm-icon">💳</div>Credit/Debit Card</div>
+        <div class="pm-tab" onclick="selectPM(this,'eft')"><div class="pm-icon">🏦</div>Instant EFT</div>
+        <div class="pm-tab" onclick="selectPM(this,'qr')"><div class="pm-icon">📱</div>QR Pay</div>
+      </div>
+    </div>
+
+    <div id="paymentFields">
+      <!-- Card fields -->
+      <div class="card-display">
+        <div class="cd-chip"></div>
+        <div class="cd-number" id="cardNumDisplay">•••• •••• •••• ••••</div>
+        <div class="cd-row">
+          <div><div class="cd-label">Card holder</div><div class="cd-val" id="cardNameDisplay">YOUR NAME</div></div>
+          <div><div class="cd-label">Expires</div><div class="cd-val" id="cardExpDisplay">MM/YY</div></div>
+          <div><div class="cd-label">Network</div><div class="cd-val">VISA</div></div>
+        </div>
+      </div>
+      <div class="fg">
+        <label class="fl">Card number</label>
+        <input class="fi" id="cardNum" placeholder="4242 4242 4242 4242" maxlength="19"
+          oninput="this.value=this.value.replace(/[^0-9]/g,'').replace(/(.{4})/g,'$1 ').trim();document.getElementById('cardNumDisplay').textContent=this.value||'•••• •••• •••• ••••'">
+      </div>
+      <div class="fi-row">
+        <div class="fg">
+          <label class="fl">Cardholder name</label>
+          <input class="fi" id="cardName" placeholder="Zinhle Mkhize"
+            oninput="document.getElementById('cardNameDisplay').textContent=this.value||'YOUR NAME'">
+        </div>
+        <div class="fg">
+          <label class="fl">Expiry</label>
+          <input class="fi" placeholder="MM/YY" maxlength="5"
+            oninput="document.getElementById('cardExpDisplay').textContent=this.value||'MM/YY'">
+        </div>
+      </div>
+      <div class="fg">
+        <label class="fl">CVV</label>
+        <input class="fi" type="password" placeholder="•••" maxlength="4" style="max-width:100px">
+      </div>
+    </div>
+
+    <div class="security-badge">🔒 256-bit SSL encryption · PCI DSS compliant · PayFast secured</div>
+  `;
+}
+
+function selectCProv(el, name) {
+  document.querySelectorAll('.cp-btn').forEach(b=>b.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedProvider = name;
+  if (name === 'ozow') {
+    document.getElementById('paymentFields').innerHTML = `
+      <div class="ozow-redirect">
+        <div class="ozow-icon">🏦</div>
+        <div class="ozow-title">Pay with Ozow Instant EFT</div>
+        <div class="ozow-desc">You'll be redirected to select your bank and authenticate securely. No card details needed.</div>
+        <div class="banks-grid">
+          <div class="bank-chip">FNB</div><div class="bank-chip">Standard Bank</div>
+          <div class="bank-chip">ABSA</div><div class="bank-chip">Nedbank</div>
+          <div class="bank-chip">Capitec</div><div class="bank-chip">Investec</div>
+        </div>
+      </div>
+      <div class="security-badge">🔒 Bank-grade security · Zero chargeback risk · Instant settlement</div>`;
+    document.getElementById('modalPrimaryBtn').textContent = 'Continue to Ozow →';
+  }
+}
+
+function selectPM(el, method) {
+  document.querySelectorAll('.pm-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  selectedPaymentMethod = method;
+  if (method==='eft') {
+    document.getElementById('paymentFields').innerHTML = `
+      <div class="eft-info">
+        <div class="eft-row"><div class="eft-key">Bank</div><div class="eft-val">First National Bank</div></div>
+        <div class="eft-row"><div class="eft-key">Account name</div><div class="eft-val">PayFast (Pty) Ltd</div></div>
+        <div class="eft-row"><div class="eft-key">Account number</div><div class="eft-val">62005502809</div></div>
+        <div class="eft-row"><div class="eft-key">Branch code</div><div class="eft-val">250655</div></div>
+        <div class="eft-row"><div class="eft-key">Reference</div><div class="eft-val" style="color:var(--g)">WAZIFY-GROWTH-001</div></div>
+        <div class="eft-row"><div class="eft-key">Amount</div><div class="eft-val" style="color:var(--g)">R 918.85</div></div>
+      </div>
+      <div style="font-size:12px;color:var(--dim2);text-align:center">⚠️ Manual EFT may take 1–2 business days to reflect. Use Instant EFT via Ozow for immediate activation.</div>`;
+  } else if (method==='qr') {
+    document.getElementById('paymentFields').innerHTML = `
+      <div style="text-align:center;padding:16px 0">
+        <div style="width:140px;height:140px;background:white;border-radius:12px;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:60px">📱</div>
+        <div style="font-size:14px;font-weight:600;margin-bottom:6px">Scan with SnapScan or Zapper</div>
+        <div style="font-size:12px;color:var(--dim2)">Open your QR payment app and scan to pay R 918.85</div>
+        <div style="margin-top:12px;display:flex;gap:10px;justify-content:center">
+          <button onclick="toast('Opening SnapScan...','success')" style="padding:7px 14px;border-radius:8px;border:1px solid var(--bord2);background:var(--ink3);color:var(--dim2);cursor:pointer;font-size:12px">SnapScan</button>
+          <button onclick="toast('Opening Zapper...','success')" style="padding:7px 14px;border-radius:8px;border:1px solid var(--bord2);background:var(--ink3);color:var(--dim2);cursor:pointer;font-size:12px">Zapper</button>
+        </div>
+      </div>`;
+  }
+}
+
+function processPayment() {
+  closeModal();
+  setTimeout(() => toast('🔒 Redirecting to secure payment...','success'), 200);
+  setTimeout(() => toast('✅ Payment processed! Growth Plan activated.','success'), 2500);
+}
+
+function renderUpgrade() {
+  document.getElementById('modalTitle').innerHTML = '📦 Change Subscription Plan';
+  document.getElementById('modalPrimaryBtn').textContent = 'Confirm upgrade';
+  document.getElementById('modalBody').innerHTML = `
+    <p style="font-size:13px;color:var(--dim2);margin-bottom:16px">You're on the <strong style="color:var(--g)">Growth Plan (R799/mo)</strong>. Select a new plan below:</p>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="background:var(--ink3);border:1px solid var(--bord2);border-radius:12px;padding:16px;cursor:pointer;transition:all .13s" onclick="this.style.borderColor='var(--g)'">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div><div style="font-weight:700">Starter</div><div style="font-size:12px;color:var(--dim2)">1 number · 2,000 contacts · 5 campaigns</div></div>
+          <div style="font-family:var(--fm);font-size:18px;font-weight:700">R 299<span style="font-size:12px;color:var(--dim)">/mo</span></div>
+        </div>
+      </div>
+      <div style="background:rgba(34,197,94,.08);border:2px solid var(--g);border-radius:12px;padding:16px;cursor:pointer">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div><div style="font-weight:700;color:var(--g)">Growth ✓ Current</div><div style="font-size:12px;color:var(--dim2)">3 numbers · 10,000 contacts · unlimited</div></div>
+          <div style="font-family:var(--fm);font-size:18px;font-weight:700">R 799<span style="font-size:12px;color:var(--dim)">/mo</span></div>
+        </div>
+      </div>
+      <div style="background:var(--ink3);border:1px solid var(--bord2);border-radius:12px;padding:16px;cursor:pointer;transition:all .13s" onclick="this.style.borderColor='var(--g)';document.getElementById('modalPrimaryBtn').textContent='Upgrade to Pro — R 1,999/mo'">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div><div style="font-weight:700">Pro</div><div style="font-size:12px;color:var(--dim2)">Unlimited · API access · White-label</div></div>
+          <div style="font-family:var(--fm);font-size:18px;font-weight:700">R 1,999<span style="font-size:12px;color:var(--dim)">/mo</span></div>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:14px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--dim2)">
+      ⚠️ Plan changes take effect on your next billing date (1 July 2026). Upgrades are prorated and charged immediately.
+    </div>`;
+}
+
+function renderConnect(provider) {
+  const info = {
+    peach: { name:'Peach Payments', icon:'🍑', color:'var(--pp)', fields: ['Entity ID','Access Token','Webhook Secret'] },
+    ozow:  { name:'Ozow', icon:'🏦', color:'var(--oz-a)', fields: ['Site Code','API Key','Private Key'] },
+    paygate: { name:'PayGate', icon:'🔴', color:'var(--pg)', fields: ['PayGate ID','Encryption Key','Notification URL'] },
+    yoco:  { name:'Yoco', icon:'🟡', color:'var(--yc)', fields: ['Secret Key','Public Key','Webhook Secret'] },
+  }[provider] || { name:provider, icon:'💳', color:'var(--g)', fields:['API Key'] };
+
+  document.getElementById('modalTitle').innerHTML = `${info.icon} Connect ${info.name}`;
+  document.getElementById('modalPrimaryBtn').textContent = `Connect ${info.name}`;
+  document.getElementById('modalBody').innerHTML = `
+    <div style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.15);border-radius:10px;padding:14px;margin-bottom:18px;font-size:12.5px;color:var(--dim2);line-height:1.7">
+      You'll need your <strong style="color:var(--text)">${info.name} merchant credentials</strong>. Log into your ${info.name} dashboard, navigate to Integration Settings, and copy the values below.
+    </div>
+    ${info.fields.map(f => `
+      <div class="fg">
+        <label class="fl">${f}</label>
+        <input class="fi" placeholder="Enter your ${f}..." type="${f.toLowerCase().includes('key')||f.toLowerCase().includes('secret')||f.toLowerCase().includes('token')?'password':'text'}">
+      </div>`).join('')}
+    <div class="fg">
+      <label class="fl">Webhook URL (copy to your ${info.name} dashboard)</label>
+      <input class="fi" value="https://app.wazify.co.za/webhooks/${provider}" readonly style="font-family:var(--fm);font-size:11.5px;cursor:copy" onclick="navigator.clipboard.writeText(this.value);toast('Webhook URL copied!','success')">
+    </div>
+    <div class="security-badge">🔒 Credentials stored encrypted · Never shared · AES-256</div>`;
+}
+
+/* ═══ TOAST ═══ */
+function toast(msg, type='success') {
+  const t = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  t.className = `toast ${type} show`;
+  t.querySelector('.t-icon').textContent = type==='success'?'✓':'✕';
+  clearTimeout(window._tt);
+  window._tt = setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+/* ═══ START ═══ */
+init();
+</script>
+</body>
+</html>

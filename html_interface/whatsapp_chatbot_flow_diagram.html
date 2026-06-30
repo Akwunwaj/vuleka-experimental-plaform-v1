@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WhatsApp Chatbot — Hierarchical Flow Diagram</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0D1117;
+  --surface: #161B22;
+  --surface2: #21262D;
+  --border: rgba(255,255,255,0.08);
+  --border2: rgba(255,255,255,0.14);
+  --text: #E6EDF3;
+  --muted: #7D8590;
+  --wa-green: #25D366;
+  --wa-teal: #128C7E;
+
+  /* Industry colors */
+  --c-ecom:   #3B82F6; --c-health: #EC4899; --c-bank:  #10B981;
+  --c-travel: #F59E0B; --c-edu:   #8B5CF6;  --c-real:  #06B6D4;
+  --c-gov:    #EF4444; --c-ins:   #14B8A6;  --c-telco: #6366F1;
+  --c-hr:     #F97316; --c-log:   #64748B;  --c-food:  #F43F5E;
+  --c-media:  #A78BFA; --c-ngo:   #EC4899;  --c-auto:  #94A3B8;
+  --c-agri:   #22C55E; --c-legal: #D97706;  --c-mfg:   #78716C;
+  --c-sport:  #FB923C;
+}
+
+html, body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Header ── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 40px 20px;
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(13,17,23,0.92);
+  backdrop-filter: blur(12px);
+}
+.header-left { display: flex; align-items: center; gap: 12px; }
+.wa-badge {
+  width: 36px; height: 36px; border-radius: 10px;
+  background: linear-gradient(135deg, #25D366, #128C7E);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+}
+.header-title { font-size: 18px; font-weight: 600; }
+.header-sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
+.header-stats { display: flex; gap: 20px; }
+.stat { text-align: center; }
+.stat-num { font-size: 22px; font-weight: 600; color: var(--wa-green); font-family: 'DM Mono', monospace; }
+.stat-lbl { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+/* ── Legend ── */
+.legend-bar {
+  display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+  padding: 12px 40px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.legend-title { font-size: 11px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.legend-items { display: flex; gap: 16px; flex-wrap: wrap; }
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--muted); }
+.legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+.legend-line { width: 24px; height: 2px; }
+.legend-line.dashed { background: repeating-linear-gradient(to right, var(--muted) 0, var(--muted) 4px, transparent 4px, transparent 8px); }
+
+/* ── Main diagram area ── */
+.diagram-wrap {
+  padding: 40px;
+  overflow-x: auto;
+  min-height: calc(100vh - 140px);
+}
+
+/* ── Root node ── */
+.root-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 0;
+}
+
+.root-node {
+  background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+  border-radius: 20px;
+  padding: 18px 36px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-shadow: 0 0 0 1px rgba(37,211,102,0.3), 0 8px 32px rgba(37,211,102,0.2);
+  position: relative;
+  z-index: 2;
+}
+.root-icon { font-size: 28px; }
+.root-text { }
+.root-name { font-size: 17px; font-weight: 600; color: white; }
+.root-desc { font-size: 11.5px; color: rgba(255,255,255,0.75); margin-top: 2px; }
+
+/* Connector from root down */
+.root-connector {
+  width: 2px;
+  height: 36px;
+  background: linear-gradient(to bottom, var(--wa-green), rgba(37,211,102,0.3));
+  margin: 0 auto;
+}
+
+/* ── Industry tier ── */
+.level-label {
+  text-align: center;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 16px;
+}
+
+.industries-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 0 0 0;
+}
+
+/* ── Industry node ── */
+.industry-node {
+  border-radius: 14px;
+  border: 1px solid var(--border2);
+  background: var(--surface);
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform .18s, box-shadow .18s, border-color .18s;
+  position: relative;
+}
+.industry-node:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+.industry-node.expanded {
+  box-shadow: 0 0 0 2px var(--ind-color, var(--wa-green));
+}
+
+.ind-header {
+  padding: 12px 14px 10px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.ind-icon-circle {
+  width: 34px; height: 34px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+  background: rgba(255,255,255,0.06);
+}
+.ind-name { font-size: 12.5px; font-weight: 600; line-height: 1.3; margin-top: 1px; }
+.ind-count { font-size: 10.5px; color: var(--muted); margin-top: 2px; }
+
+/* connector line from icon to header colour bar */
+.ind-color-bar {
+  height: 3px;
+  width: 100%;
+}
+
+/* Use cases inside industry node */
+.use-cases-list {
+  padding: 8px 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.use-case-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.35;
+  padding: 4px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.use-case-row:hover {
+  background: rgba(255,255,255,0.05);
+  color: var(--text);
+}
+.use-case-row .uc-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  flex-shrink: 0; margin-top: 4px;
+  background: var(--ind-color, #555);
+}
+.use-case-row .uc-text { flex: 1; }
+
+/* ── Flow detail panel ── */
+.flow-panel {
+  position: fixed;
+  right: 0; top: 0; bottom: 0;
+  width: 380px;
+  background: var(--surface);
+  border-left: 1px solid var(--border2);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform .3s cubic-bezier(.4,0,.2,1);
+  box-shadow: -20px 0 60px rgba(0,0,0,0.5);
+}
+.flow-panel.open { transform: translateX(0); }
+
+.panel-header {
+  padding: 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.panel-close {
+  width: 28px; height: 28px; border-radius: 7px;
+  background: var(--surface2); border: none;
+  color: var(--muted); font-size: 16px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s;
+}
+.panel-close:hover { background: rgba(255,255,255,0.1); color: var(--text); }
+
+.panel-body { flex: 1; overflow-y: auto; padding: 20px; }
+.panel-body::-webkit-scrollbar { width: 4px; }
+.panel-body::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+
+/* Flow steps */
+.flow-steps { display: flex; flex-direction: column; gap: 0; }
+.flow-step {
+  display: flex;
+  gap: 14px;
+  position: relative;
+}
+.step-left {
+  display: flex; flex-direction: column; align-items: center;
+  flex-shrink: 0; width: 28px;
+}
+.step-num {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 600; flex-shrink: 0;
+  border: 1.5px solid var(--ind-color, var(--wa-green));
+  color: var(--ind-color, var(--wa-green));
+  background: transparent;
+  position: relative; z-index: 1;
+}
+.step-num.filled {
+  background: var(--ind-color, var(--wa-green));
+  color: white;
+}
+.step-line {
+  width: 1.5px;
+  flex: 1;
+  min-height: 20px;
+  background: var(--border2);
+  margin: 4px 0;
+}
+.step-content { padding: 0 0 24px 0; flex: 1; }
+.step-title { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+.step-desc { font-size: 11.5px; color: var(--muted); line-height: 1.5; }
+.step-actions {
+  margin-top: 8px;
+  display: flex; flex-wrap: wrap; gap: 5px;
+}
+.step-action {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  color: var(--muted);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 10.5px;
+  font-family: 'DM Mono', monospace;
+}
+
+/* Metric chips */
+.metric-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+.metric-chip {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  flex: 1; min-width: 80px;
+}
+.metric-val { font-size: 16px; font-weight: 600; color: var(--text); font-family: 'DM Mono', monospace; }
+.metric-lbl { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+/* ── Connection lines SVG overlay ── */
+.svg-overlay {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.diagram-container {
+  position: relative;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* ── Overlay backdrop ── */
+.backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 190;
+  display: none;
+}
+.backdrop.open { display: block; }
+
+/* ── Highlight ring on expanded card ── */
+
+/* ── Tag badge ── */
+.tag-badge {
+  display: inline-block;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  padding: 2px 7px;
+  border-radius: 5px;
+  text-transform: uppercase;
+}
+
+/* ── Tooltip ── */
+.uc-tooltip {
+  position: fixed;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 11.5px;
+  color: var(--text);
+  max-width: 220px;
+  line-height: 1.45;
+  z-index: 300;
+  pointer-events: none;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  display: none;
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-left">
+    <div class="wa-badge">💬</div>
+    <div>
+      <div class="header-title">WhatsApp Chatbot — Hierarchical Flow</div>
+      <div class="header-sub">Complete reference of all 98 use cases across 19 industries</div>
+    </div>
+  </div>
+  <div class="header-stats">
+    <div class="stat"><div class="stat-num">98</div><div class="stat-lbl">Use Cases</div></div>
+    <div class="stat"><div class="stat-num">19</div><div class="stat-lbl">Industries</div></div>
+    <div class="stat"><div class="stat-num">5</div><div class="stat-lbl">Flow Steps</div></div>
+  </div>
+</div>
+
+<!-- Legend -->
+<div class="legend-bar">
+  <span class="legend-title">Legend</span>
+  <div class="legend-items">
+    <div class="legend-item"><div class="legend-dot" style="background:#25D366"></div> Entry node</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#3B82F6"></div> Industry cluster</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#7D8590"></div> Use case</div>
+    <div class="legend-item">
+      <svg width="24" height="12" style="overflow:visible"><line x1="0" y1="6" x2="24" y2="6" stroke="#25D366" stroke-width="1.5" marker-end="url(#arrowG)"/><defs><marker id="arrowG" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M2 2L8 5L2 8" fill="none" stroke="#25D366" stroke-width="1.5"/></marker></defs></svg>
+      Flow connection
+    </div>
+    <div class="legend-item"><span style="font-size:11px;font-family:monospace;background:rgba(255,255,255,0.06);padding:2px 6px;border-radius:4px;color:#7D8590">tap card</span> to see full flow steps</div>
+  </div>
+</div>
+
+<!-- Main diagram -->
+<div class="diagram-wrap">
+  <div class="diagram-container" id="diagramContainer">
+
+    <!-- Root node -->
+    <div class="root-zone">
+      <div class="root-node">
+        <div class="root-icon">💬</div>
+        <div class="root-text">
+          <div class="root-name">WhatsApp Chatbot Platform</div>
+          <div class="root-desc">User sends first message → Bot identifies intent → Routes to industry flow</div>
+        </div>
+      </div>
+      <div class="root-connector"></div>
+      <div class="level-label" style="margin-bottom:12px;">19 Industry Verticals</div>
+    </div>
+
+    <!-- Industries grid -->
+    <div class="industries-grid" id="industriesGrid"></div>
+  </div>
+</div>
+
+<!-- Backdrop -->
+<div class="backdrop" id="backdrop" onclick="closePanel()"></div>
+
+<!-- Detail panel -->
+<div class="flow-panel" id="flowPanel">
+  <div class="panel-header">
+    <div>
+      <div id="panelTitle" style="font-size:15px;font-weight:600;"></div>
+      <div id="panelSub" style="font-size:11.5px;color:var(--muted);margin-top:3px;"></div>
+    </div>
+    <button class="panel-close" onclick="closePanel()">✕</button>
+  </div>
+  <div class="panel-body" id="panelBody"></div>
+</div>
+
+<!-- Tooltip -->
+<div class="uc-tooltip" id="tooltip"></div>
+
+<script>
+const industries = [
+  {
+    id:'ecom', icon:'🛒', name:'E-commerce & Retail', color:'#3B82F6',
+    useCases:[
+      {title:'Product discovery & recommendations', desc:'Conversational filters — size, price, style — with AI-driven personalised suggestions.'},
+      {title:'Order tracking & status updates', desc:'Real-time delivery updates, courier links, ETAs, and proactive delay alerts.'},
+      {title:'Returns & refund management', desc:'Automate return initiation, label generation, refund tracking, and policy explanations.'},
+      {title:'Flash sales & promotional alerts', desc:'Personalised offers, discount codes, limited-time deals, and cart abandonment reminders.'},
+      {title:'In-chat checkout & payments', desc:'Complete purchases, select payment methods, and receive digital receipts within WhatsApp.'},
+      {title:'Post-purchase feedback & reviews', desc:'Collect product ratings, reviews, and satisfaction scores automatically post-delivery.'},
+      {title:'Inventory & stock enquiries', desc:'Live stock availability, size charts, and waitlist notifications when items restock.'},
+    ],
+    flow:[
+      {title:'Welcome & menu', desc:'Bot greets user, shows main menu options', actions:['Hi / Hello','Main menu']},
+      {title:'Intent capture', desc:'User selects: Browse, Track, Return, Deals, Checkout', actions:['Quick reply buttons','NLP intent']},
+      {title:'Product/order lookup', desc:'Bot fetches live catalogue or order data via API', actions:['Catalogue API','Order API']},
+      {title:'Transact or resolve', desc:'Add to cart, initiate return, apply promo code', actions:['Payment gateway','CRM update']},
+      {title:'Confirmation & follow-up', desc:'Send receipt, tracking link, or review request', actions:['Push notification','Review prompt']},
+    ],
+    metrics:[{val:'3.2×',lbl:'Higher CTR'},{val:'67%',lbl:'Cart recovery'},{val:'< 2m',lbl:'Avg resolution'}],
+  },
+  {
+    id:'health', icon:'🏥', name:'Healthcare', color:'#EC4899',
+    useCases:[
+      {title:'Appointment booking & reminders', desc:'Book, reschedule, or cancel consultations with automated pre-appointment reminders.'},
+      {title:'Symptom triage & health assessment', desc:'Initial symptom checkers assessing severity and recommending care or escalation.'},
+      {title:'Medication reminders & refill alerts', desc:'Daily dose reminders, prescription refill notifications, and pharmacy pickup confirmations.'},
+      {title:'Lab results & report delivery', desc:'Securely send lab test results, radiology reports, and discharge summaries to patients.'},
+      {title:'Chronic disease management', desc:'Daily check-in prompts and data logging for diabetes, hypertension, and more.'},
+      {title:'Mental health support & check-ins', desc:'Mood tracking, coping strategies, therapist scheduling, and crisis resource escalation.'},
+      {title:'Vaccination campaigns & certificates', desc:'Schedule vaccine appointments, send reminders, and distribute digital certificates.'},
+    ],
+    flow:[
+      {title:'Patient greeting', desc:'HIPAA/POPIA-aware greeting, language selection', actions:['Language select','Privacy notice']},
+      {title:'Need assessment', desc:'Appointment, symptom check, results, medication', actions:['NLP','Menu buttons']},
+      {title:'Triage or scheduling', desc:'Symptom severity scoring or slot availability check', actions:['Clinical API','Calendar API']},
+      {title:'Booking or advice', desc:'Confirm appointment or provide care guidance', actions:['Doctor assignment','Home care tips']},
+      {title:'Reminder & follow-up', desc:'Pre-visit reminders, post-visit surveys, adherence nudges', actions:['Scheduled messages','Survey']},
+    ],
+    metrics:[{val:'40%',lbl:'No-show reduction'},{val:'89%',lbl:'Patient satisfaction'},{val:'24/7',lbl:'Availability'}],
+  },
+  {
+    id:'bank', icon:'🏦', name:'Banking & Finance', color:'#10B981',
+    useCases:[
+      {title:'Balance & mini-statement', desc:'Instant account balance and last 10 transactions via secure WhatsApp channel.'},
+      {title:'Fund transfers & payments', desc:'Peer-to-peer transfers, bill payments, and beneficiary management in-chat.'},
+      {title:'Loan & credit applications', desc:'EMI calculators, eligibility checks, document submission, and application tracking.'},
+      {title:'Fraud alerts & OTPs', desc:'Real-time transaction alerts, suspicious activity notifications, and instant card freeze.'},
+      {title:'Account opening', desc:'New account onboarding with KYC document collection and e-signature.'},
+      {title:'FX rates & currency conversion', desc:'Live exchange rates, conversion calculators, and international transfer initiation.'},
+      {title:'Card management', desc:'Card activation, block/unblock, PIN change, and spend limit adjustment via chat.'},
+    ],
+    flow:[
+      {title:'Secure authentication', desc:'Phone number verification + OTP or biometric link', actions:['OTP','TOTP','Face ID link']},
+      {title:'Service selection', desc:'Balance, transfer, loans, cards, investments', actions:['Menu','Voice NLP']},
+      {title:'Data retrieval / form fill', desc:'Pull account data or collect application fields', desc2:'Core banking API', actions:['Core banking API','Form collection']},
+      {title:'Transaction or decision', desc:'Execute transfer, approve loan, block card', actions:['Real-time settlement','Credit engine']},
+      {title:'Confirmation & audit trail', desc:'Transaction SMS, email receipt, audit log entry', actions:['Notification','Compliance log']},
+    ],
+    metrics:[{val:'60%',lbl:'Call deflection'},{val:'99.9%',lbl:'Uptime SLA'},{val:'< 30s',lbl:'Transfer time'}],
+  },
+  {
+    id:'travel', icon:'✈️', name:'Travel & Hospitality', color:'#F59E0B',
+    useCases:[
+      {title:'Flight search & booking', desc:'Natural-language flight search, fare comparison, and in-chat booking completion.'},
+      {title:'Hotel & accommodation reservations', desc:'Room search by dates, amenities, reviews, and direct booking with confirmation.'},
+      {title:'Visa & travel document info', desc:'Country-specific visa requirements, application links, and processing times.'},
+      {title:'Itinerary management', desc:'Multi-leg trip planning, itinerary sharing, and real-time flight status updates.'},
+      {title:'Check-in & boarding pass', desc:'Web check-in, seat selection, and digital boarding pass delivery via WhatsApp.'},
+      {title:'Lost baggage assistance', desc:'File baggage claims, track recovery status, and get compensation guidance.'},
+      {title:'Travel insurance', desc:'Quote generation, policy purchase, and claims initiation within the chat.'},
+    ],
+    flow:[
+      {title:'Destination enquiry', desc:'Origin, destination, dates, passenger count', actions:['NLP extraction','Date picker']},
+      {title:'Search & availability', desc:'Real-time search across GDS or hotel APIs', actions:['Amadeus API','Booking.com API']},
+      {title:'Option presentation', desc:'Show top 3–5 results with price, duration, stops', actions:['Carousel template','Quick replies']},
+      {title:'Seat/room selection & ancillaries', desc:'Seat map, meal, baggage, insurance add-ons', actions:['Ancillary API','Seat map']},
+      {title:'Payment & e-ticket', desc:'In-chat payment and boarding pass / voucher delivery', actions:['Payment link','PDF ticket']},
+    ],
+    metrics:[{val:'28%',lbl:'Direct booking uplift'},{val:'4.6★',lbl:'CSAT score'},{val:'45s',lbl:'Booking time'}],
+  },
+  {
+    id:'edu', icon:'🎓', name:'Education', color:'#8B5CF6',
+    useCases:[
+      {title:'Course enrolment & registration', desc:'Browse courses, check prerequisites, enrol, and receive confirmation instantly.'},
+      {title:'Assignment submission & tracking', desc:'Submit assignments via WhatsApp, receive acknowledgement and grade notifications.'},
+      {title:'Exam schedule & results', desc:'Personalised timetables, exam hall tickets, and result notifications.'},
+      {title:'Fee payment & receipts', desc:'Fee reminders, payment processing, and digital receipt generation.'},
+      {title:'Library & resource access', desc:'Book library resources, request e-books, and get study material links.'},
+      {title:'Student support & counselling', desc:'Academic queries, mental health resources, and escalation to counsellors.'},
+      {title:'Certificate & transcript requests', desc:'Request official certificates, track printing status, and arrange collection.'},
+    ],
+    flow:[
+      {title:'Student verification', desc:'Student ID + date of birth verification via LMS API', actions:['Student ID','LMS auth']},
+      {title:'Service selection', desc:'Enrolment, exams, fees, library, support', actions:['Menu','Voice query']},
+      {title:'Record lookup', desc:'Fetch student record, available courses, fee statement', actions:['LMS API','Finance API']},
+      {title:'Action execution', desc:'Enrol, submit assignment, pay fee, request cert', actions:['Enrolment API','Payment gateway']},
+      {title:'Notification & confirmation', desc:'Confirmation message, receipt, scheduled reminders', actions:['Scheduled push','Email CC']},
+    ],
+    metrics:[{val:'35%',lbl:'Admin time saved'},{val:'92%',lbl:'Query resolution'},{val:'5min',lbl:'Enrolment time'}],
+  },
+  {
+    id:'real', icon:'🏠', name:'Real Estate', color:'#06B6D4',
+    useCases:[
+      {title:'Property search & listings', desc:'Filter properties by location, price, size, and type with photo galleries.'},
+      {title:'Viewing appointments', desc:'Schedule property viewings, get directions, and receive confirmation.'},
+      {title:'Mortgage & bond calculators', desc:'Affordability checks, repayment estimates, and home loan applications.'},
+      {title:'Rental applications', desc:'Digital rental applications, document collection, and background check consent.'},
+      {title:'Tenant support & maintenance', desc:'Log maintenance requests, track repair status, and contact property managers.'},
+      {title:'Neighbourhood insights', desc:'Schools, amenities, transport links, and crime statistics for any area.'},
+    ],
+    flow:[
+      {title:'Intent qualification', desc:'Buy, rent, sell, or valuate?', actions:['Intent detection','Budget capture']},
+      {title:'Property matching', desc:'Filter by price, location, bedroom count, pet-friendly', actions:['MLS API','Map integration']},
+      {title:'Shortlist & media', desc:'Send property images, virtual tour links, floor plans', actions:['Media templates','Tour links']},
+      {title:'Appointment scheduling', desc:'Book viewing, send agent details and directions', actions:['Calendar API','Google Maps']},
+      {title:'Follow-up & application', desc:'Offer submission, bond application, or rental docs', actions:['DocuSign','Bond API']},
+    ],
+    metrics:[{val:'3×',lbl:'More viewings booked'},{val:'50%',lbl:'Lead qualification'},{val:'72h',lbl:'Response to offer'}],
+  },
+  {
+    id:'gov', icon:'🏛️', name:'Government & Public', color:'#EF4444',
+    useCases:[
+      {title:'Public service info & FAQs', desc:'Answers to licensing, permits, benefits, and government programme queries.'},
+      {title:'Document application & status', desc:'Apply for IDs, passports, birth certificates, and track application status.'},
+      {title:'Tax filing assistance', desc:'Step-by-step guidance for tax submissions, deadline reminders, and refund status.'},
+      {title:'Emergency alerts & notifications', desc:'Location-based disaster alerts, load-shedding schedules, and public health advisories.'},
+      {title:'Civic complaint reporting', desc:'Log potholes, water outages, illegal dumping with photo evidence and tracking.'},
+      {title:'Welfare & grant applications', desc:'Eligibility checks, document submission, and payment status for social grants.'},
+    ],
+    flow:[
+      {title:'Citizen identification', desc:'ID number or reference lookup for personalised services', actions:['ID verification','Reference lookup']},
+      {title:'Service category', desc:'Documents, taxes, grants, complaints, alerts', actions:['Menu','USSD bridge']},
+      {title:'Eligibility or status check', desc:'Pull live data from government database', actions:['DHA API','SARS API','SASSA API']},
+      {title:'Application or report', desc:'Collect documents, submit form, log complaint', actions:['Document upload','Case creation']},
+      {title:'Tracking & notification', desc:'Reference number issued, status push updates', actions:['SMS fallback','Push updates']},
+    ],
+    metrics:[{val:'70%',lbl:'Call centre deflection'},{val:'24/7',lbl:'Service availability'},{val:'4.1★',lbl:'Citizen satisfaction'}],
+  },
+  {
+    id:'ins', icon:'🛡️', name:'Insurance', color:'#14B8A6',
+    useCases:[
+      {title:'Policy quotation & purchase', desc:'Get quotes for life, motor, home, or health insurance and purchase in-chat.'},
+      {title:'Claims initiation & tracking', desc:'Submit claims with photo evidence, track status, and receive settlement updates.'},
+      {title:'Premium reminders & payments', desc:'Due date alerts, payment processing, and digital receipt within WhatsApp.'},
+      {title:'Policy document delivery', desc:'Send policy schedules, terms, endorsements, and renewal documents securely.'},
+      {title:'Coverage enquiries', desc:'Plain-language explanations of policy benefits, exclusions, and excess amounts.'},
+      {title:'Medical pre-authorisation', desc:'Guide patients through pre-approval, document submission, and tracking.'},
+    ],
+    flow:[
+      {title:'Customer identification', desc:'Policy number or ID lookup', actions:['Policy lookup','ID verification']},
+      {title:'Need identification', desc:'New quote, claim, payment, policy info', actions:['Intent NLP','Menu']},
+      {title:'Risk assessment or data pull', desc:'Underwriting data or existing policy details', actions:['Underwriting API','Policy admin']},
+      {title:'Quote / claim / transaction', desc:'Generate quote, open claim, process payment', actions:['Rating engine','Claims system']},
+      {title:'Document & confirmation', desc:'Policy schedule, claim reference, payment receipt', actions:['PDF generation','Push confirm']},
+    ],
+    metrics:[{val:'55%',lbl:'Faster claims'},{val:'R200',lbl:'Cost per claim saved'},{val:'89%',lbl:'NPS score'}],
+  },
+  {
+    id:'telco', icon:'📱', name:'Telecom & Tech', color:'#6366F1',
+    useCases:[
+      {title:'Data & airtime top-up', desc:'Purchase data bundles, airtime, or roaming packages directly in WhatsApp.'},
+      {title:'Bill payment & e-invoice', desc:'View itemised bills, dispute charges, and make payments within the chat.'},
+      {title:'Technical support & troubleshooting', desc:'Self-service guided troubleshooting for connectivity, device, and billing issues.'},
+      {title:'Plan upgrades & SIM management', desc:'Upgrade tariff plan, add SIM, eSIM activation, and RICA updates.'},
+      {title:'Fault reporting & network status', desc:'Report service outages, check tower status, and receive restoration ETAs.'},
+      {title:'Device trade-in & upgrades', desc:'Trade-in valuations, upgrade eligibility checks, and device order placement.'},
+    ],
+    flow:[
+      {title:'Account recognition', desc:'MSISDN auto-detection or account number entry', actions:['MSISDN lookup','Account API']},
+      {title:'Service selection', desc:'Data, billing, support, upgrades, faults', actions:['Quick menu','NLP']},
+      {title:'Real-time data fetch', desc:'Balance, bill, plan details, network diagnostics', actions:['BSS API','Network API']},
+      {title:'Self-service action', desc:'Top-up, plan change, fault ticket creation', actions:['Provisioning API','Ticket system']},
+      {title:'Resolution & notification', desc:'Confirmation, ticket reference, resolution push', actions:['Push notification','Email']},
+    ],
+    metrics:[{val:'45%',lbl:'Call deflection'},{val:'FCR 78%',lbl:'First call resolution'},{val:'2.1min',lbl:'Avg handle time'}],
+  },
+  {
+    id:'hr', icon:'👥', name:'HR & Recruitment', color:'#F97316',
+    useCases:[
+      {title:'Job applications & screening', desc:'Collect applications, screen candidates with adaptive questions, and shortlist.'},
+      {title:'Interview scheduling', desc:'Automated interview slot booking, reminders, and panel notifications.'},
+      {title:'Employee onboarding', desc:'Digital onboarding checklist, document collection, and policy acknowledgement.'},
+      {title:'Leave & attendance management', desc:'Apply for leave, check balance, receive approval or rejection instantly.'},
+      {title:'Payslip access & queries', desc:'Request and receive encrypted payslips, query deductions, and update bank details.'},
+      {title:'HR policy FAQs', desc:'Instant answers on benefits, disciplinary processes, and workplace policies.'},
+      {title:'Employee referral programme', desc:'Submit referrals, track referral status, and receive referral bonus updates.'},
+    ],
+    flow:[
+      {title:'User type detection', desc:'Candidate vs. employee vs. manager flow routing', actions:['Role detection','Auth']},
+      {title:'Need selection', desc:'Apply, schedule, onboard, leave, payslip, FAQ', actions:['Menu','NLP intent']},
+      {title:'ATS / HRIS integration', desc:'Pull JD, candidate status, leave balance, payslip', actions:['ATS API','HRIS API']},
+      {title:'Form / workflow execution', desc:'Application, leave request, onboarding checklist', actions:['Form collection','Workflow trigger']},
+      {title:'Approval & notification', desc:'Manager approval, candidate notification, audit log', actions:['Approval workflow','Push alerts']},
+    ],
+    metrics:[{val:'60%',lbl:'Faster hiring'},{val:'90%',lbl:'Candidate engagement'},{val:'3 days',lbl:'Onboarding time'}],
+  },
+  {
+    id:'log', icon:'🚚', name:'Logistics & Supply', color:'#64748B',
+    useCases:[
+      {title:'Shipment tracking & ETA', desc:'Real-time parcel tracking, GPS-linked driver updates, and delay notifications.'},
+      {title:'Delivery scheduling & rescheduling', desc:'Choose delivery slots, reschedule missed deliveries, and set safe-drop instructions.'},
+      {title:'Proof of delivery (POD)', desc:'Digital POD collection with photo, signature capture, and instant dispatch notification.'},
+      {title:'Customs & clearance status', desc:'Track customs clearance progress, document requirements, and duty payment.'},
+      {title:'Warehouse inventory queries', desc:'Check stock levels, location of items, and inbound shipment ETAs.'},
+      {title:'Returns & reverse logistics', desc:'Initiate returns, print return labels, and schedule reverse pickup.'},
+    ],
+    flow:[
+      {title:'Tracking initiation', desc:'Enter waybill, order ref, or phone-linked lookup', actions:['Waybill lookup','Phone lookup']},
+      {title:'Status retrieval', desc:'Live GPS + milestones from TMS', actions:['TMS API','GPS API']},
+      {title:'Issue or action', desc:'Reschedule, safe-drop, POD request, customs doc', actions:['Reschedule','DocUpload']},
+      {title:'Driver / warehouse comms', desc:'Push instruction to driver app or WMS', actions:['Driver app push','WMS API']},
+      {title:'POD & close-out', desc:'Photo + signature capture, delivery confirmation push', actions:['Photo upload','Signature API']},
+    ],
+    metrics:[{val:'22%',lbl:'Failed deliveries reduced'},{val:'8×',lbl:'Faster POD'},{val:'94%',lbl:'On-time rate'}],
+  },
+  {
+    id:'food', icon:'🍽️', name:'Food & Restaurant', color:'#F43F5E',
+    useCases:[
+      {title:'Table reservations', desc:'Book tables, specify dietary needs, and receive confirmation and reminders.'},
+      {title:'Food ordering & delivery', desc:'Browse menu, customise orders, apply promo codes, and pay in-chat.'},
+      {title:'Menu browsing with dietary filters', desc:'Filter by vegan, gluten-free, halal, nut-free, and see allergen info.'},
+      {title:'Order tracking', desc:'Real-time kitchen status and rider GPS tracking for delivery orders.'},
+      {title:'Loyalty rewards management', desc:'Check points balance, redeem rewards, and receive personalised offers.'},
+      {title:'Catering & event orders', desc:'Bulk order placement, delivery scheduling, and invoicing for events.'},
+    ],
+    flow:[
+      {title:'Intent detection', desc:'Dine-in reservation vs. delivery vs. collection', actions:['NLP intent','Menu']},
+      {title:'Menu & customisation', desc:'Category browse, item select, modifiers, dietary filters', actions:['POS API','Menu API']},
+      {title:'Cart & promo', desc:'Cart review, promo code apply, upsell suggestions', actions:['Cart engine','Promo engine']},
+      {title:'Payment & dispatch', desc:'In-chat payment, kitchen order print, rider dispatch', actions:['Payment gateway','KDS push']},
+      {title:'Tracking & feedback', desc:'Kitchen → ready → rider → delivered. Post-meal rating', actions:['GPS tracking','Review prompt']},
+    ],
+    metrics:[{val:'34%',lbl:'Order value uplift'},{val:'18min',lbl:'Avg delivery time'},{val:'4.7★',lbl:'Food rating avg'}],
+  },
+  {
+    id:'media', icon:'📰', name:'Media & News', color:'#A78BFA',
+    useCases:[
+      {title:'Breaking news & personalised briefings', desc:'Topic-based news alerts and daily digests tailored to interests.'},
+      {title:'Content discovery & streaming links', desc:'Recommend shows, podcasts, or articles based on viewing history.'},
+      {title:'Audience polls & interactive content', desc:'Live polls, quizzes, and surveys for editorial feedback and engagement.'},
+      {title:'Sports scores & live commentary', desc:'Live score updates, match commentary snippets, and post-game highlights.'},
+    ],
+    flow:[
+      {title:'Preference setup', desc:'Topic, language, and frequency preferences collected', actions:['Preference form','NLP topics']},
+      {title:'Content curation', desc:'AI-driven content matching against user profile', actions:['ML recommendation','CMS API']},
+      {title:'Delivery & format', desc:'Text digest, image, audio clip, or video snippet', actions:['Template selection','Media push']},
+      {title:'Engagement', desc:'Poll, quiz, or article comment prompt', actions:['Poll template','Comment link']},
+      {title:'Analytics & refinement', desc:'Read/click tracking to refine personalisation', actions:['Engagement API','A/B testing']},
+    ],
+    metrics:[{val:'5×',lbl:'Open rate vs email'},{val:'65%',lbl:'Daily active readers'},{val:'2min',lbl:'Avg read time'}],
+  },
+  {
+    id:'ngo', icon:'❤️', name:'NGO & Nonprofit', color:'#EC4899',
+    useCases:[
+      {title:'Donation collection & pledges', desc:'Accept one-time or recurring donations, send receipts and impact reports.'},
+      {title:'Volunteer recruitment & coordination', desc:'Recruit, assign tasks, share briefs, and coordinate field operations.'},
+      {title:'Awareness campaigns', desc:'Multilingual campaign broadcasts, petition drives, and fundraising promotions.'},
+      {title:'Beneficiary service delivery', desc:'Distribute welfare info, eligibility checks, and aid application guidance.'},
+    ],
+    flow:[
+      {title:'Stakeholder identification', desc:'Donor, volunteer, or beneficiary flow routing', actions:['Role detection']},
+      {title:'Engagement or application', desc:'Donate, volunteer sign-up, aid application', actions:['Payment link','Form']},
+      {title:'Impact communication', desc:'Show impact metrics, photo stories, progress updates', actions:['Rich media','Impact API']},
+      {title:'Campaign broadcast', desc:'Segment-targeted broadcast messages', actions:['Broadcast API','Segmentation']},
+      {title:'Receipt & follow-up', desc:'Tax receipt, volunteer schedule, benefit confirmation', actions:['PDF receipt','Calendar invite']},
+    ],
+    metrics:[{val:'3.5×',lbl:'Donation conversion'},{val:'80%',lbl:'Volunteer retention'},{val:'R12',lbl:'Cost per donor'}],
+  },
+  {
+    id:'auto', icon:'🚗', name:'Automotive', color:'#94A3B8',
+    useCases:[
+      {title:'Test drive booking', desc:'Schedule test drives, select dealership, and receive pre-visit checklist.'},
+      {title:'Service appointments & reminders', desc:'Book vehicle servicing, receive status updates, and cost estimates.'},
+      {title:'Vehicle financing enquiries', desc:'EMI calculators, loan eligibility checks, and document submission.'},
+      {title:'Roadside assistance & breakdown SOS', desc:'SOS triggers, real-time technician tracking, and towing coordination.'},
+    ],
+    flow:[
+      {title:'Vehicle & owner lookup', desc:'Reg number or VIN for personalised service history', actions:['VIN lookup','Owner API']},
+      {title:'Intent routing', desc:'Buy, service, finance, or SOS', actions:['NLP','Quick menu']},
+      {title:'Booking or assessment', desc:'Dealer availability, service slot, finance eligibility', actions:['DMS API','Finance API']},
+      {title:'Action & dispatch', desc:'Book confirmed, technician dispatched, loan submitted', actions:['Calendar','Dispatch API']},
+      {title:'Status & follow-up', desc:'Technician ETA, repair progress, finance outcome', actions:['GPS tracking','Push update']},
+    ],
+    metrics:[{val:'25%',lbl:'Service no-shows down'},{val:'4.4★',lbl:'Dealer CSAT'},{val:'<3min',lbl:'SOS response'}],
+  },
+  {
+    id:'agri', icon:'🌱', name:'Agriculture', color:'#22C55E',
+    useCases:[
+      {title:'Crop advisory & weather alerts', desc:'Personalised agronomic advice, pest alerts, and weather forecasts for farmers.'},
+      {title:'Market price discovery', desc:'Real-time commodity prices, mandi rates, and best-time-to-sell recommendations.'},
+      {title:'Input procurement & delivery', desc:'Order seeds, fertilisers, and pesticides with home-delivery tracking.'},
+      {title:'Government scheme enrolment', desc:'Guide farmers through subsidy applications, crop insurance, and benefit tracking.'},
+    ],
+    flow:[
+      {title:'Farmer profile', desc:'Location, crop type, land size, language preference', actions:['Profile collection','GPS location']},
+      {title:'Service selection', desc:'Advisory, prices, inputs, government schemes', actions:['Voice NLP','Menu (multilingual)']},
+      {title:'Data fetch', desc:'Weather API, commodity prices, scheme eligibility', actions:['Weather API','Market API']},
+      {title:'Advisory or transaction', desc:'Personalised crop advice, price alert, input order', actions:['AI advisory','E-commerce API']},
+      {title:'Alert & follow-up', desc:'Weather alert push, delivery update, scheme update', actions:['Geo-push','Delivery API']},
+    ],
+    metrics:[{val:'40%',lbl:'Yield improvement'},{val:'15%',lbl:'Input cost saving'},{val:'2.3M',lbl:'Farmers reached'}],
+  },
+  {
+    id:'legal', icon:'⚖️', name:'Legal & Professional', color:'#D97706',
+    useCases:[
+      {title:'Consultation scheduling', desc:'Book legal consultations, send intake forms, and pre-meeting document checklists.'},
+      {title:'Case status updates', desc:'Notify clients of hearing dates, court orders, and case milestones.'},
+      {title:'Legal FAQ & document guidance', desc:'Answer common legal questions and guide document preparation.'},
+    ],
+    flow:[
+      {title:'Client intake', desc:'New vs existing client, area of law, jurisdiction', actions:['Intake form','Conflict check']},
+      {title:'Matter classification', desc:'Criminal, civil, corporate, family, IP, labour', actions:['NLP classification']},
+      {title:'Appointment or document', desc:'Consultation booking or FAQ resolution', actions:['Calendar API','Knowledge base']},
+      {title:'Case management link', desc:'Sync to case management system, assign attorney', actions:['Clio API','Filevine API']},
+      {title:'Update delivery', desc:'Hearing dates, deadlines, settlement notifications', actions:['Scheduled push','Secure delivery']},
+    ],
+    metrics:[{val:'50%',lbl:'Admin time saved'},{val:'85%',lbl:'Query resolution'},{val:'R400',lbl:'Admin cost/case saved'}],
+  },
+  {
+    id:'mfg', icon:'⚙️', name:'Manufacturing', color:'#78716C',
+    useCases:[
+      {title:'Production schedule & alerts', desc:'Share shift schedules, line-status alerts, and downtime notifications.'},
+      {title:'Supplier communication & POs', desc:'Send purchase orders, confirm deliveries, and escalate supply disruptions.'},
+      {title:'Safety incident reporting', desc:'Workers log safety incidents or near-misses instantly with photo evidence.'},
+      {title:'Maintenance request management', desc:'Log equipment faults, assign technicians, and track repair status.'},
+    ],
+    flow:[
+      {title:'Worker / supplier auth', desc:'Employee ID or supplier code verification', actions:['Employee ID','Supplier code']},
+      {title:'Role-based menu', desc:'Operator, supervisor, or supplier options', actions:['Role-based menu']},
+      {title:'ERP / MES data fetch', desc:'Production schedule, inventory, PO status', actions:['SAP API','MES API']},
+      {title:'Incident / PO action', desc:'Log incident, approve PO, raise maintenance ticket', actions:['Ticket system','PO system']},
+      {title:'Escalation & notification', desc:'Alert supervisor, confirm PO, track repair ETA', actions:['Escalation push','Repair tracker']},
+    ],
+    metrics:[{val:'30%',lbl:'Incident reporting up'},{val:'2h',lbl:'Faster PO confirmation'},{val:'95%',lbl:'OTIF rate'}],
+  },
+  {
+    id:'sport', icon:'🏆', name:'Sports & Events', color:'#FB923C',
+    useCases:[
+      {title:'Event ticketing & registration', desc:'Buy tickets, receive QR passes, manage seat selection, and get venue directions.'},
+      {title:'Live sports scores & commentary', desc:'Real-time score push notifications, match stats, and player updates.'},
+      {title:'Fan engagement & merchandise', desc:'Polls, trivia, limited-edition merchandise drops, and exclusive fan content.'},
+      {title:'Athlete & coach scheduling', desc:'Training schedules, physio appointments, and nutrition plan sharing.'},
+    ],
+    flow:[
+      {title:'Fan identification', desc:'Loyalty ID or phone number for personalised experience', actions:['Loyalty lookup','Phone verify']},
+      {title:'Interest selection', desc:'Tickets, live scores, merch, team updates', actions:['Quick reply menu']},
+      {title:'Content or commerce', desc:'Score push, ticket search, merch catalogue', actions:['Ticketing API','Scores API']},
+      {title:'Transaction or engagement', desc:'Purchase ticket, enter poll, redeem loyalty points', actions:['Payment gateway','Loyalty API']},
+      {title:'Confirmation & game-day assist', desc:'QR ticket, seat directions, parking info, live push', actions:['QR delivery','Geo-push']},
+    ],
+    metrics:[{val:'4×',lbl:'Fan engagement'},{val:'22%',lbl:'Merch sales uplift'},{val:'8s',lbl:'Score update latency'}],
+  },
+];
+
+let activeIndustry = null;
+
+function buildGrid() {
+  const grid = document.getElementById('industriesGrid');
+  grid.innerHTML = '';
+
+  industries.forEach(ind => {
+    const node = document.createElement('div');
+    node.className = 'industry-node';
+    node.id = 'node-' + ind.id;
+    node.style.setProperty('--ind-color', ind.color);
+    node.style.borderColor = 'rgba(255,255,255,0.1)';
+
+    node.innerHTML = `
+      <div class="ind-color-bar" style="background:${ind.color}"></div>
+      <div class="ind-header">
+        <div class="ind-icon-circle" style="background:${ind.color}22">${ind.icon}</div>
+        <div>
+          <div class="ind-name" style="color:${ind.color}">${ind.name}</div>
+          <div class="ind-count">${ind.useCases.length} use cases</div>
+        </div>
+      </div>
+      <div class="use-cases-list">
+        ${ind.useCases.map((uc, i) => `
+          <div class="use-case-row"
+            onmouseenter="showTooltip(event, '${esc(uc.title)}', '${esc(uc.desc)}')"
+            onmouseleave="hideTooltip()"
+            onclick="openPanel('${ind.id}', ${i})">
+            <div class="uc-dot" style="background:${ind.color}"></div>
+            <span class="uc-text">${uc.title}</span>
+          </div>
+        `).join('')}
+      </div>
+    `;
+
+    node.addEventListener('click', (e) => {
+      if (e.target.closest('.use-case-row')) return;
+      openPanel(ind.id, 0);
+    });
+
+    grid.appendChild(node);
+  });
+}
+
+function esc(str) {
+  return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+
+function openPanel(id, ucIndex = 0) {
+  activeIndustry = id;
+  const ind = industries.find(i => i.id === id);
+  if (!ind) return;
+
+  // Highlight node
+  document.querySelectorAll('.industry-node').forEach(n => {
+    n.classList.remove('expanded');
+    n.style.borderColor = 'rgba(255,255,255,0.1)';
+  });
+  const node = document.getElementById('node-' + id);
+  if (node) {
+    node.classList.add('expanded');
+    node.style.borderColor = ind.color;
+  }
+
+  // Panel title
+  document.getElementById('panelTitle').innerHTML = `<span style="color:${ind.color}">${ind.icon}</span> ${ind.name}`;
+  document.getElementById('panelSub').textContent = `${ind.useCases.length} use cases · ${ind.flow.length} flow steps`;
+
+  // Build panel body
+  const body = document.getElementById('panelBody');
+  body.innerHTML = `
+    <div style="margin-bottom:20px">
+      <div style="font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:12px">Conversation flow</div>
+      <div class="flow-steps">
+        ${ind.flow.map((step, i) => `
+          <div class="flow-step">
+            <div class="step-left">
+              <div class="step-num filled" style="background:${ind.color};border-color:${ind.color}">${i+1}</div>
+              ${i < ind.flow.length-1 ? '<div class="step-line"></div>' : ''}
+            </div>
+            <div class="step-content">
+              <div class="step-title">${step.title}</div>
+              <div class="step-desc">${step.desc}</div>
+              <div class="step-actions">
+                ${step.actions.map(a => `<span class="step-action">${a}</span>`).join('')}
+              </div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+
+    <div style="margin-bottom:20px">
+      <div style="font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Impact metrics</div>
+      <div class="metric-row">
+        ${ind.metrics.map(m => `
+          <div class="metric-chip">
+            <div class="metric-val" style="color:${ind.color}">${m.val}</div>
+            <div class="metric-lbl">${m.lbl}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+
+    <div>
+      <div style="font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">All use cases</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${ind.useCases.map((uc, i) => `
+          <div style="padding:9px 12px;background:var(--surface2);border-radius:9px;border:1px solid ${i===ucIndex ? ind.color+'55' : 'var(--border)'}">
+            <div style="font-size:12px;font-weight:${i===ucIndex?'600':'400'};color:${i===ucIndex ? ind.color : 'var(--text)'};">${uc.title}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:3px;line-height:1.4">${uc.desc}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+
+  document.getElementById('flowPanel').classList.add('open');
+  document.getElementById('backdrop').classList.add('open');
+}
+
+function closePanel() {
+  document.getElementById('flowPanel').classList.remove('open');
+  document.getElementById('backdrop').classList.remove('open');
+  document.querySelectorAll('.industry-node').forEach(n => {
+    n.classList.remove('expanded');
+    n.style.borderColor = 'rgba(255,255,255,0.1)';
+  });
+  activeIndustry = null;
+}
+
+const tooltip = document.getElementById('tooltip');
+function showTooltip(e, title, desc) {
+  tooltip.innerHTML = `<strong style="font-size:12px;color:var(--text);display:block;margin-bottom:4px">${title}</strong><span>${desc}</span>`;
+  tooltip.style.display = 'block';
+  moveTooltip(e);
+}
+function hideTooltip() { tooltip.style.display = 'none'; }
+document.addEventListener('mousemove', e => {
+  if (tooltip.style.display === 'block') moveTooltip(e);
+});
+function moveTooltip(e) {
+  let x = e.clientX + 16, y = e.clientY + 12;
+  if (x + 240 > window.innerWidth) x = e.clientX - 240;
+  if (y + 120 > window.innerHeight) y = e.clientY - 120;
+  tooltip.style.left = x + 'px';
+  tooltip.style.top = y + 'px';
+}
+
+buildGrid();
+</script>
+</body>
+</html>

@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wazify — Complete WhatsApp Growth Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,600;9..144,700;9..144,900&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=Geist+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#080B0F;--ink2:#0E1318;--ink3:#141C24;--ink4:#1A2535;
+  --card:#111820;--card2:#192030;
+  --b1:rgba(255,255,255,.06);--b2:rgba(255,255,255,.11);--b3:rgba(255,255,255,.18);
+  --tx:#ECF1F8;--tx2:#A8B8CC;--tx3:#5E7590;
+  --a:#34D399;--a2:#059669;--a3:rgba(52,211,153,.1);--a4:rgba(52,211,153,.06);
+  --blue:#60A5FA;--purple:#A78BFA;--orange:#FB923C;--yellow:#FBBF24;--red:#F87171;--teal:#2DD4BF;
+  --wa:#25D366;--wa2:#128C7E;--wa3:#075E54;--wa-bg:#0B1317;
+  --pf:#00AEEF;--pp:#E84393;--oz:#6C63FF;--pg:#E8282B;--yc:#FFD200;
+  --fh:'Fraunces',Georgia,serif;--fb:'DM Sans',sans-serif;--fm:'Geist Mono',monospace;
+  --r8:8px;--r12:12px;--r16:16px;--r20:20px;--shadow:0 8px 40px rgba(0,0,0,.5);
+}
+html{scroll-behavior:smooth}
+body{font-family:var(--fb);background:var(--ink);color:var(--tx);min-height:100vh;overflow-x:hidden;font-size:14px;line-height:1.5}
+::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-thumb{background:var(--ink4);border-radius:8px}
+button,input,select,textarea{font-family:var(--fb);font-size:inherit}a{color:inherit;text-decoration:none}
+
+/* Utility */
+.flex{display:flex}.items-center{align-items:center}.justify-between{justify-content:space-between}
+.gap-8{gap:8px}.gap-12{gap:12px}.flex-1{flex:1}.shrink-0{flex-shrink:0}.w-full{width:100%}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.mb-8{margin-bottom:8px}.mb-12{margin-bottom:12px}.mb-16{margin-bottom:16px}.mb-20{margin-bottom:20px}.mb-24{margin-bottom:24px}
+.mt-8{margin-top:8px}.mt-12{margin-top:12px}.mt-16{margin-top:16px}.hidden{display:none!important}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:var(--r8);border:none;cursor:pointer;font-size:13px;font-weight:600;transition:all .15s;white-space:nowrap}
+.btn-primary{background:linear-gradient(135deg,var(--a),var(--a2));color:#000;box-shadow:0 2px 14px rgba(52,211,153,.25)}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 22px rgba(52,211,153,.35)}
+.btn-ghost{background:transparent;border:1px solid var(--b2);color:var(--tx2)}
+.btn-ghost:hover{border-color:var(--b3);color:var(--tx)}
+.btn-sm{padding:6px 12px;font-size:12px}.btn-lg{padding:13px 28px;font-size:15px;border-radius:10px}
+.btn-icon{width:34px;height:34px;border-radius:var(--r8);background:var(--ink3);border:1px solid var(--b2);display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;transition:all .13s;flex-shrink:0}
+.btn-icon:hover{border-color:var(--a);color:var(--a)}
+
+/* Inputs */
+.input{width:100%;background:var(--ink3);border:1px solid var(--b2);border-radius:var(--r8);padding:9px 12px;font-size:13px;color:var(--tx);outline:none;transition:border-color .13s}
+.input:focus{border-color:var(--a)}.input::placeholder{color:var(--tx3)}.input-sm{padding:6px 10px;font-size:12px}
+.select{width:100%;background:var(--ink3);border:1px solid var(--b2);border-radius:var(--r8);padding:9px 12px;font-size:13px;color:var(--tx);outline:none;cursor:pointer}
+.textarea{width:100%;background:var(--ink3);border:1px solid var(--b2);border-radius:var(--r8);padding:9px 12px;font-size:13px;color:var(--tx);outline:none;resize:vertical;min-height:80px;transition:border-color .13s}
+.textarea:focus{border-color:var(--a)}.label{display:block;font-size:11.5px;font-weight:500;color:var(--tx2);margin-bottom:5px}
+.form-group{margin-bottom:14px}.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* Cards */
+.card{background:var(--card);border:1px solid var(--b2);border-radius:var(--r16);overflow:hidden}
+.card-hdr{padding:15px 20px;border-bottom:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between}
+.card-ttl{font-family:var(--fh);font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px}
+.card-body{padding:20px}
+.card-act{font-size:12px;color:var(--a);background:transparent;border:none;cursor:pointer;font-weight:600;padding:4px 10px;border-radius:6px;transition:background .13s}
+.card-act:hover{background:var(--a3)}
+
+/* Tags */
+.tag{display:inline-flex;align-items:center;font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:4px;font-family:var(--fm);white-space:nowrap}
+.tag-g{background:rgba(52,211,153,.1);color:var(--a);border:1px solid rgba(52,211,153,.2)}
+.tag-b{background:rgba(96,165,250,.1);color:var(--blue);border:1px solid rgba(96,165,250,.2)}
+.tag-o{background:rgba(251,146,60,.1);color:var(--orange);border:1px solid rgba(251,146,60,.2)}
+.tag-p{background:rgba(167,139,250,.1);color:var(--purple);border:1px solid rgba(167,139,250,.2)}
+.tag-r{background:rgba(248,113,113,.1);color:var(--red);border:1px solid rgba(248,113,113,.2)}
+.tag-y{background:rgba(251,191,36,.1);color:var(--yellow);border:1px solid rgba(251,191,36,.2)}
+
+/* Pills */
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px}
+.pill::before{content:'●';font-size:7px}
+.pill-g{background:rgba(52,211,153,.1);color:var(--a)}.pill-o{background:rgba(251,146,60,.1);color:var(--orange)}
+.pill-r{background:rgba(248,113,113,.1);color:var(--red)}.pill-gray{background:rgba(255,255,255,.05);color:var(--tx3)}
+
+/* Section header */
+.sec-hdr{margin-bottom:20px}
+.sec-hdr h2{font-family:var(--fh);font-size:22px;font-weight:700;letter-spacing:-.3px}
+.sec-hdr p{font-size:13px;color:var(--tx2);margin-top:3px}
+.between{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;gap:12px;flex-wrap:wrap}
+.divider{height:1px;background:var(--b1);margin:16px 0}
+
+/* Toggle */
+.toggle{width:36px;height:20px;border-radius:12px;position:relative;cursor:pointer;flex-shrink:0;transition:background .15s}
+.toggle.on{background:var(--a)}.toggle.off{background:var(--ink4)}
+.toggle::after{content:'';position:absolute;top:3px;width:14px;height:14px;border-radius:50%;background:#fff;transition:left .15s}
+.toggle.on::after{left:19px}.toggle.off::after{left:3px}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;right:24px;z-index:9999;background:var(--card2);border:1px solid var(--b2);border-radius:var(--r12);padding:13px 18px;display:flex;align-items:center;gap:10px;box-shadow:var(--shadow);font-size:13px;font-weight:500;transform:translateY(20px);opacity:0;pointer-events:none;transition:all .3s cubic-bezier(.4,0,.2,1);max-width:380px}
+.toast.show{transform:translateY(0);opacity:1;pointer-events:all}
+.toast.success{border-color:rgba(52,211,153,.3)}.toast.error{border-color:rgba(248,113,113,.3)}
+.t-ico{font-size:17px;flex-shrink:0}
+
+/* Modal */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:500;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
+.overlay.open{opacity:1;pointer-events:all}
+.modal{background:var(--card);border:1px solid var(--b2);border-radius:var(--r20);width:520px;max-height:88vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.7);transform:translateY(16px);transition:transform .25s cubic-bezier(.4,0,.2,1)}
+.overlay.open .modal{transform:translateY(0)}
+.modal-hdr{padding:20px 22px;border-bottom:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between}
+.modal-ttl{font-family:var(--fh);font-size:17px;font-weight:700}
+.modal-close{width:28px;height:28px;border-radius:var(--r8);background:var(--ink3);border:none;color:var(--tx3);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.modal-close:hover{background:rgba(248,113,113,.15);color:var(--red)}
+.modal-body{padding:22px}.modal-ftr{padding:14px 22px;border-top:1px solid var(--b1);display:flex;gap:10px}
+.modal-ftr .btn{flex:1}
+
+/* ── LANDING ── */
+#landing{display:block}#app{display:none}
+.land-nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:0 48px;height:64px;background:rgba(8,11,15,.9);backdrop-filter:blur(16px);border-bottom:1px solid var(--b1)}
+.land-logo{display:flex;align-items:center;gap:10px}
+.land-mark{width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,var(--a),var(--a2));display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 0 20px rgba(52,211,153,.3)}
+.land-name{font-family:var(--fh);font-size:19px;font-weight:700;letter-spacing:-.4px}
+.land-name em{color:var(--a);font-style:normal}
+.land-links{display:flex;gap:28px}
+.land-links a{font-size:13.5px;color:var(--tx2);transition:color .13s}
+.land-links a:hover{color:var(--tx)}
+
+.hero{padding:148px 52px 96px;position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;text-align:center}
+.hero-glow{position:absolute;top:0;left:50%;transform:translateX(-50%);width:900px;height:700px;background:radial-gradient(ellipse,rgba(52,211,153,.1) 0%,transparent 68%);pointer-events:none}
+.hero-grid{position:absolute;inset:0;background-image:linear-gradient(var(--b1) 1px,transparent 1px),linear-gradient(90deg,var(--b1) 1px,transparent 1px);background-size:60px 60px;pointer-events:none;mask-image:radial-gradient(ellipse 80% 60% at 50% 0%,black,transparent)}
+.hero-pill{display:inline-flex;align-items:center;gap:8px;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.2);border-radius:20px;padding:5px 16px;font-size:12px;font-weight:600;color:var(--a);margin-bottom:30px}
+.h-dot{width:6px;height:6px;border-radius:50%;background:var(--a);animation:blink 1.5s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.hero-h1{font-family:var(--fh);font-size:clamp(46px,7vw,84px);font-weight:900;line-height:1;letter-spacing:-3px;max-width:960px;margin-bottom:24px}
+.hero-h1 .g{color:var(--a)}.hero-h1 .o{-webkit-text-stroke:2px rgba(52,211,153,.4);color:transparent}
+.hero-sub{font-size:clamp(15px,1.8vw,18px);color:var(--tx2);max-width:600px;line-height:1.7;margin-bottom:42px}
+.hero-ctas{display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:center}
+.hero-trust{margin-top:52px;display:flex;align-items:center;gap:16px;color:var(--tx3);font-size:13px;flex-wrap:wrap;justify-content:center}
+.trust-avs{display:flex}
+.trust-av{width:30px;height:30px;border-radius:50%;border:2px solid var(--ink);background:linear-gradient(135deg,var(--a2),var(--teal));display:flex;align-items:center;justify-content:center;font-size:12px;margin-left:-7px}
+.trust-av:first-child{margin-left:0}
+
+.hero-mock{margin-top:64px;width:100%;max-width:1040px;background:var(--card);border:1px solid var(--b2);border-radius:var(--r20);overflow:hidden;box-shadow:0 40px 120px rgba(0,0,0,.7),0 0 0 1px rgba(52,211,153,.06)}
+.mock-bar{height:36px;background:var(--ink3);border-bottom:1px solid var(--b1);display:flex;align-items:center;padding:0 14px;gap:6px}
+.m-dot{width:10px;height:10px;border-radius:50%}
+.mock-body{padding:20px;display:grid;grid-template-columns:175px 1fr;gap:16px}
+.m-nav{display:flex;flex-direction:column;gap:3px}
+.m-ni{padding:8px 10px;border-radius:7px;font-size:12px;display:flex;align-items:center;gap:7px;color:var(--tx3)}
+.m-ni.a{background:var(--a3);color:var(--a)}
+.m-main{display:flex;flex-direction:column;gap:12px}
+.m-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.m-stat{background:var(--ink3);border:1px solid var(--b1);border-radius:10px;padding:12px}
+.m-sv{font-family:var(--fh);font-size:20px;font-weight:800}.m-sl{font-size:10px;color:var(--tx3);margin-top:2px}
+.m-chart{background:var(--ink3);border:1px solid var(--b1);border-radius:10px;height:88px;display:flex;align-items:flex-end;gap:5px;padding:14px}
+.m-bar{flex:1;border-radius:3px 3px 0 0;background:linear-gradient(to top,var(--a2),var(--a))}
+
+.stats-strip{padding:56px 52px;border-top:1px solid var(--b1);border-bottom:1px solid var(--b1);background:var(--ink2);display:grid;grid-template-columns:repeat(4,1fr);gap:40px;text-align:center}
+.ss-val{font-family:var(--fh);font-size:48px;font-weight:900;color:var(--a);line-height:1}
+.ss-lbl{font-size:13px;color:var(--tx2);margin-top:8px}
+
+.features{padding:92px 52px}
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.feat-card{background:var(--card);border:1px solid var(--b2);border-radius:var(--r20);padding:28px;transition:all .2s;position:relative;overflow:hidden}
+.feat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--a),transparent);opacity:0;transition:opacity .2s}
+.feat-card:hover{border-color:rgba(52,211,153,.25);transform:translateY(-3px)}.feat-card:hover::before{opacity:1}
+.feat-ico{width:42px;height:42px;border-radius:var(--r12);background:var(--a3);border:1px solid rgba(52,211,153,.2);display:flex;align-items:center;justify-content:center;font-size:19px;margin-bottom:14px}
+.feat-title{font-family:var(--fh);font-size:17px;font-weight:700;margin-bottom:9px}
+.feat-desc{font-size:13.5px;color:var(--tx2);line-height:1.65}
+
+.pricing{padding:92px 52px;background:var(--ink2)}
+.price-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;max-width:1020px;margin:0 auto}
+.price-card{background:var(--ink3);border:1px solid var(--b2);border-radius:var(--r20);padding:32px;position:relative;transition:all .2s}
+.price-card.f{background:linear-gradient(160deg,var(--ink3),rgba(52,211,153,.06));border-color:rgba(52,211,153,.35);box-shadow:0 0 0 1px rgba(52,211,153,.12)}
+.price-pop{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,var(--a),var(--a2));color:#000;font-size:11px;font-weight:700;padding:4px 14px;border-radius:20px;white-space:nowrap}
+.price-name{font-family:var(--fh);font-size:18px;font-weight:700;margin-bottom:6px}
+.price-desc{font-size:12.5px;color:var(--tx3);margin-bottom:20px}
+.price-amt{font-family:var(--fh);font-size:46px;font-weight:900;line-height:1}
+.price-amt span{font-size:16px;color:var(--tx3);font-weight:400}
+.price-period{font-size:12px;color:var(--tx3);margin-top:4px;margin-bottom:26px}
+.price-feats{list-style:none;display:flex;flex-direction:column;gap:10px;margin-bottom:26px}
+.price-feats li{display:flex;align-items:flex-start;gap:9px;font-size:13px}
+.price-feats li::before{content:'✓';color:var(--a);font-weight:700;flex-shrink:0;margin-top:1px}
+.price-feats li.no::before{content:'✕';color:var(--tx3)}.price-feats li.no{color:var(--tx3)}
+.price-btn{width:100%;padding:12px;border-radius:10px;border:none;font-size:14px;font-weight:700;cursor:pointer;transition:all .15s}
+.price-btn.p{background:linear-gradient(135deg,var(--a),var(--a2));color:#000;box-shadow:0 2px 14px rgba(52,211,153,.25)}
+.price-btn.o{background:transparent;border:1px solid var(--b2);color:var(--tx2)}
+.price-btn:hover{transform:translateY(-1px)}
+
+.cta-band{padding:92px 52px;text-align:center;background:linear-gradient(135deg,rgba(52,211,153,.07),rgba(45,212,191,.04));border-top:1px solid rgba(52,211,153,.1);border-bottom:1px solid rgba(52,211,153,.1)}
+.cta-band h2{font-family:var(--fh);font-size:50px;font-weight:900;letter-spacing:-2px;margin-bottom:14px}
+.cta-band p{color:var(--tx2);font-size:17px;margin-bottom:34px}
+.land-footer{padding:36px 52px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--b1)}
+.footer-copy{font-size:12.5px;color:var(--tx3)}
+.footer-links{display:flex;gap:22px}
+.footer-links a{font-size:12.5px;color:var(--tx3);transition:color .13s}
+.footer-links a:hover{color:var(--tx)}
+
+/* ── APP SHELL ── */
+.app-wrap{display:grid;grid-template-columns:230px 1fr;min-height:100vh}
+.sidebar{background:var(--ink2);border-right:1px solid var(--b1);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
+.sb-top{padding:18px 16px 0}
+.sb-logo{display:flex;align-items:center;gap:9px;margin-bottom:14px}
+.sb-mark{width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,var(--a),var(--a2));display:flex;align-items:center;justify-content:center;font-size:13px}
+.sb-name{font-family:var(--fh);font-size:17px;font-weight:700}
+.sb-name em{color:var(--a);font-style:normal}
+.sb-biz{background:var(--ink3);border:1px solid var(--b2);border-radius:var(--r8);padding:9px 11px;display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:4px}
+.sb-biz-av{width:26px;height:26px;border-radius:6px;background:rgba(52,211,153,.15);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+.sb-biz-name{font-size:12px;font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-nav{padding:12px 8px;flex:1;display:flex;flex-direction:column;gap:1px;overflow-y:auto}
+.sb-lbl{font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--tx3);padding:10px 9px 5px}
+.sb-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--r8);font-size:13px;font-weight:500;color:var(--tx2);cursor:pointer;border:none;background:transparent;width:100%;text-align:left;transition:all .13s;position:relative}
+.sb-item:hover{background:var(--ink3);color:var(--tx)}.sb-item.active{background:rgba(52,211,153,.1);color:var(--a)}
+.sb-item.active::before{content:'';position:absolute;left:0;top:20%;bottom:20%;width:3px;border-radius:2px;background:var(--a)}
+.sb-ico{font-size:15px;width:18px;text-align:center;flex-shrink:0}
+.sb-badge{margin-left:auto;min-width:17px;height:17px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:700;padding:0 4px}
+.sb-badge.g{background:var(--a);color:#000}.sb-badge.o{background:var(--orange);color:#fff}
+.sb-bottom{padding:0 12px 16px}
+.plan-chip{background:rgba(52,211,153,.07);border:1px solid rgba(52,211,153,.18);border-radius:var(--r8);padding:10px 12px}
+.plan-chip-name{font-size:10.5px;font-weight:700;color:var(--a);text-transform:uppercase;letter-spacing:.06em}
+.plan-bar-bg{height:3px;background:var(--ink3);border-radius:4px;margin:7px 0}
+.plan-bar-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--a2),var(--a))}
+.plan-chip-stat{font-size:10.5px;color:var(--tx2);display:flex;justify-content:space-between}
+
+.main-col{display:flex;flex-direction:column;overflow:hidden;min-height:100vh}
+.topbar{height:54px;border-bottom:1px solid var(--b1);background:var(--ink2);display:flex;align-items:center;justify-content:space-between;padding:0 26px;flex-shrink:0;position:sticky;top:0;z-index:40}
+.page-title{font-family:var(--fh);font-size:17px;font-weight:700}
+.breadcrumb{font-size:11.5px;color:var(--tx3);font-family:var(--fm)}
+.topbar-right{display:flex;align-items:center;gap:8px}
+.user-av{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--a),var(--a2));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;cursor:pointer;color:#000}
+.content{flex:1;overflow-y:auto;background:var(--ink)}
+.page{display:none;padding:26px}.page.active{display:block}
+
+/* ── DASHBOARD ── */
+.dash-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+.stat-card{background:var(--card);border:1px solid var(--b2);border-radius:var(--r16);padding:20px;overflow:hidden;position:relative}
+.stat-ico{font-size:18px;margin-bottom:12px}.stat-val{font-family:var(--fh);font-size:30px;font-weight:900;line-height:1}
+.stat-lbl{font-size:11.5px;color:var(--tx2);margin-top:4px}.stat-chg{font-size:11px;margin-top:10px;display:flex;align-items:center;gap:4px}
+.chg-up{color:var(--a)}.chg-dn{color:var(--red)}
+.dash-grid{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:22px}
+.chart-area{display:flex;align-items:flex-end;gap:8px;height:130px}
+.ch-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px}
+.ch-bar-wrap{flex:1;width:100%;display:flex;align-items:flex-end}
+.ch-bar{width:100%;border-radius:4px 4px 0 0;background:linear-gradient(to top,var(--a2),var(--a));min-height:4px}
+.ch-lbl{font-size:9.5px;color:var(--tx3);font-family:var(--fm)}
+.qa-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.qa-card{background:var(--ink3);border:1px solid var(--b2);border-radius:10px;padding:14px;cursor:pointer;transition:all .15s;border:none;text-align:left;width:100%}
+.qa-card:hover{background:rgba(52,211,153,.07);border:1px solid rgba(52,211,153,.2)}
+.qa-ico{font-size:20px;margin-bottom:6px}.qa-lbl{font-size:12.5px;font-weight:600;color:var(--tx)}
+.qa-sub{font-size:11px;color:var(--tx3);margin-top:2px}
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{text-align:left;font-size:10.5px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.07em;padding:0 0 10px;border-bottom:1px solid var(--b1)}
+.tbl td{padding:12px 0;border-bottom:1px solid var(--b1);font-size:13px}
+.tbl tr:last-child td{border-bottom:none}
+
+/* ── CAMPAIGN BUILDER ── */
+.builder-wrap{display:grid;grid-template-columns:295px 1fr 270px;height:calc(100vh - 54px);margin:-26px;overflow:hidden}
+.builder-left,.builder-right{background:var(--ink2);overflow-y:auto;padding:18px}
+.builder-left{border-right:1px solid var(--b1)}
+.builder-right{border-left:1px solid var(--b1)}
+.builder-center{background:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:24px;overflow-y:auto}
+.builder-sec{margin-bottom:22px}
+.builder-lbl{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3);margin-bottom:10px}
+.msg-type-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.mt-btn{background:var(--ink3);border:1px solid var(--b2);border-radius:var(--r8);padding:10px;text-align:center;cursor:pointer;transition:all .13s;font-size:12px;font-weight:600;color:var(--tx2)}
+.mt-btn:hover{border-color:var(--a);color:var(--a)}.mt-btn.active{background:var(--a3);border-color:rgba(52,211,153,.4);color:var(--a)}
+.mt-ico{font-size:18px;display:block;margin-bottom:3px}
+.seg-chips{display:flex;flex-wrap:wrap;gap:6px}
+.seg-chip{padding:5px 11px;border-radius:20px;font-size:11.5px;font-weight:500;background:var(--ink3);border:1px solid var(--b2);cursor:pointer;transition:all .13s}
+.seg-chip.active{background:var(--a3);border-color:rgba(52,211,153,.35);color:var(--a)}
+.btn-builder{display:flex;flex-direction:column;gap:7px}
+.btn-row{display:flex;align-items:center;gap:6px}.btn-row input{flex:1}
+.btn-remove{width:28px;height:28px;border-radius:6px;border:1px solid rgba(248,113,113,.25);background:transparent;color:var(--red);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.add-link{font-size:12px;color:var(--a);background:transparent;border:none;cursor:pointer;display:flex;align-items:center;gap:5px;padding:4px 0;font-weight:600}
+.launch-btn{width:100%;padding:12px;border-radius:10px;border:none;background:linear-gradient(135deg,var(--a),var(--a2));color:#000;font-size:14px;font-weight:700;cursor:pointer;transition:all .15s;box-shadow:0 2px 16px rgba(52,211,153,.25);margin-top:16px}
+.launch-btn:hover{transform:translateY(-1px);box-shadow:0 4px 24px rgba(52,211,153,.35)}
+.draft-btn{width:100%;padding:10px;border-radius:10px;border:1px solid var(--b2);background:var(--ink3);color:var(--tx2);font-size:13px;font-weight:600;cursor:pointer;transition:all .13s;margin-top:8px}
+
+/* Phone preview */
+.phone-wrap{width:266px;background:#1C1C1E;border-radius:38px;padding:7px;box-shadow:0 0 0 1px rgba(255,255,255,.08),0 28px 70px rgba(0,0,0,.75);flex-shrink:0}
+.phone-inner{border-radius:32px;overflow:hidden;background:var(--wa-bg);height:555px;display:flex;flex-direction:column}
+.ph-status{background:var(--wa3);padding:8px 16px 4px;display:flex;justify-content:space-between;align-items:center}
+.ph-time{font-size:11px;font-weight:700;color:#fff;font-family:var(--fm)}
+.ph-chat-hdr{background:var(--wa3);padding:6px 12px 9px;display:flex;align-items:center;gap:8px}
+.ph-av{width:30px;height:30px;border-radius:50%;background:var(--wa2);display:flex;align-items:center;justify-content:center;font-size:13px}
+.ph-hdr-name{font-size:13px;font-weight:600;color:#fff}
+.ph-hdr-sub{font-size:10px;color:rgba(255,255,255,.6)}
+.ph-chat{flex:1;overflow-y:auto;padding:10px;background:var(--wa-bg);display:flex;flex-direction:column;gap:4px}
+.ph-bbl{background:#1E2535;border-radius:10px;border-top-left-radius:2px;padding:7px 10px 16px;max-width:88%;position:relative;font-size:11.5px;line-height:1.45;color:var(--tx)}
+.ph-bbl b{font-weight:600}
+.ph-bbl-img{width:100%;border-radius:6px;margin-bottom:7px;height:72px;background:linear-gradient(135deg,var(--wa2),var(--wa3));display:flex;align-items:center;justify-content:center;font-size:26px}
+.ph-bbl-hdr{font-size:12px;font-weight:700;margin-bottom:5px;color:var(--a)}
+.ph-bbl-ftr{font-size:9.5px;color:var(--tx3);margin-top:7px;border-top:1px solid rgba(255,255,255,.06);padding-top:5px}
+.ph-bbl-btns{display:flex;flex-direction:column;gap:3px;margin-top:7px;border-top:1px solid rgba(255,255,255,.07);padding-top:6px}
+.ph-bbl-btn{background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.2);border-radius:5px;padding:4px 8px;text-align:center;font-size:10.5px;color:var(--a);font-weight:500}
+.ph-t{position:absolute;bottom:3px;right:8px;font-size:9px;color:var(--tx3);font-family:var(--fm)}
+.ph-bar{background:#1A1F2B;padding:5px 10px;display:flex;align-items:center;gap:7px;border-top:1px solid rgba(255,255,255,.05)}
+.ph-input-fake{flex:1;background:var(--card2);border-radius:20px;padding:7px 12px;font-size:11px;color:var(--tx3)}
+
+/* ── CHATBOT BUILDER ── */
+.flow-canvas-wrap{display:flex;flex-direction:column;height:calc(100vh - 54px);margin:-26px;overflow:hidden}
+.flow-toolbar{background:var(--ink2);border-bottom:1px solid var(--b1);padding:10px 18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.flow-toolbar-title{font-family:var(--fh);font-size:15px;font-weight:700;margin-right:8px}
+.flow-area{display:flex;flex:1;overflow:hidden;position:relative}
+.node-palette{width:196px;flex-shrink:0;background:var(--ink2);border-right:1px solid var(--b1);padding:14px;overflow-y:auto;z-index:10}
+.pal-lbl{font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3);margin-bottom:8px;margin-top:12px}
+.pal-lbl:first-child{margin-top:0}
+.pal-item{background:var(--ink3);border:1px solid var(--b2);border-radius:var(--r8);padding:9px 11px;display:flex;align-items:center;gap:8px;cursor:grab;margin-bottom:5px;transition:all .13s;font-size:12px;font-weight:600;color:var(--tx2)}
+.pal-item:hover{border-color:var(--a);color:var(--a);background:var(--a3)}
+.pal-item .pi{font-size:14px;flex-shrink:0}
+.flow-canvas{flex:1;overflow:auto;background:var(--ink);background-image:radial-gradient(var(--b2) 1px,transparent 1px);background-size:24px 24px;position:relative;cursor:grab}
+.flow-canvas:active{cursor:grabbing}
+.canvas-inner{position:relative;min-width:1400px;min-height:900px}
+.flow-svg{position:absolute;inset:0;pointer-events:none;overflow:visible}
+.flow-node{position:absolute;background:var(--card);border:1.5px solid var(--b2);border-radius:var(--r12);padding:13px;width:205px;cursor:grab;transition:border-color .15s,box-shadow .15s;user-select:none}
+.flow-node:hover,.flow-node.selected{border-color:var(--a);box-shadow:0 0 0 3px rgba(52,211,153,.1)}
+.node-hdr{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+.node-ico{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.node-title{font-size:12px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.node-body{font-size:11px;color:var(--tx2);line-height:1.5;background:var(--ink3);border-radius:6px;padding:6px 8px;max-height:50px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.node-ports{display:flex;justify-content:space-between;align-items:center;margin-top:9px}
+.node-port{width:10px;height:10px;border-radius:50%;border:2px solid var(--a);background:var(--ink);cursor:crosshair;transition:background .13s}
+.node-port:hover{background:var(--a)}
+.node-port-lbl{font-size:9.5px;color:var(--tx3);font-family:var(--fm)}
+.node-acts{display:flex;gap:5px;margin-top:7px}
+.node-btn{flex:1;padding:5px;border-radius:5px;border:none;background:var(--ink3);color:var(--tx2);font-size:10.5px;cursor:pointer;transition:all .13s;font-weight:600}
+.node-btn:hover{background:var(--a3);color:var(--a)}
+.node-panel{position:absolute;right:0;top:0;bottom:0;width:235px;background:var(--ink2);border-left:1px solid var(--b1);padding:14px;overflow-y:auto;z-index:10;transform:translateX(100%);transition:transform .2s}
+.node-panel.open{transform:translateX(0)}
+
+/* ── AUTOMATION ── */
+.auto-layout{display:grid;grid-template-columns:1fr 355px;gap:20px}
+.rule-card{background:var(--card);border:1px solid var(--b2);border-radius:var(--r16);padding:20px;margin-bottom:12px;cursor:pointer;transition:all .15s;position:relative;overflow:hidden}
+.rule-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px}
+.rule-card.on::before{background:var(--a)}.rule-card.off-rule::before{background:var(--tx3)}
+.rule-card:hover{border-color:var(--b3)}
+.rule-hdr{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.rule-name{font-family:var(--fh);font-size:15px;font-weight:700;flex:1}
+.rule-flow{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.rule-step{display:flex;align-items:center;gap:5px;background:var(--ink3);border:1px solid var(--b2);border-radius:6px;padding:5px 9px;font-size:11.5px}
+.rs-ico{font-size:13px}.rule-arrow{color:var(--tx3);font-size:12px}
+.rule-meta{display:flex;align-items:center;gap:12px;margin-top:10px;font-size:11.5px;color:var(--tx2)}
+.rule-builder{background:var(--card);border:1px solid var(--b2);border-radius:var(--r16);padding:20px;position:sticky;top:20px}
+.rb-sec{margin-bottom:18px;padding-bottom:18px;border-bottom:1px solid var(--b1)}
+.rb-sec:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
+.rb-lbl{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3);margin-bottom:10px}
+.trigger-opt{background:var(--ink3);border:1.5px solid var(--b2);border-radius:var(--r8);padding:9px 12px;display:flex;align-items:center;gap:9px;cursor:pointer;margin-bottom:6px;transition:all .13s}
+.trigger-opt.selected{border-color:var(--a);background:var(--a3)}
+.to-ico{font-size:16px;flex-shrink:0}.to-name{font-size:12.5px;font-weight:600}.to-sub{font-size:11px;color:var(--tx3)}
+.action-chip{display:flex;align-items:center;gap:8px;background:var(--ink3);border:1px solid var(--b2);border-radius:var(--r8);padding:8px 12px;margin-bottom:6px;font-size:12.5px}
+.ac-ico{font-size:15px;flex-shrink:0}
+.delay-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.delay-row .input{width:70px;flex-shrink:0}
+
+/* ── CONTACTS ── */
+.contacts-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap}
+.search-wrap{position:relative;flex:1;min-width:180px}
+.search-wrap .input{padding-left:34px}
+.search-ico{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--tx3)}
+.c-av{width:30px;height:30px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--a);margin-right:8px;flex-shrink:0;background:var(--a3)}
+.drop-zone{border:2px dashed var(--b2);border-radius:var(--r16);padding:36px;text-align:center;cursor:pointer;transition:all .2s}
+.drop-zone:hover{border-color:var(--a);background:var(--a3)}
+.dz-ico{font-size:40px;margin-bottom:12px}
+
+/* ── INBOX ── */
+.inbox-wrap{display:grid;grid-template-columns:275px 1fr;height:calc(100vh - 54px);margin:-26px;overflow:hidden}
+.inbox-list{border-right:1px solid var(--b1);overflow-y:auto;background:var(--ink2)}
+.inbox-search{padding:12px;border-bottom:1px solid var(--b1)}
+.inbox-item{padding:13px 15px;border-bottom:1px solid var(--b1);cursor:pointer;transition:background .12s;display:flex;gap:10px}
+.inbox-item:hover{background:var(--ink3)}.inbox-item.active{background:rgba(52,211,153,.06);border-right:2px solid var(--a)}
+.inbox-av{width:36px;height:36px;border-radius:50%;flex-shrink:0;background:var(--ink4);display:flex;align-items:center;justify-content:center;font-size:15px}
+.inbox-name{font-size:13.5px;font-weight:600}
+.inbox-prev{font-size:12px;color:var(--tx2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.inbox-meta{text-align:right;flex-shrink:0}
+.inbox-time{font-size:10.5px;color:var(--tx3);font-family:var(--fm)}
+.inbox-unread{width:17px;height:17px;border-radius:50%;background:var(--a);display:flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:700;color:#000;margin-top:4px;margin-left:auto}
+.convo{display:flex;flex-direction:column}
+.convo-hdr{padding:13px 20px;border-bottom:1px solid var(--b1);display:flex;align-items:center;gap:12px;background:var(--ink2)}
+.convo-msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;background:var(--ink)}
+.c-bbl{max-width:62%;padding:9px 13px 17px;border-radius:10px;position:relative;font-size:13px;line-height:1.5}
+.c-bbl.in{background:var(--card);border-top-left-radius:2px;align-self:flex-start}
+.c-bbl.out{background:#005C4B;color:#fff;border-top-right-radius:2px;align-self:flex-end}
+.c-bbl-t{position:absolute;bottom:4px;right:10px;font-size:9.5px;color:rgba(255,255,255,.35);font-family:var(--fm)}
+.c-bbl.in .c-bbl-t{color:var(--tx3)}
+.convo-reply{padding:12px 16px;border-top:1px solid var(--b1);background:var(--ink2);display:flex;gap:10px;align-items:flex-end}
+.convo-input{flex:1;background:var(--card);border:1px solid var(--b2);border-radius:10px;padding:10px 14px;font-size:13px;color:var(--tx);outline:none;resize:none;max-height:120px;min-height:40px;transition:border-color .13s}
+.convo-input:focus{border-color:var(--a)}
+.reply-send{width:38px;height:38px;border-radius:50%;border:none;background:linear-gradient(135deg,var(--a),var(--a2));color:#000;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+/* ── TEMPLATES ── */
+.tpl-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.tpl-card{background:var(--card);border:1px solid var(--b2);border-radius:var(--r16);overflow:hidden;cursor:pointer;transition:all .2s}
+.tpl-card:hover{border-color:rgba(52,211,153,.3);transform:translateY(-2px)}
+.tpl-prev{padding:14px;background:var(--ink2);border-bottom:1px solid var(--b1);min-height:108px}
+.tpl-bbl{background:#1E2535;border-radius:8px;border-top-left-radius:2px;padding:8px 10px;font-size:11px;line-height:1.5;max-width:90%}
+.tpl-bbl b{font-weight:600}
+.tpl-bbl-btns{display:flex;flex-direction:column;gap:3px;margin-top:5px;border-top:1px solid rgba(255,255,255,.07);padding-top:5px}
+.tpl-bbl-btn{background:rgba(52,211,153,.08);border-radius:4px;padding:3px 7px;font-size:10px;color:var(--a);text-align:center}
+.tpl-info{padding:14px}.tpl-name{font-size:13px;font-weight:700;margin-bottom:5px}
+.tpl-meta{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:10px}
+.tpl-cat{font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px}
+.tpl-cat.mk{background:rgba(251,146,60,.1);color:var(--orange)}
+.tpl-cat.ut{background:rgba(96,165,250,.1);color:var(--blue)}
+.tpl-cat.au{background:rgba(167,139,250,.1);color:var(--purple)}
+.tpl-stat{font-size:10px;color:var(--a)}
+.tpl-acts{display:flex;gap:6px}
+.tpl-btn{flex:1;padding:7px;border-radius:7px;border:none;cursor:pointer;font-size:11.5px;font-weight:600;transition:all .13s}
+.tpl-btn.use{background:var(--a3);color:var(--a);border:1px solid rgba(52,211,153,.25)}
+.tpl-btn.edit{background:var(--ink3);color:var(--tx2)}
+
+/* ── ANALYTICS ── */
+.analytics-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.big-chart-area{height:180px;display:flex;align-items:flex-end;gap:9px;position:relative}
+.big-chart-area::before{content:'';position:absolute;left:0;right:0;top:0;bottom:0;background:repeating-linear-gradient(to top,transparent 0,transparent calc(25% - 1px),rgba(255,255,255,.04) calc(25% - 1px),rgba(255,255,255,.04) 25%)}
+.big-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px}
+.big-bars{flex:1;width:100%;display:flex;align-items:flex-end;gap:3px}
+.big-bar{flex:1;border-radius:3px 3px 0 0;min-height:4px}
+.big-lbl{font-size:9px;color:var(--tx3);font-family:var(--fm)}
+.chart-legend{display:flex;gap:14px;margin-bottom:12px}
+.leg-item{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--tx2)}
+.leg-dot{width:8px;height:8px;border-radius:50%}
+.donut{width:120px;height:120px;border-radius:50%;background:conic-gradient(var(--a) 0% 68%,var(--blue) 68% 87%,var(--orange) 87% 95%,var(--tx3) 95% 100%);position:relative;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.donut-hole{width:72px;height:72px;border-radius:50%;background:var(--card);display:flex;flex-direction:column;align-items:center;justify-content:center}
+.donut-pct{font-family:var(--fh);font-size:18px;font-weight:800;color:var(--a)}
+.donut-lbl{font-size:9px;color:var(--tx3)}
+.kpi-row{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--b1)}
+.kpi-row:last-child{border-bottom:none}.kpi-lbl{font-size:13px;color:var(--tx2)}
+.kpi-val{font-family:var(--fh);font-size:17px;font-weight:700}
+
+/* ── LINK SHORTENER ── */
+.utm-builder{background:var(--ink3);border:1px solid var(--b2);border-radius:var(--r12);padding:16px;margin-bottom:16px}
+.utm-result{background:var(--ink);border:1px solid var(--b2);border-radius:var(--r8);padding:10px 14px;font-family:var(--fm);font-size:12px;color:var(--a);word-break:break-all;margin-top:12px}
+.shortlink-result{display:flex;align-items:center;gap:10px;background:var(--a3);border:1px solid rgba(52,211,153,.2);border-radius:var(--r8);padding:12px 16px;margin-top:12px}
+.shortlink-url{font-family:var(--fm);font-size:13px;font-weight:600;color:var(--a);flex:1}
+.link-url{font-family:var(--fm);font-size:12px;color:var(--a);cursor:pointer}
+.link-url:hover{text-decoration:underline}
+
+/* ── QR GENERATOR ── */
+.qr-wrap{display:grid;grid-template-columns:1fr 275px;gap:20px}
+.qr-preview{display:flex;flex-direction:column;align-items:center;gap:14px}
+.qr-canvas{width:220px;height:220px;background:white;border-radius:var(--r12);display:flex;align-items:center;justify-content:center;font-size:80px;box-shadow:var(--shadow);position:relative}
+.qr-color-row{display:flex;gap:8px;flex-wrap:wrap}
+.qr-color-btn{width:26px;height:26px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .13s}
+.qr-color-btn.active,.qr-color-btn:hover{border-color:#fff;transform:scale(1.15)}
+.qr-tpl-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.qr-tpl-btn{background:var(--ink3);border:1px solid var(--b2);border-radius:var(--r8);padding:10px;text-align:center;cursor:pointer;transition:all .13s;font-size:12px;font-weight:600;color:var(--tx2)}
+.qr-tpl-btn:hover,.qr-tpl-btn.active{border-color:var(--a);color:var(--a);background:var(--a3)}
+
+/* ── OPT-IN WIDGET ── */
+.widget-wrap{display:grid;grid-template-columns:310px 1fr;gap:20px}
+.widget-preview-area{background:var(--ink3);border:1px solid var(--b2);border-radius:var(--r16);padding:28px;display:flex;align-items:flex-end;justify-content:flex-end;min-height:400px;position:relative}
+.wa-float-btn{display:flex;align-items:center;gap:10px;background:var(--wa);border-radius:30px;padding:12px 18px;box-shadow:0 4px 20px rgba(37,211,102,.4);cursor:pointer;color:#fff;font-size:14px;font-weight:700;transition:all .2s}
+.wa-float-btn:hover{transform:scale(1.05)}
+.wa-popup{position:absolute;bottom:80px;right:24px;width:275px;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.3)}
+.wa-popup-hdr{background:var(--wa3);padding:14px 16px;display:flex;align-items:center;gap:10px}
+.wa-popup-av{width:36px;height:36px;border-radius:50%;background:var(--wa2);display:flex;align-items:center;justify-content:center;font-size:16px}
+.wa-popup-name{font-size:13.5px;font-weight:700;color:#fff}
+.wa-popup-sub{font-size:11px;color:rgba(255,255,255,.7)}
+.wa-popup-body{padding:14px}
+.wa-popup-msg{background:#ECE5DD;border-radius:10px;border-top-right-radius:2px;padding:10px 12px;font-size:12.5px;color:#333;line-height:1.5;margin-bottom:12px}
+.wa-popup-cta{width:100%;padding:11px;background:var(--wa);border:none;border-radius:10px;color:#fff;font-size:13.5px;font-weight:700;cursor:pointer;transition:all .15s}
+.wa-popup-cta:hover{background:var(--wa2)}
+.embed-code-box{background:var(--ink);border:1px solid var(--b2);border-radius:var(--r8);padding:14px;font-family:var(--fm);font-size:11.5px;color:var(--a);line-height:1.7;max-height:155px;overflow-y:auto;word-break:break-all}
+
+/* ── AGENCY ── */
+.agency-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px}
+.client-card{background:var(--card);border:1px solid var(--b2);border-radius:var(--r16);overflow:hidden;cursor:pointer;transition:all .18s}
+.client-card:hover{border-color:var(--b3);transform:translateY(-2px)}
+.cc-hdr{padding:14px 16px;border-bottom:1px solid var(--b1);display:flex;align-items:center;gap:10px}
+.cc-logo{width:34px;height:34px;border-radius:var(--r8);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.cc-name{font-size:13.5px;font-weight:700;flex:1}.cc-plan-lbl{font-size:10.5px;color:var(--tx3)}
+.cc-body{padding:14px 16px}
+.cc-stat-row{display:flex;gap:14px;margin-bottom:10px}
+.cc-stat{text-align:center}.cc-stat-val{font-family:var(--fh);font-size:17px;font-weight:700}.cc-stat-lbl{font-size:10px;color:var(--tx3);margin-top:1px}
+.cc-revenue{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-top:1px solid var(--b1)}
+.cc-rev-lbl{font-size:12px;color:var(--tx2)}.cc-rev-val{font-family:var(--fh);font-size:15px;font-weight:700;color:var(--a)}
+.agency-summary{background:linear-gradient(135deg,rgba(52,211,153,.1),rgba(45,212,191,.06));border:1px solid rgba(52,211,153,.2);border-radius:var(--r16);padding:20px;margin-bottom:22px;display:grid;grid-template-columns:repeat(4,1fr);gap:20px;text-align:center}
+.as-val{font-family:var(--fh);font-size:28px;font-weight:900;color:var(--a)}.as-lbl{font-size:11.5px;color:var(--tx2);margin-top:4px}
+
+/* ── POPIA ── */
+.popia-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.popia-score{display:flex;align-items:center;gap:20px;background:var(--card);border:1px solid var(--b2);border-radius:var(--r16);padding:20px;margin-bottom:20px}
+.score-ring{width:90px;height:90px;border-radius:50%;background:conic-gradient(var(--a) 0% 82%,var(--ink3) 82% 100%);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.score-inner{width:68px;height:68px;border-radius:50%;background:var(--card);display:flex;flex-direction:column;align-items:center;justify-content:center}
+.score-num{font-family:var(--fh);font-size:22px;font-weight:900;color:var(--a);line-height:1}
+.score-lbl-sm{font-size:9px;color:var(--tx3);text-transform:uppercase;letter-spacing:.05em}
+.score-info h3{font-family:var(--fh);font-size:18px;font-weight:700;margin-bottom:6px}
+.score-info p{font-size:13px;color:var(--tx2);line-height:1.6}
+.popia-check{display:flex;align-items:flex-start;gap:10px;padding:12px 0;border-bottom:1px solid var(--b1)}
+.popia-check:last-child{border-bottom:none}
+.pc-ico{font-size:16px;flex-shrink:0;margin-top:1px}
+.pc-title{font-size:13px;font-weight:600;margin-bottom:2px}.pc-desc{font-size:12px;color:var(--tx2);line-height:1.5}
+.consent-row{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:12px;padding:10px 0;border-bottom:1px solid var(--b1);font-size:12.5px;align-items:center}
+.consent-row:last-child{border-bottom:none}
+
+/* ── BILLING ── */
+.billing-banner{display:flex;align-items:center;gap:16px;background:linear-gradient(135deg,rgba(52,211,153,.1),rgba(45,212,191,.06));border:1px solid rgba(52,211,153,.22);border-radius:var(--r16);padding:20px 24px;margin-bottom:22px;position:relative;overflow:hidden}
+.billing-banner::before{content:'';position:absolute;right:-40px;top:-40px;width:160px;height:160px;border-radius:50%;background:radial-gradient(rgba(52,211,153,.1),transparent 70%)}
+.bb-ico{font-size:32px;flex-shrink:0}.bb-plan{font-family:var(--fh);font-size:19px;font-weight:700;margin-bottom:3px}
+.bb-sub{font-size:13px;color:var(--tx2);line-height:1.6}
+.prov-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px}
+.prov-card{background:var(--card);border:1px solid var(--b2);border-radius:var(--r16);overflow:hidden;cursor:pointer;transition:all .18s}
+.prov-card:hover{transform:translateY(-2px)}.prov-card.connected{border-color:rgba(52,211,153,.4);box-shadow:0 0 0 1px rgba(52,211,153,.15)}
+.prov-hdr{padding:14px 16px;border-bottom:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between}
+.prov-logo{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px}
+.prov-body{padding:14px 16px}
+.prov-name{font-size:14px;font-weight:700;margin-bottom:3px}
+.prov-desc{font-size:11.5px;color:var(--tx2);line-height:1.5;margin-bottom:12px}
+.prov-rate{font-family:var(--fm);font-size:12px;color:var(--tx)}
+.prov-btn{width:100%;padding:8px;border-radius:var(--r8);border:none;cursor:pointer;font-size:12px;font-weight:700;transition:all .13s;margin-top:12px}
+.prov-btn.active{background:rgba(52,211,153,.1);color:var(--a);border:1px solid rgba(52,211,153,.25)}
+.prov-btn.inactive{background:var(--ink3);color:var(--tx2);border:1px solid var(--b2)}
+
+/* ── SETTINGS ── */
+.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.settings-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--b1)}
+.settings-row:last-child{border-bottom:none}
+.sr-key{font-size:13px;color:var(--tx2)}.sr-val{font-size:13px;font-weight:500;font-family:var(--fm)}
+.meta-banner{background:linear-gradient(135deg,rgba(52,211,153,.09),rgba(45,212,191,.06));border:1px solid rgba(52,211,153,.22);border-radius:var(--r12);padding:18px;display:flex;align-items:center;gap:14px;margin-bottom:18px}
+.meta-banner-ico{font-size:30px;flex-shrink:0}
+
+/* ── HELP CENTRE ── */
+.help-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:22px}
+.help-cat{background:var(--card);border:1px solid var(--b2);border-radius:var(--r16);padding:20px;cursor:pointer;transition:all .18s;display:flex;align-items:flex-start;gap:14px}
+.help-cat:hover{border-color:rgba(52,211,153,.3);transform:translateY(-2px)}
+.help-cat-ico{width:40px;height:40px;border-radius:10px;background:var(--a3);border:1px solid rgba(52,211,153,.2);display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0}
+.help-cat-name{font-family:var(--fh);font-size:15px;font-weight:700;margin-bottom:4px}
+.help-cat-desc{font-size:12.5px;color:var(--tx2);line-height:1.5}
+.faq-item{background:var(--card);border:1px solid var(--b2);border-radius:var(--r12);margin-bottom:8px;overflow:hidden}
+.faq-q{padding:14px 18px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-size:13.5px;font-weight:600;transition:background .13s}
+.faq-q:hover{background:rgba(255,255,255,.02)}
+.faq-ico{font-size:16px;color:var(--tx3);transition:transform .2s;flex-shrink:0}
+.faq-item.open .faq-ico{transform:rotate(180deg)}
+.faq-a{padding:0 18px;max-height:0;overflow:hidden;font-size:13.5px;color:var(--tx2);line-height:1.7;transition:max-height .25s ease,padding .25s}
+.faq-item.open .faq-a{max-height:200px;padding:0 18px 16px}
+
+/* ── ONBOARDING ── */
+#onboarding{display:none;position:fixed;inset:0;background:var(--ink);z-index:1000;flex-direction:column;align-items:center;justify-content:center}
+#onboarding.open{display:flex}
+.ob-card{background:var(--card);border:1px solid var(--b2);border-radius:var(--r20);padding:40px;width:530px;box-shadow:var(--shadow)}
+.ob-steps{display:flex;align-items:center;gap:0;margin-bottom:30px}
+.ob-step{display:flex;align-items:center;flex:1}
+.ob-num{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;font-family:var(--fm);transition:all .2s}
+.ob-num.done{background:var(--a);color:#000}
+.ob-num.active{background:var(--a3);color:var(--a);border:1.5px solid var(--a)}
+.ob-num.pending{background:var(--ink3);color:var(--tx3);border:1px solid var(--b2)}
+.ob-lbl{font-size:11px;color:var(--tx3);margin-left:6px;white-space:nowrap}
+.ob-line{flex:1;height:1px;background:var(--b1);margin:0 8px}
+.ob-line.done{background:var(--a)}
+.ob-step-content{display:none}.ob-step-content.active{display:block}
+.ob-h2{font-family:var(--fh);font-size:26px;font-weight:700;margin-bottom:8px;letter-spacing:-.3px}
+.ob-sub{font-size:14px;color:var(--tx2);margin-bottom:24px;line-height:1.65}
+.ob-acts{display:flex;gap:10px;margin-top:28px}.ob-acts .btn{flex:1}
+.success-ico{font-size:64px;text-align:center;margin-bottom:16px}
+</style>
+</head>
+<body>
+
+<!-- ████ LANDING ████ -->
+<div id="landing">
+<nav class="land-nav">
+  <div class="land-logo"><div class="land-mark">💬</div><div class="land-name">Wazi<em>fy</em></div></div>
+  <div class="land-links"><a href="#features">Features</a><a href="#pricing">Pricing</a><a href="#" onclick="showApp()">Demo</a><a href="#" onclick="showPage('help');showApp()">Help</a></div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <button class="btn btn-ghost btn-sm" onclick="showApp()">Sign in</button>
+    <button class="btn btn-primary btn-sm" onclick="startOnboarding()">Start free →</button>
+  </div>
+</nav>
+<section class="hero">
+  <div class="hero-glow"></div><div class="hero-grid"></div>
+  <div class="hero-pill"><div class="h-dot"></div>Built on Meta WhatsApp Cloud API v21.0</div>
+  <h1 class="hero-h1">Grow your business<br>with <span class="g">WhatsApp</span><br><span class="o">marketing</span></h1>
+  <p class="hero-sub">Send campaigns, automate replies, manage contacts, and convert customers — the complete WhatsApp growth platform built for South African small business.</p>
+  <div class="hero-ctas">
+    <button class="btn btn-primary btn-lg" onclick="startOnboarding()">🚀 Start free — no credit card</button>
+    <button class="btn btn-ghost btn-lg" onclick="showApp()">👀 See the dashboard →</button>
+  </div>
+  <div class="hero-trust">
+    <div class="trust-avs"><div class="trust-av">👩</div><div class="trust-av">👨</div><div class="trust-av">👩🏽</div><div class="trust-av">👨🏿</div><div class="trust-av">👩🏾</div></div>
+    <span>Trusted by <strong>1,200+ SA businesses</strong></span><span>·</span><span>⭐⭐⭐⭐⭐ 4.9/5</span><span>·</span><span>POPIA compliant</span>
+  </div>
+  <div class="hero-mock">
+    <div class="mock-bar"><div class="m-dot" style="background:#FF5F57"></div><div class="m-dot" style="background:#FFBD2E"></div><div class="m-dot" style="background:#28CA41"></div><div style="flex:1;text-align:center;font-size:11px;color:var(--tx3);font-family:var(--fm)">app.wazify.co.za</div></div>
+    <div class="mock-body">
+      <div class="m-nav"><div class="m-ni a">📊 Dashboard</div><div class="m-ni">📣 Campaigns</div><div class="m-ni">🤖 Chatbots</div><div class="m-ni">👥 Contacts</div><div class="m-ni">💬 Inbox</div><div class="m-ni">📈 Analytics</div></div>
+      <div class="m-main">
+        <div class="m-stats">
+          <div class="m-stat"><div class="m-sv" style="color:var(--a)">12,450</div><div class="m-sl">Msgs sent</div></div>
+          <div class="m-stat"><div class="m-sv" style="color:var(--blue)">84%</div><div class="m-sl">Read rate</div></div>
+          <div class="m-stat"><div class="m-sv" style="color:var(--orange)">R 48k</div><div class="m-sl">Revenue</div></div>
+          <div class="m-stat"><div class="m-sv" style="color:var(--purple)">2,341</div><div class="m-sl">Contacts</div></div>
+        </div>
+        <div class="m-chart"><div class="m-bar" style="height:40%"></div><div class="m-bar" style="height:55%"></div><div class="m-bar" style="height:38%"></div><div class="m-bar" style="height:80%"></div><div class="m-bar" style="height:68%"></div><div class="m-bar" style="height:95%"></div><div class="m-bar" style="height:72%"></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+<div class="stats-strip">
+  <div><div class="ss-val">98%</div><div class="ss-lbl">WhatsApp open rate</div></div>
+  <div><div class="ss-val">5×</div><div class="ss-lbl">Better CTR than email</div></div>
+  <div><div class="ss-val">2B+</div><div class="ss-lbl">Active WhatsApp users</div></div>
+  <div><div class="ss-val">R0</div><div class="ss-lbl">Setup fee — ever</div></div>
+</div>
+<section class="features" id="features">
+  <div style="text-align:center;margin-bottom:50px">
+    <div style="font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--a);margin-bottom:10px">Everything you need</div>
+    <h2 style="font-family:var(--fh);font-size:clamp(32px,4vw,52px);font-weight:900;letter-spacing:-2px;line-height:1.1">One platform.<br>Endless conversations.</h2>
+  </div>
+  <div class="feat-grid">
+    <div class="feat-card"><div class="feat-ico">📣</div><div class="feat-title">Broadcast Campaigns</div><div class="feat-desc">Send flash sales, promotions, and announcements to thousands of opted-in customers in seconds with live read tracking.</div></div>
+    <div class="feat-card"><div class="feat-ico">🤖</div><div class="feat-title">Visual Chatbot Builder</div><div class="feat-desc">Drag-and-drop flow builder with triggers, conditions, delays, and actions. Build 24/7 automations in minutes — no code.</div></div>
+    <div class="feat-card"><div class="feat-ico">⚡</div><div class="feat-title">Automation Rules Engine</div><div class="feat-desc">Trigger sequences on keywords, inactivity, purchase events, or time-based conditions. Grow while you sleep.</div></div>
+    <div class="feat-card"><div class="feat-ico">💬</div><div class="feat-title">Unified Inbox</div><div class="feat-desc">All customer replies in one shared inbox. Assign, tag, and resolve conversations. Never miss a hot lead.</div></div>
+    <div class="feat-card"><div class="feat-ico">📈</div><div class="feat-title">Deep Analytics</div><div class="feat-desc">See delivery, read, reply, and conversion rates per campaign. Know your exact WhatsApp ROI to the rand.</div></div>
+    <div class="feat-card"><div class="feat-ico">🔗</div><div class="feat-title">Link Shortener & UTM</div><div class="feat-desc">Create branded short links with automatic UTM tracking. See which WhatsApp campaign drove which sale.</div></div>
+    <div class="feat-card"><div class="feat-ico">📱</div><div class="feat-title">QR Code Generator</div><div class="feat-desc">Print-ready QR codes for menus, flyers, receipts, and storefronts. Customers scan to open WhatsApp instantly.</div></div>
+    <div class="feat-card"><div class="feat-ico">🏢</div><div class="feat-title">Agency Portal</div><div class="feat-desc">Manage unlimited client sub-accounts from one dashboard. White-label the platform and resell as your own.</div></div>
+    <div class="feat-card"><div class="feat-ico">🛡️</div><div class="feat-title">POPIA Compliance</div><div class="feat-desc">Built-in consent management, opt-in audit log, data deletion requests, and privacy tools — fully POPIA compliant.</div></div>
+  </div>
+</section>
+<section class="pricing" id="pricing">
+  <div style="text-align:center;margin-bottom:50px">
+    <div style="font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--a);margin-bottom:10px">Simple pricing</div>
+    <h2 style="font-family:var(--fh);font-size:clamp(32px,4vw,48px);font-weight:900;letter-spacing:-1.5px">No surprises. No hidden fees.</h2>
+    <p style="color:var(--tx2);margin-top:10px;font-size:16px">You pay us a flat monthly fee. You pay Meta separately per conversation.</p>
+  </div>
+  <div class="price-grid">
+    <div class="price-card">
+      <div class="price-name">Starter</div><div class="price-desc">Side hustles &amp; solo traders</div>
+      <div class="price-amt">R 299<span>/mo</span></div><div class="price-period">+ Meta conversation costs</div>
+      <ul class="price-feats"><li>1 WhatsApp number</li><li>2,000 contacts</li><li>5 campaigns/month</li><li>Basic chatbot flows</li><li>Email support</li><li class="no">Team inbox</li><li class="no">Agency portal</li></ul>
+      <button class="price-btn o" onclick="startOnboarding()">Get started free</button>
+    </div>
+    <div class="price-card f">
+      <div class="price-pop">🔥 Most Popular</div>
+      <div class="price-name">Growth</div><div class="price-desc">Growing shops &amp; service businesses</div>
+      <div class="price-amt">R 799<span>/mo</span></div><div class="price-period">+ Meta conversation costs</div>
+      <ul class="price-feats"><li>3 WhatsApp numbers</li><li>10,000 contacts</li><li>Unlimited campaigns</li><li>Advanced chatbot builder</li><li>Automation rules engine</li><li>Team inbox (5 seats)</li><li>Link shortener &amp; UTM</li><li class="no">White-label</li></ul>
+      <button class="price-btn p" onclick="startOnboarding()">Start 14-day free trial</button>
+    </div>
+    <div class="price-card">
+      <div class="price-name">Pro</div><div class="price-desc">Agencies &amp; multi-location business</div>
+      <div class="price-amt">R 1,999<span>/mo</span></div><div class="price-period">+ Meta conversation costs</div>
+      <ul class="price-feats"><li>Unlimited numbers</li><li>Unlimited contacts</li><li>Agency reseller portal</li><li>White-label &amp; custom domain</li><li>Full API access</li><li>POPIA compliance suite</li><li>Dedicated account manager</li></ul>
+      <button class="price-btn o" onclick="showApp()">Contact sales</button>
+    </div>
+  </div>
+</section>
+<div class="cta-band">
+  <h2>Ready to grow on WhatsApp?</h2>
+  <p>Join 1,200+ South African businesses already using Wazify</p>
+  <button class="btn btn-primary btn-lg" onclick="startOnboarding()">🚀 Start free — 14 days, no card needed</button>
+</div>
+<div class="land-footer">
+  <div class="footer-copy">© 2026 Wazify (Pty) Ltd · Cape Town · Built on Meta WhatsApp Cloud API</div>
+  <div class="footer-links"><a href="#">Privacy</a><a href="#">Terms</a><a href="#">POPIA</a><a href="#">WhatsApp Policy</a></div>
+</div>
+</div>
+
+<!-- ████ ONBOARDING ████ -->
+<div id="onboarding">
+  <div style="position:absolute;top:20px;right:20px"><button class="btn btn-ghost btn-sm" onclick="closeOnboarding()">Skip →</button></div>
+  <div class="ob-card">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:22px"><div class="sb-mark">💬</div><div class="sb-name">Wazi<em>fy</em></div></div>
+    <div class="ob-steps">
+      <div class="ob-step"><div class="ob-num done" id="ob1">✓</div><div class="ob-lbl">Account</div></div>
+      <div class="ob-line done" id="obl1"></div>
+      <div class="ob-step"><div class="ob-num active" id="ob2">2</div><div class="ob-lbl">Connect Meta</div></div>
+      <div class="ob-line" id="obl2"></div>
+      <div class="ob-step"><div class="ob-num pending" id="ob3">3</div><div class="ob-lbl">Import contacts</div></div>
+      <div class="ob-line" id="obl3"></div>
+      <div class="ob-step"><div class="ob-num pending" id="ob4">4</div><div class="ob-lbl">First campaign</div></div>
+    </div>
+    <div class="ob-step-content" id="ob-step-1"><div style="font-size:64px;text-align:center;margin-bottom:16px">🎉</div><div class="ob-h2">Account created!</div><div class="ob-sub">Welcome to Wazify. Let's get your WhatsApp number connected to Meta.</div><div class="ob-acts"><button class="btn btn-primary" onclick="obNext(2)">Connect WhatsApp →</button></div></div>
+    <div class="ob-step-content active" id="ob-step-2">
+      <div class="ob-h2">Connect your WhatsApp number</div>
+      <div class="ob-sub">Paste your Meta for Developers credentials. Find them at developers.facebook.com → your app → WhatsApp → API Setup.</div>
+      <div class="form-group"><label class="label">Phone Number ID</label><input class="input" placeholder="123456789012345"></div>
+      <div class="form-group"><label class="label">WhatsApp Business Account ID</label><input class="input" placeholder="987654321098765"></div>
+      <div class="form-group"><label class="label">Permanent Access Token</label><input class="input" type="password" placeholder="EAAxxxxxxxxxx"></div>
+      <div style="background:var(--a3);border:1px solid rgba(52,211,153,.2);border-radius:var(--r8);padding:10px 14px;font-size:12px;color:var(--tx2);margin-top:4px">💡 Don't have these yet? <a href="https://developers.facebook.com" target="_blank" style="color:var(--a)">Set up Meta for Developers →</a></div>
+      <div class="ob-acts"><button class="btn btn-ghost" onclick="obNext(3)">Skip for now</button><button class="btn btn-primary" onclick="obNext(3)">Verify &amp; connect →</button></div>
+    </div>
+    <div class="ob-step-content" id="ob-step-3">
+      <div class="ob-h2">Import your contacts</div>
+      <div class="ob-sub">Upload a CSV with your customer list. You need at minimum a phone number column with country code.</div>
+      <div class="drop-zone" onclick="toast('File browser would open here','success')"><div class="dz-ico">📂</div><div style="font-size:14px;font-weight:600;margin-bottom:6px">Drop your CSV here</div><div style="font-size:12.5px;color:var(--tx2)">or click to browse · .csv, .xlsx supported</div></div>
+      <div class="ob-acts"><button class="btn btn-ghost" onclick="obNext(4)">Skip</button><button class="btn btn-primary" onclick="obNext(4)">Upload &amp; continue →</button></div>
+    </div>
+    <div class="ob-step-content" id="ob-step-4">
+      <div style="font-size:64px;text-align:center;margin-bottom:16px">🚀</div>
+      <div class="ob-h2">You're all set!</div>
+      <div class="ob-sub">Your Wazify account is ready. Send your first campaign to see how powerful WhatsApp marketing can be.</div>
+      <div class="ob-acts"><button class="btn btn-ghost" onclick="closeOnboarding()">Go to dashboard</button><button class="btn btn-primary" onclick="closeOnboarding();showPage('campaigns')">Build first campaign →</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- ████ APP ████ -->
+<div id="app">
+<div class="app-wrap">
+<nav class="sidebar">
+  <div class="sb-top">
+    <div class="sb-logo"><div class="sb-mark">💬</div><div class="sb-name">Wazi<em>fy</em></div></div>
+    <div class="sb-biz"><div class="sb-biz-av">🏪</div><div class="sb-biz-name">Mama Zinhle's Boutique</div><span style="font-size:10px;color:var(--tx3)">▾</span></div>
+  </div>
+  <div class="sb-nav">
+    <div class="sb-lbl">Main</div>
+    <button class="sb-item active" id="nav-dashboard" onclick="showPage('dashboard',this)"><span class="sb-ico">📊</span>Dashboard</button>
+    <button class="sb-item" id="nav-campaigns" onclick="showPage('campaigns',this)"><span class="sb-ico">📣</span>Campaigns</button>
+    <button class="sb-item" id="nav-chatbot" onclick="showPage('chatbot',this)"><span class="sb-ico">🤖</span>Chatbot Builder</button>
+    <button class="sb-item" id="nav-automation" onclick="showPage('automation',this)"><span class="sb-ico">⚡</span>Automations</button>
+    <button class="sb-item" id="nav-contacts" onclick="showPage('contacts',this)"><span class="sb-ico">👥</span>Contacts<span class="sb-badge g">2,341</span></button>
+    <button class="sb-item" id="nav-inbox" onclick="showPage('inbox',this)"><span class="sb-ico">💬</span>Inbox<span class="sb-badge o">7</span></button>
+    <div class="sb-lbl">Tools</div>
+    <button class="sb-item" id="nav-templates" onclick="showPage('templates',this)"><span class="sb-ico">📋</span>Templates</button>
+    <button class="sb-item" id="nav-analytics" onclick="showPage('analytics',this)"><span class="sb-ico">📈</span>Analytics</button>
+    <button class="sb-item" id="nav-links" onclick="showPage('links',this)"><span class="sb-ico">🔗</span>Link Shortener</button>
+    <button class="sb-item" id="nav-qr" onclick="showPage('qr',this)"><span class="sb-ico">📱</span>QR Generator</button>
+    <button class="sb-item" id="nav-widget" onclick="showPage('widget',this)"><span class="sb-ico">🪟</span>Opt-in Widget</button>
+    <div class="sb-lbl">Business</div>
+    <button class="sb-item" id="nav-agency" onclick="showPage('agency',this)"><span class="sb-ico">🏢</span>Agency Portal</button>
+    <button class="sb-item" id="nav-popia" onclick="showPage('popia',this)"><span class="sb-ico">🛡️</span>POPIA</button>
+    <button class="sb-item" id="nav-billing" onclick="showPage('billing',this)"><span class="sb-ico">💳</span>Billing</button>
+    <button class="sb-item" id="nav-settings" onclick="showPage('settings',this)"><span class="sb-ico">⚙️</span>Settings &amp; API</button>
+    <button class="sb-item" id="nav-help" onclick="showPage('help',this)"><span class="sb-ico">❓</span>Help Centre</button>
+    <button class="sb-item" onclick="showLanding()"><span class="sb-ico">🏠</span>Back to site</button>
+  </div>
+  <div class="sb-bottom">
+    <div class="plan-chip">
+      <div class="plan-chip-name">Growth Plan · Active</div>
+      <div class="plan-bar-bg"><div class="plan-bar-fill" style="width:43%"></div></div>
+      <div class="plan-chip-stat"><span>4,312 / 10,000</span><span>43%</span></div>
+    </div>
+  </div>
+</nav>
+<div class="main-col">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div class="page-title" id="pageTitle">Dashboard</div>
+      <div class="breadcrumb" id="breadcrumb">Wazify / Dashboard</div>
+    </div>
+    <div class="topbar-right"><div class="btn-icon">🔔</div><div class="btn-icon">❓</div><div class="user-av">MZ</div></div>
+  </div>
+  <div class="content">
+
+<!-- ██ DASHBOARD ██ -->
+<div class="page active" id="page-dashboard">
+  <div class="between"><div><h2 style="font-family:var(--fh);font-size:21px;font-weight:800">Good morning, Zinhle 👋</h2><p style="color:var(--tx2);font-size:12.5px;margin-top:2px">Tuesday 3 June 2026 · Growth Plan</p></div><button class="btn btn-primary btn-sm" onclick="showPage('campaigns')">+ New Campaign</button></div>
+  <div class="dash-stats">
+    <div class="stat-card"><div class="stat-ico">📨</div><div class="stat-val" style="color:var(--a)">12,450</div><div class="stat-lbl">Messages sent this month</div><div class="stat-chg chg-up">↑ 18% vs last month</div></div>
+    <div class="stat-card"><div class="stat-ico">👁️</div><div class="stat-val" style="color:var(--blue)">84%</div><div class="stat-lbl">Average read rate</div><div class="stat-chg chg-up">↑ 3% vs last month</div></div>
+    <div class="stat-card"><div class="stat-ico">💰</div><div class="stat-val" style="color:var(--orange)">R 48,230</div><div class="stat-lbl">Revenue attributed</div><div class="stat-chg chg-up">↑ 31% vs last month</div></div>
+    <div class="stat-card"><div class="stat-ico">💬</div><div class="stat-val" style="color:var(--purple)">342</div><div class="stat-lbl">New replies today</div><div class="stat-chg chg-dn">↓ 5% vs yesterday</div></div>
+  </div>
+  <div class="dash-grid">
+    <div class="card"><div class="card-hdr"><div class="card-ttl">📊 Messages — last 7 days</div><button class="card-act" onclick="showPage('analytics')">View all →</button></div><div class="card-body"><div class="chart-area"><div class="ch-col"><div class="ch-bar-wrap"><div class="ch-bar" style="height:45%"></div></div><div class="ch-lbl">Mon</div></div><div class="ch-col"><div class="ch-bar-wrap"><div class="ch-bar" style="height:62%"></div></div><div class="ch-lbl">Tue</div></div><div class="ch-col"><div class="ch-bar-wrap"><div class="ch-bar" style="height:38%"></div></div><div class="ch-lbl">Wed</div></div><div class="ch-col"><div class="ch-bar-wrap"><div class="ch-bar" style="height:80%"></div></div><div class="ch-lbl">Thu</div></div><div class="ch-col"><div class="ch-bar-wrap"><div class="ch-bar" style="height:95%"></div></div><div class="ch-lbl">Fri</div></div><div class="ch-col"><div class="ch-bar-wrap"><div class="ch-bar" style="height:70%"></div></div><div class="ch-lbl">Sat</div></div><div class="ch-col"><div class="ch-bar-wrap"><div class="ch-bar" style="height:55%"></div></div><div class="ch-lbl">Sun</div></div></div></div></div>
+    <div class="card"><div class="card-hdr"><div class="card-ttl">⚡ Quick actions</div></div><div class="card-body"><div class="qa-grid"><button class="qa-card" onclick="showPage('campaigns')"><div class="qa-ico">📣</div><div class="qa-lbl">New campaign</div><div class="qa-sub">Send a broadcast</div></button><button class="qa-card" onclick="showPage('chatbot')"><div class="qa-ico">🤖</div><div class="qa-lbl">Build chatbot</div><div class="qa-sub">Automate replies</div></button><button class="qa-card" onclick="showPage('contacts')"><div class="qa-ico">➕</div><div class="qa-lbl">Import contacts</div><div class="qa-sub">Upload CSV</div></button><button class="qa-card" onclick="showPage('inbox')"><div class="qa-ico">💬</div><div class="qa-lbl">View inbox</div><div class="qa-sub">7 unread replies</div></button></div></div></div>
+  </div>
+  <div class="card"><div class="card-hdr"><div class="card-ttl">📋 Recent campaigns</div><button class="card-act" onclick="showPage('campaigns')">View all →</button></div><div class="card-body" style="padding:0 20px"><table class="tbl"><thead><tr><th>Campaign</th><th>Sent</th><th>Read rate</th><th>Replies</th><th>Status</th></tr></thead><tbody><tr><td><strong>Winter Sale — 40% Off</strong></td><td>2,341</td><td style="color:var(--a)">84%</td><td>412</td><td><span class="pill pill-g">Sent</span></td></tr><tr><td><strong>New Arrivals — June</strong></td><td>1,892</td><td style="color:var(--a)">85%</td><td>298</td><td><span class="pill pill-g">Sent</span></td></tr><tr><td><strong>Weekend Flash Sale</strong></td><td>—</td><td>—</td><td>—</td><td><span class="pill pill-o">Scheduled</span></td></tr><tr><td><strong>VIP Customer Rewards</strong></td><td>—</td><td>—</td><td>—</td><td><span class="pill pill-gray">Draft</span></td></tr></tbody></table></div></div>
+</div>
+
+<!-- ██ CAMPAIGN BUILDER ██ -->
+<div class="page" id="page-campaigns">
+  <div class="builder-wrap">
+    <div class="builder-left">
+      <div class="builder-sec"><div class="builder-lbl">1. Campaign Details</div><div class="form-group"><label class="label">Campaign name</label><input class="input" id="campName" placeholder="e.g. June Winter Sale" oninput="updatePreview()"></div><div class="form-group"><label class="label">Message type</label><div class="msg-type-grid"><div class="mt-btn active" onclick="setMsgType(this,'broadcast')"><span class="mt-ico">📣</span>Broadcast</div><div class="mt-btn" onclick="setMsgType(this,'interactive')"><span class="mt-ico">👆</span>Interactive</div><div class="mt-btn" onclick="setMsgType(this,'media')"><span class="mt-ico">🖼️</span>With Image</div><div class="mt-btn" onclick="setMsgType(this,'promo')"><span class="mt-ico">🎁</span>Promo Code</div></div></div></div>
+      <div class="builder-sec"><div class="builder-lbl">2. Message Content</div><div class="form-group"><label class="label">Header (optional)</label><input class="input" id="msgHeader" placeholder="e.g. 🔥 FLASH SALE" oninput="updatePreview()"></div><div class="form-group"><label class="label">Body message</label><textarea class="textarea" id="msgBody" oninput="updatePreview()">Hi {{name}}! 🎉
+
+Our *Winter Sale* is live — *40% off* everything!
+
+🗓️ Sale ends Sunday midnight
+🏷️ Code: *WINTER40*
+
+Don't miss out!</textarea></div><div class="form-group"><label class="label">Footer (optional)</label><input class="input" id="msgFooter" value="Reply STOP to opt out · Mama Zinhle's" oninput="updatePreview()"></div></div>
+      <div class="builder-sec"><div class="builder-lbl">3. Action Buttons (max 3)</div><div class="btn-builder" id="btnBuilder"><div class="btn-row"><input class="input" placeholder="Button text" value="🛒 Shop Now" oninput="updatePreview()"><button class="btn-remove" onclick="removeBtn(this)">✕</button></div><div class="btn-row"><input class="input" placeholder="Button text" value="📞 Call Us" oninput="updatePreview()"><button class="btn-remove" onclick="removeBtn(this)">✕</button></div></div><button class="add-link" onclick="addBtn()">+ Add button</button></div>
+    </div>
+    <div class="builder-center">
+      <div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:14px">Live preview</div>
+      <div class="phone-wrap"><div class="phone-inner">
+        <div class="ph-status"><span class="ph-time" id="phTime">09:41</span><span style="font-size:10px;color:rgba(255,255,255,.7)">▲▲▲ WiFi ⚡</span></div>
+        <div class="ph-chat-hdr"><div class="ph-av">🏪</div><div><div class="ph-hdr-name">Mama Zinhle's</div><div class="ph-hdr-sub">Business account · Verified ✓</div></div></div>
+        <div class="ph-chat">
+          <div class="ph-bbl" id="previewBubble">
+            <div id="previewImg" class="ph-bbl-img" style="display:none">📸</div>
+            <div id="previewHeader" class="ph-bbl-hdr"></div>
+            <div id="previewBody" style="white-space:pre-wrap"></div>
+            <div id="previewFooter" class="ph-bbl-ftr"></div>
+            <div class="ph-bbl-btns" id="previewBtns"></div>
+            <div class="ph-t">09:41 ✓✓</div>
+          </div>
+        </div>
+        <div class="ph-bar"><div class="ph-input-fake">Reply...</div></div>
+      </div></div>
+      <div style="font-size:11px;color:var(--tx3);margin-top:10px">Changes reflect in real time ↑</div>
+    </div>
+    <div class="builder-right">
+      <div class="builder-sec"><div class="builder-lbl">4. Audience</div><div class="form-group"><label class="label">Select segment</label><div class="seg-chips"><div class="seg-chip active" onclick="this.classList.toggle('active')">All contacts (2,341)</div><div class="seg-chip" onclick="this.classList.toggle('active')">VIP (156)</div><div class="seg-chip" onclick="this.classList.toggle('active')">Inactive 30d (412)</div><div class="seg-chip" onclick="this.classList.toggle('active')">Fashion lovers (934)</div></div></div><div style="background:var(--a3);border:1px solid rgba(52,211,153,.15);border-radius:var(--r8);padding:9px 12px;font-size:12px;color:var(--tx2)">📊 Estimated reach: <strong style="color:var(--a)">2,341</strong> · Meta cost: <strong>~R 28–42</strong></div></div>
+      <div class="builder-sec"><div class="builder-lbl">5. Schedule</div><div class="form-group"><label class="label">When to send</label><select class="select" onchange="document.getElementById('schedFields').style.display=this.value==='later'?'grid':'none'"><option value="now">Send immediately</option><option value="later">Schedule for later</option><option value="optimal">AI optimal time</option></select></div><div id="schedFields" style="display:none;grid-template-columns:1fr 1fr;gap:8px"><div class="form-group"><label class="label">Date</label><input class="input" type="date"></div><div class="form-group"><label class="label">Time</label><input class="input" type="time" value="09:00"></div></div></div>
+      <div class="builder-sec"><div class="builder-lbl">6. Template</div><div class="form-group"><label class="label">Template name</label><input class="input" value="winter_sale_v3"></div><div class="form-group"><label class="label">Category</label><select class="select"><option>Marketing</option><option>Utility</option><option>Authentication</option></select></div><div style="background:rgba(251,146,60,.06);border:1px solid rgba(251,146,60,.2);border-radius:var(--r8);padding:9px 12px;font-size:11.5px;color:var(--tx2)">⚠️ Template must be approved in Meta Business Manager before sending.</div></div>
+      <button class="launch-btn" onclick="launchCampaign()">🚀 Launch Campaign</button>
+      <button class="draft-btn" onclick="toast('Campaign saved as draft','success')">💾 Save as Draft</button>
+    </div>
+  </div>
+</div>
+
+<!-- ██ CHATBOT FLOW BUILDER ██ -->
+<div class="page" id="page-chatbot">
+  <div class="flow-canvas-wrap">
+    <div class="flow-toolbar">
+      <div class="flow-toolbar-title">🤖 Chatbot Flow Builder</div>
+      <button class="btn btn-ghost btn-sm" onclick="toast('Flow saved!','success')">💾 Save</button>
+      <button class="btn btn-ghost btn-sm" onclick="toast('Flow published!','success')">▶ Publish</button>
+      <button class="btn btn-ghost btn-sm" onclick="toast('Test mode enabled','success')">🧪 Test</button>
+      <div style="margin-left:auto;display:flex;gap:8px">
+        <button class="btn btn-ghost btn-sm" onclick="zoomCanvas(1.1)">🔍+</button>
+        <button class="btn btn-ghost btn-sm" onclick="zoomCanvas(0.9)">🔍−</button>
+        <button class="btn btn-primary btn-sm" onclick="addFlowNode()">+ Add Node</button>
+      </div>
+    </div>
+    <div class="flow-area">
+      <div class="node-palette">
+        <div class="pal-lbl">Triggers</div>
+        <div class="pal-item" draggable="true" ondragstart="dragNode(event,'trigger','keyword')"><span class="pi">💬</span>Keyword match</div>
+        <div class="pal-item" draggable="true" ondragstart="dragNode(event,'trigger','first')"><span class="pi">👋</span>First message</div>
+        <div class="pal-item" draggable="true" ondragstart="dragNode(event,'trigger','button')"><span class="pi">👆</span>Button tap</div>
+        <div class="pal-item" draggable="true" ondragstart="dragNode(event,'trigger','schedule')"><span class="pi">📅</span>Scheduled</div>
+        <div class="pal-lbl">Messages</div>
+        <div class="pal-item" draggable="true" ondragstart="dragNode(event,'message','text')"><span class="pi">💬</span>Send text</div>
+        <div class="pal-item" draggable="true" ondragstart="dragNode(event,'message','buttons')"><span class="pi">👆</span>Send buttons</div>
+        <div class="pal-item" draggable="true" ondragstart="dragNode(event,'message','list')"><span class="pi">📋</span>Send list</div>
+        <div class="pal-item" draggable="true" ondragstart="dragNode(event,'message','media')"><span class="pi">🖼️</span>Send media</div>
+        <div class="pal-item" draggable="true" ondragstart="dragNode(event,'message','template')"><span class="pi">📄</span>Send template</div>
+        <div class="pal-lbl">Logic</div>
+        <div class="pal-item" draggable="true" ondragstart="dragNode(event,'logic','condition')"><span class="pi">🔀</span>If/Else condition</div>
+        <div class="pal-item" draggable="true" ondragstart="dragNode(event,'logic','delay')"><span class="pi">⏱️</span>Wait / Delay</div>
+        <div class="pal-item" draggable="true" ondragstart="dragNode(event,'logic','jump')"><span class="pi">↩️</span>Jump to step</div>
+        <div class="pal-lbl">Actions</div>
+        <div class="pal-item" draggable="true" ondragstart="dragNode(event,'action','tag')"><span class="pi">🏷️</span>Add/remove tag</div>
+        <div class="pal-item" draggable="true" ondragstart="dragNode(event,'action','agent')"><span class="pi">🎧</span>Handoff to agent</div>
+        <div class="pal-item" draggable="true" ondragstart="dragNode(event,'action','webhook')"><span class="pi">🔗</span>Call webhook</div>
+        <div class="pal-item" draggable="true" ondragstart="dragNode(event,'action','optin')"><span class="pi">✅</span>Set opt-in/out</div>
+      </div>
+      <div class="flow-canvas" id="flowCanvas" ondrop="dropNode(event)" ondragover="event.preventDefault()">
+        <div class="canvas-inner" id="canvasInner">
+          <svg class="flow-svg" id="flowSvg">
+            <defs><marker id="arrowhead" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M2 2L8 5L2 8" fill="none" stroke="rgba(52,211,153,.6)" stroke-width="1.5"/></marker></defs>
+            <path d="M 347 193 C 347 220 347 240 347 260" stroke="rgba(52,211,153,.5)" stroke-width="1.5" fill="none" stroke-dasharray="4 3" marker-end="url(#arrowhead)"/>
+            <path d="M 347 393 C 347 420 347 440 347 460" stroke="rgba(52,211,153,.5)" stroke-width="1.5" fill="none" stroke-dasharray="4 3" marker-end="url(#arrowhead)"/>
+            <path d="M 450 540 C 520 540 560 600 560 640" stroke="rgba(52,211,153,.4)" stroke-width="1.5" fill="none" stroke-dasharray="4 3" marker-end="url(#arrowhead)"/>
+          </svg>
+          <div class="flow-node" id="fn-start" style="left:245px;top:80px;border-color:var(--a)" onclick="selectNode(this,'First Message Trigger','When user sends their first message to this number')">
+            <div class="node-hdr"><div class="node-ico" style="background:var(--a3)">👋</div><div class="node-title">First Message Trigger</div></div>
+            <div class="node-body">When user sends their first message</div>
+            <div class="node-ports"><div class="node-port"></div><div class="node-port-lbl">→ next</div><div class="node-port"></div></div>
+          </div>
+          <div class="flow-node" id="fn-welcome" style="left:245px;top:260px" onclick="selectNode(this,'Send Welcome Message','Send greeting with main menu buttons')">
+            <div class="node-hdr"><div class="node-ico" style="background:rgba(96,165,250,.1)">💬</div><div class="node-title">Send Welcome Message</div></div>
+            <div class="node-body">👋 Hi {{name}}! Welcome to Mama Zinhle's...</div>
+            <div class="node-ports"><div class="node-port"></div><div class="node-port-lbl">→ next</div><div class="node-port"></div></div>
+            <div class="node-acts"><button class="node-btn" onclick="selectNode(this.closest('.flow-node'),'Send Welcome Message','')">Edit</button><button class="node-btn" onclick="toast('Node duplicated','success')">Copy</button></div>
+          </div>
+          <div class="flow-node" id="fn-menu" style="left:245px;top:460px" onclick="selectNode(this,'Send Button Menu','3 options: Shop, Support, Info')">
+            <div class="node-hdr"><div class="node-ico" style="background:rgba(167,139,250,.1)">👆</div><div class="node-title">Send Button Menu</div></div>
+            <div class="node-body">Buttons: 🛒 Shop · 🎧 Support · ℹ️ Info</div>
+            <div class="node-ports"><div class="node-port"></div><div class="node-port-lbl">3 paths</div><div class="node-port"></div></div>
+            <div class="node-acts"><button class="node-btn" onclick="selectNode(this.closest('.flow-node'),'Send Button Menu','')">Edit</button><button class="node-btn" onclick="toast('Node duplicated','success')">Copy</button></div>
+          </div>
+          <div class="flow-node" id="fn-shop" style="left:500px;top:620px" onclick="selectNode(this,'Shop Flow','Browse → cart → checkout link')">
+            <div class="node-hdr"><div class="node-ico" style="background:var(--a3)">🛒</div><div class="node-title">Shop Flow</div></div>
+            <div class="node-body">Browse products → cart → checkout</div>
+            <div class="node-ports"><div class="node-port"></div><div class="node-port-lbl">→ next</div><div class="node-port"></div></div>
+          </div>
+          <div class="flow-node" id="fn-support" style="left:245px;top:680px" onclick="selectNode(this,'Support Flow','FAQ → agent handoff if unresolved')">
+            <div class="node-hdr"><div class="node-ico" style="background:rgba(251,146,60,.1)">🎧</div><div class="node-title">Support Flow</div></div>
+            <div class="node-body">FAQ check → Agent handoff</div>
+            <div class="node-ports"><div class="node-port"></div><div class="node-port-lbl">→ next</div><div class="node-port"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="node-panel" id="nodePanel">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div style="font-weight:700;font-size:13.5px" id="nodePanelTitle">Node Properties</div>
+          <button class="btn-icon" style="width:26px;height:26px;font-size:12px" onclick="document.getElementById('nodePanel').classList.remove('open')">✕</button>
+        </div>
+        <div id="nodePanelContent"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ██ AUTOMATION ██ -->
+<div class="page" id="page-automation">
+  <div class="between"><div class="sec-hdr" style="margin-bottom:0"><h2>Automation Rules</h2><p>Trigger sequences that run 24/7 without you lifting a finger</p></div><button class="btn btn-primary btn-sm" onclick="toast('New rule builder opened!','success')">+ New Rule</button></div>
+  <div class="auto-layout">
+    <div>
+      <div class="rule-card on"><div class="rule-hdr"><div class="rule-name">🛒 Abandoned Cart Recovery</div><div class="toggle on" onclick="this.classList.toggle('on');this.classList.toggle('off')"></div><span class="tag tag-g">Active</span></div><div class="rule-flow"><div class="rule-step"><span class="rs-ico">⚡</span>Cart abandoned 30min</div><div class="rule-arrow">→</div><div class="rule-step"><span class="rs-ico">💬</span>Send reminder</div><div class="rule-arrow">→</div><div class="rule-step"><span class="rs-ico">⏱️</span>Wait 4h</div><div class="rule-arrow">→</div><div class="rule-step"><span class="rs-ico">🎁</span>Send 10% discount</div></div><div class="rule-meta"><span>Triggered 234 times</span><span>·</span><span style="color:var(--a)">67% recovery rate</span><span>·</span><span>R 12,400 recovered</span></div></div>
+      <div class="rule-card on"><div class="rule-hdr"><div class="rule-name">💤 Win-back Dormant Customers</div><div class="toggle on" onclick="this.classList.toggle('on');this.classList.toggle('off')"></div><span class="tag tag-g">Active</span></div><div class="rule-flow"><div class="rule-step"><span class="rs-ico">📅</span>No purchase 90 days</div><div class="rule-arrow">→</div><div class="rule-step"><span class="rs-ico">💬</span>Win-back message</div><div class="rule-arrow">→</div><div class="rule-step"><span class="rs-ico">🔀</span>If replied</div><div class="rule-arrow">→</div><div class="rule-step"><span class="rs-ico">🏷️</span>Tag: reengaged</div></div><div class="rule-meta"><span>Triggered 89 times</span><span>·</span><span style="color:var(--a)">23% re-purchase</span></div></div>
+      <div class="rule-card on"><div class="rule-hdr"><div class="rule-name">⭐ Post-Purchase CSAT</div><div class="toggle on" onclick="this.classList.toggle('on');this.classList.toggle('off')"></div><span class="tag tag-g">Active</span></div><div class="rule-flow"><div class="rule-step"><span class="rs-ico">📦</span>Order delivered</div><div class="rule-arrow">→</div><div class="rule-step"><span class="rs-ico">⏱️</span>Wait 2h</div><div class="rule-arrow">→</div><div class="rule-step"><span class="rs-ico">⭐</span>Send CSAT survey</div><div class="rule-arrow">→</div><div class="rule-step"><span class="rs-ico">📊</span>Log to analytics</div></div><div class="rule-meta"><span>Triggered 412 times</span><span>·</span><span style="color:var(--a)">78% response rate</span><span>·</span><span>4.7★ avg</span></div></div>
+      <div class="rule-card off-rule"><div class="rule-hdr"><div class="rule-name">🎁 Birthday Offer</div><div class="toggle off" onclick="this.classList.toggle('on');this.classList.toggle('off')"></div><span class="tag tag-o">Inactive</span></div><div class="rule-flow"><div class="rule-step"><span class="rs-ico">🎂</span>Birthday today</div><div class="rule-arrow">→</div><div class="rule-step"><span class="rs-ico">🎉</span>Send birthday msg</div><div class="rule-arrow">→</div><div class="rule-step"><span class="rs-ico">🏷️</span>Apply 20% discount</div></div><div class="rule-meta"><span>Paused · 0 triggers</span></div></div>
+    </div>
+    <div class="rule-builder">
+      <div style="font-family:var(--fh);font-size:15px;font-weight:700;margin-bottom:16px">+ Build New Rule</div>
+      <div class="rb-sec"><div class="rb-lbl">Trigger — When this happens</div>
+        <div class="trigger-opt selected"><span class="to-ico">💬</span><div><div class="to-name">Keyword received</div><div class="to-sub">Customer sends a specific word</div></div></div>
+        <div class="trigger-opt" onclick="document.querySelectorAll('.trigger-opt').forEach(t=>t.classList.remove('selected'));this.classList.add('selected')"><span class="to-ico">📅</span><div><div class="to-name">Scheduled time</div><div class="to-sub">Run at a specific date/time</div></div></div>
+        <div class="trigger-opt" onclick="document.querySelectorAll('.trigger-opt').forEach(t=>t.classList.remove('selected'));this.classList.add('selected')"><span class="to-ico">📦</span><div><div class="to-name">Order event</div><div class="to-sub">Shipped, delivered, returned</div></div></div>
+        <div class="trigger-opt" onclick="document.querySelectorAll('.trigger-opt').forEach(t=>t.classList.remove('selected'));this.classList.add('selected')"><span class="to-ico">⏱️</span><div><div class="to-name">Inactivity timer</div><div class="to-sub">No purchase/reply in X days</div></div></div>
+      </div>
+      <div class="rb-sec"><div class="rb-lbl">Condition — Only if</div><div class="form-group"><label class="label">Contact tag is</label><input class="input input-sm" placeholder="e.g. VIP, active"></div><div class="form-group"><label class="label">Last purchase was</label><select class="select" style="font-size:12px;padding:7px 10px"><option>More than 30 days ago</option><option>More than 60 days ago</option><option>More than 90 days ago</option><option>Never</option></select></div></div>
+      <div class="rb-sec"><div class="rb-lbl">Actions — Then do this</div>
+        <div class="action-chip"><span class="ac-ico">💬</span>Send template: <strong style="color:var(--a);margin-left:4px">win_back_v2</strong></div>
+        <div class="delay-row"><span style="font-size:12.5px;color:var(--tx2)">Wait</span><input class="input" style="width:70px;font-size:12px;padding:6px 8px" value="4"><select class="select" style="width:100px;font-size:12px;padding:6px 8px"><option>Hours</option><option>Days</option><option>Minutes</option></select><span style="font-size:12.5px;color:var(--tx2)">then</span></div>
+        <div class="action-chip"><span class="ac-ico">🏷️</span>Add tag: <strong style="color:var(--a);margin-left:4px">reengaged</strong></div>
+        <button class="add-link" onclick="toast('Action added','success')">+ Add action</button>
+      </div>
+      <button class="btn btn-primary" style="width:100%;margin-top:6px" onclick="toast('Rule saved &amp; activated!','success')">Save &amp; Activate Rule</button>
+    </div>
+  </div>
+</div>
+
+<!-- ██ CONTACTS ██ -->
+<div class="page" id="page-contacts">
+  <div class="between"><div class="sec-hdr" style="margin-bottom:0"><h2>Contacts</h2><p>2,341 total · 2,189 opted in · 152 opted out</p></div><div style="display:flex;gap:8px"><button class="btn btn-ghost btn-sm" onclick="document.getElementById('importModal').classList.add('open')">⬆️ Import CSV</button><button class="btn btn-primary btn-sm" onclick="toast('Add contact modal','success')">+ Add contact</button></div></div>
+  <div class="contacts-toolbar"><div class="search-wrap"><span class="search-ico">🔍</span><input class="input" placeholder="Search by name or number..."></div><select class="select" style="width:160px"><option>All segments</option><option>VIP customers</option><option>Inactive 30d</option><option>Recent buyers</option></select><select class="select" style="width:140px"><option>All status</option><option>Opted in</option><option>Opted out</option></select></div>
+  <div class="card"><div class="card-body" style="padding:0 20px"><table class="tbl"><thead><tr><th>Name</th><th>WhatsApp</th><th>Segment</th><th>Last contacted</th><th>Messages</th><th>Status</th></tr></thead><tbody>
+    <tr><td><span class="c-av">NM</span>Nomsa Mkhize</td><td style="font-family:var(--fm);font-size:12px">+27 82 345 6789</td><td><span class="tag tag-p">VIP</span></td><td style="color:var(--tx2)">2 Jun 2026</td><td>24</td><td><span class="pill pill-g">Opted in</span></td></tr>
+    <tr><td><span class="c-av">TN</span>Thabo Nkosi</td><td style="font-family:var(--fm);font-size:12px">+27 83 901 2345</td><td><span class="tag tag-b">Retail</span></td><td style="color:var(--tx2)">1 Jun 2026</td><td>12</td><td><span class="pill pill-g">Opted in</span></td></tr>
+    <tr><td><span class="c-av">LP</span>Lerato Phiri</td><td style="font-family:var(--fm);font-size:12px">+27 71 234 5678</td><td><span class="tag tag-g">New</span></td><td style="color:var(--tx2)">31 May 2026</td><td>3</td><td><span class="pill pill-g">Opted in</span></td></tr>
+    <tr><td><span class="c-av">SK</span>Sipho Khumalo</td><td style="font-family:var(--fm);font-size:12px">+27 79 567 8901</td><td><span class="tag tag-b">Retail</span></td><td style="color:var(--tx2)">28 May 2026</td><td>8</td><td><span class="pill pill-g">Opted in</span></td></tr>
+    <tr><td><span class="c-av">AM</span>Ayanda Molefe</td><td style="font-family:var(--fm);font-size:12px">+27 84 123 4567</td><td><span class="tag tag-o">Inactive</span></td><td style="color:var(--tx2)">3 Apr 2026</td><td>5</td><td><span class="pill pill-gray">Opted out</span></td></tr>
+    <tr><td><span class="c-av">ZD</span>Zanele Dlamini</td><td style="font-family:var(--fm);font-size:12px">+27 60 789 0123</td><td><span class="tag tag-p">VIP</span></td><td style="color:var(--tx2)">2 Jun 2026</td><td>41</td><td><span class="pill pill-g">Opted in</span></td></tr>
+    <tr><td><span class="c-av">KN</span>Kabelo Nzama</td><td style="font-family:var(--fm);font-size:12px">+27 82 456 7890</td><td><span class="tag tag-g">New</span></td><td style="color:var(--tx2)">2 Jun 2026</td><td>1</td><td><span class="pill pill-g">Opted in</span></td></tr>
+  </tbody></table></div></div>
+</div>
+
+<!-- ██ INBOX ██ -->
+<div class="page" id="page-inbox">
+  <div class="inbox-wrap">
+    <div class="inbox-list">
+      <div class="inbox-search"><input class="input" placeholder="🔍  Search conversations..."></div>
+      <div class="inbox-item active" onclick="loadConvo(this,'Nomsa Mkhize','👩🏾','+27 82 345 6789')"><div class="inbox-av">👩🏾</div><div style="flex:1;overflow:hidden"><div class="inbox-name">Nomsa Mkhize</div><div class="inbox-prev">Do you have the red dress in size 12?</div></div><div class="inbox-meta"><div class="inbox-time">09:41</div><div class="inbox-unread">3</div></div></div>
+      <div class="inbox-item" onclick="loadConvo(this,'Thabo Nkosi','👨🏿','+27 83 901 2345')"><div class="inbox-av">👨🏿</div><div style="flex:1;overflow:hidden"><div class="inbox-name">Thabo Nkosi</div><div class="inbox-prev">Thanks! Order received 👍</div></div><div class="inbox-meta"><div class="inbox-time">09:12</div></div></div>
+      <div class="inbox-item" onclick="loadConvo(this,'Zanele Dlamini','👩🏽','+27 60 789 0123')"><div class="inbox-av">👩🏽</div><div style="flex:1;overflow:hidden"><div class="inbox-name">Zanele Dlamini</div><div class="inbox-prev">When does the sale end?</div></div><div class="inbox-meta"><div class="inbox-time">08:55</div><div class="inbox-unread">2</div></div></div>
+      <div class="inbox-item" onclick="loadConvo(this,'Lerato Phiri','👩','+27 71 234 5678')"><div class="inbox-av">👩</div><div style="flex:1;overflow:hidden"><div class="inbox-name">Lerato Phiri</div><div class="inbox-prev">I used code WINTER40 ✅</div></div><div class="inbox-meta"><div class="inbox-time">Yesterday</div></div></div>
+      <div class="inbox-item" onclick="loadConvo(this,'Sipho Khumalo','👨🏾','+27 79 567 8901')"><div class="inbox-av">👨🏾</div><div style="flex:1;overflow:hidden"><div class="inbox-name">Sipho Khumalo</div><div class="inbox-prev">Can I get free delivery?</div></div><div class="inbox-meta"><div class="inbox-time">Yesterday</div><div class="inbox-unread">1</div></div></div>
+      <div class="inbox-item" onclick="loadConvo(this,'Kabelo Nzama','👨','+27 82 456 7890')"><div class="inbox-av">👨</div><div style="flex:1;overflow:hidden"><div class="inbox-name">Kabelo Nzama</div><div class="inbox-prev">Hi, I saw your sale on WhatsApp</div></div><div class="inbox-meta"><div class="inbox-time">Yesterday</div><div class="inbox-unread">1</div></div></div>
+    </div>
+    <div class="convo">
+      <div class="convo-hdr"><div class="inbox-av" id="convoAv">👩🏾</div><div><div style="font-weight:600;font-size:14px" id="convoName">Nomsa Mkhize</div><div style="font-size:11.5px;color:var(--tx2)" id="convoPhone">+27 82 345 6789 · Last seen today 09:41</div></div><div style="margin-left:auto;display:flex;gap:8px"><div class="btn-icon">👤</div><div class="btn-icon">✅</div><div class="btn-icon">📌</div></div></div>
+      <div class="convo-msgs" id="convoMsgs">
+        <div style="text-align:center;font-size:11px;color:var(--tx3);margin:6px 0">Today · Winter Sale campaign reply</div>
+        <div class="c-bbl out">Hi Nomsa! 🎉 Our Winter Sale is now live — 40% off everything! Code: WINTER40 🛍️<div class="c-bbl-t">09:15 ✓✓</div></div>
+        <div class="c-bbl in">Wow! Do you still have the red dress in size 12?<div class="c-bbl-t">09:38</div></div>
+        <div class="c-bbl in">And what colours is it in?<div class="c-bbl-t">09:39</div></div>
+        <div class="c-bbl in">Also is there free delivery?<div class="c-bbl-t">09:41</div></div>
+      </div>
+      <div class="convo-reply"><textarea class="convo-input" id="replyInput" placeholder="Type your reply..." rows="2"></textarea><button class="reply-send" onclick="sendReply()">➤</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- ██ TEMPLATES ██ -->
+<div class="page" id="page-templates">
+  <div class="between"><div class="sec-hdr" style="margin-bottom:0"><h2>Template Library</h2><p>Pre-approved WhatsApp templates ready to use</p></div><button class="btn btn-primary btn-sm" onclick="toast('Template request submitted to Meta!','success')">+ Request template</button></div>
+  <div class="tpl-grid">
+    <div class="tpl-card"><div class="tpl-prev"><div class="tpl-bbl"><b>🔥 FLASH SALE!</b><br>Hi {{name}}, get {{discount}} off today!<br>Code: <b>{{code}}</b><div class="tpl-bbl-btns"><div class="tpl-bbl-btn">🛒 Shop Now</div><div class="tpl-bbl-btn">📤 Share</div></div></div></div><div class="tpl-info"><div class="tpl-name">Flash Sale Broadcast</div><div class="tpl-meta"><span class="tpl-cat mk">Marketing</span><span class="tpl-stat">✓ Approved</span></div><div class="tpl-acts"><button class="tpl-btn use" onclick="toast('Template loaded in Campaign Builder!','success')">Use</button><button class="tpl-btn edit">Edit</button></div></div></div>
+    <div class="tpl-card"><div class="tpl-prev"><div class="tpl-bbl"><b>📦 Order #{{id}} Shipped!</b><br>Your order is on its way 🚚<br>ETA: <b>{{eta}}</b><div class="tpl-bbl-btns"><div class="tpl-bbl-btn">🗺️ Track Order</div></div></div></div><div class="tpl-info"><div class="tpl-name">Order Shipped Notification</div><div class="tpl-meta"><span class="tpl-cat ut">Utility</span><span class="tpl-stat">✓ Approved</span></div><div class="tpl-acts"><button class="tpl-btn use" onclick="toast('Template loaded!','success')">Use</button><button class="tpl-btn edit">Edit</button></div></div></div>
+    <div class="tpl-card"><div class="tpl-prev"><div class="tpl-bbl"><b>📅 Appointment Reminder</b><br>Hi {{name}}, your appointment is tomorrow at <b>{{time}}</b>!<div class="tpl-bbl-btns"><div class="tpl-bbl-btn">✅ Confirm</div><div class="tpl-bbl-btn">🔄 Reschedule</div></div></div></div><div class="tpl-info"><div class="tpl-name">Appointment Reminder</div><div class="tpl-meta"><span class="tpl-cat ut">Utility</span><span class="tpl-stat">✓ Approved</span></div><div class="tpl-acts"><button class="tpl-btn use" onclick="toast('Template loaded!','success')">Use</button><button class="tpl-btn edit">Edit</button></div></div></div>
+    <div class="tpl-card"><div class="tpl-prev"><div class="tpl-bbl">We miss you, <b>{{name}}</b>! 💤<br>Here's <b>{{discount}}</b> off your next order.<br>Code: <b>{{code}}</b> · Expires 48h<div class="tpl-bbl-btns"><div class="tpl-bbl-btn">🎁 Claim Offer</div></div></div></div><div class="tpl-info"><div class="tpl-name">Win-back Campaign</div><div class="tpl-meta"><span class="tpl-cat mk">Marketing</span><span class="tpl-stat">✓ Approved</span></div><div class="tpl-acts"><button class="tpl-btn use" onclick="toast('Template loaded!','success')">Use</button><button class="tpl-btn edit">Edit</button></div></div></div>
+    <div class="tpl-card"><div class="tpl-prev"><div class="tpl-bbl">🎁 <b>Congrats {{name}}!</b><br>You've reached <b>{{tier}} status</b> with {{points}} points!<div class="tpl-bbl-btns"><div class="tpl-bbl-btn">🏆 View Rewards</div></div></div></div><div class="tpl-info"><div class="tpl-name">Loyalty Tier Upgrade</div><div class="tpl-meta"><span class="tpl-cat mk">Marketing</span><span class="tpl-stat">✓ Approved</span></div><div class="tpl-acts"><button class="tpl-btn use" onclick="toast('Template loaded!','success')">Use</button><button class="tpl-btn edit">Edit</button></div></div></div>
+    <div class="tpl-card"><div class="tpl-prev"><div class="tpl-bbl">Your OTP is: <b>{{otp}}</b><br>Valid for 10 minutes. Do not share.</div></div><div class="tpl-info"><div class="tpl-name">OTP Authentication</div><div class="tpl-meta"><span class="tpl-cat au">Authentication</span><span class="tpl-stat">✓ Approved</span></div><div class="tpl-acts"><button class="tpl-btn use" onclick="toast('Template loaded!','success')">Use</button><button class="tpl-btn edit">Edit</button></div></div></div>
+  </div>
+</div>
+
+<!-- ██ ANALYTICS ██ -->
+<div class="page" id="page-analytics">
+  <div class="between"><div class="sec-hdr" style="margin-bottom:0"><h2>Analytics</h2><p>Performance data for June 2026</p></div><select class="select" style="width:160px"><option>Last 30 days</option><option>Last 7 days</option><option>This month</option></select></div>
+  <div class="card mb-16"><div class="card-hdr"><div class="card-ttl">📊 Message performance</div><div class="chart-legend"><div class="leg-item"><div class="leg-dot" style="background:var(--a)"></div>Sent</div><div class="leg-item"><div class="leg-dot" style="background:var(--blue)"></div>Read</div><div class="leg-item"><div class="leg-dot" style="background:var(--orange)"></div>Replied</div></div></div><div class="card-body"><div class="big-chart-area"><div class="big-col"><div class="big-bars"><div class="big-bar" style="height:55%;background:var(--a)"></div><div class="big-bar" style="height:44%;background:var(--blue)"></div><div class="big-bar" style="height:12%;background:var(--orange)"></div></div><div class="big-lbl">May 27</div></div><div class="big-col"><div class="big-bars"><div class="big-bar" style="height:40%;background:var(--a)"></div><div class="big-bar" style="height:32%;background:var(--blue)"></div><div class="big-bar" style="height:9%;background:var(--orange)"></div></div><div class="big-lbl">May 28</div></div><div class="big-col"><div class="big-bars"><div class="big-bar" style="height:80%;background:var(--a)"></div><div class="big-bar" style="height:65%;background:var(--blue)"></div><div class="big-bar" style="height:22%;background:var(--orange)"></div></div><div class="big-lbl">May 29</div></div><div class="big-col"><div class="big-bars"><div class="big-bar" style="height:60%;background:var(--a)"></div><div class="big-bar" style="height:48%;background:var(--blue)"></div><div class="big-bar" style="height:15%;background:var(--orange)"></div></div><div class="big-lbl">May 30</div></div><div class="big-col"><div class="big-bars"><div class="big-bar" style="height:100%;background:var(--a)"></div><div class="big-bar" style="height:84%;background:var(--blue)"></div><div class="big-bar" style="height:28%;background:var(--orange)"></div></div><div class="big-lbl">May 31</div></div><div class="big-col"><div class="big-bars"><div class="big-bar" style="height:75%;background:var(--a)"></div><div class="big-bar" style="height:60%;background:var(--blue)"></div><div class="big-bar" style="height:19%;background:var(--orange)"></div></div><div class="big-lbl">Jun 1</div></div><div class="big-col"><div class="big-bars"><div class="big-bar" style="height:45%;background:var(--a)"></div><div class="big-bar" style="height:38%;background:var(--blue)"></div><div class="big-bar" style="height:11%;background:var(--orange)"></div></div><div class="big-lbl">Jun 2</div></div></div></div></div>
+  <div class="analytics-grid">
+    <div class="card"><div class="card-hdr"><div class="card-ttl">🎯 Message funnel</div></div><div class="card-body"><div style="display:flex;align-items:center;gap:20px"><div class="donut"><div class="donut-hole"><div class="donut-pct">84%</div><div class="donut-lbl">read rate</div></div></div><div style="flex:1;display:flex;flex-direction:column;gap:9px"><div><div style="display:flex;align-items:center;gap:7px;margin-bottom:4px"><div class="leg-dot" style="background:var(--a)"></div><span style="font-size:12px">Delivered · 98%</span></div><div style="height:4px;background:var(--ink3);border-radius:4px"><div style="width:98%;height:100%;background:var(--a);border-radius:4px"></div></div></div><div><div style="display:flex;align-items:center;gap:7px;margin-bottom:4px"><div class="leg-dot" style="background:var(--blue)"></div><span style="font-size:12px">Read · 84%</span></div><div style="height:4px;background:var(--ink3);border-radius:4px"><div style="width:84%;height:100%;background:var(--blue);border-radius:4px"></div></div></div><div><div style="display:flex;align-items:center;gap:7px;margin-bottom:4px"><div class="leg-dot" style="background:var(--orange)"></div><span style="font-size:12px">Replied · 18%</span></div><div style="height:4px;background:var(--ink3);border-radius:4px"><div style="width:18%;height:100%;background:var(--orange);border-radius:4px"></div></div></div><div><div style="display:flex;align-items:center;gap:7px;margin-bottom:4px"><div class="leg-dot" style="background:var(--purple)"></div><span style="font-size:12px">Converted · 7%</span></div><div style="height:4px;background:var(--ink3);border-radius:4px"><div style="width:7%;height:100%;background:var(--purple);border-radius:4px"></div></div></div></div></div></div></div>
+    <div class="card"><div class="card-hdr"><div class="card-ttl">📊 Key metrics</div></div><div class="card-body"><div class="kpi-row"><div class="kpi-lbl">Total sent</div><div class="kpi-val" style="color:var(--a)">12,450</div></div><div class="kpi-row"><div class="kpi-lbl">Opt-out rate</div><div class="kpi-val" style="color:var(--red)">0.8%</div></div><div class="kpi-row"><div class="kpi-lbl">Avg response time</div><div class="kpi-val">4.2 min</div></div><div class="kpi-row"><div class="kpi-lbl">Revenue attributed</div><div class="kpi-val" style="color:var(--orange)">R 48,230</div></div><div class="kpi-row"><div class="kpi-lbl">Cost per conversion</div><div class="kpi-val">R 1.84</div></div><div class="kpi-row"><div class="kpi-lbl">WhatsApp API spend</div><div class="kpi-val">R 312</div></div></div></div>
+  </div>
+</div>
+
+<!-- ██ LINK SHORTENER ██ -->
+<div class="page" id="page-links">
+  <div class="sec-hdr"><h2>Link Shortener &amp; UTM Tracker</h2><p>Create trackable short links for your WhatsApp campaigns</p></div>
+  <div class="grid-2 mb-20">
+    <div class="card"><div class="card-hdr"><div class="card-ttl">🔗 Create Short Link</div></div><div class="card-body"><div class="utm-builder"><div class="form-group"><label class="label">Destination URL</label><input class="input" id="utmUrl" value="https://mamaboutique.co.za/winter-sale" oninput="buildUTM()"></div><div class="form-row"><div class="form-group"><label class="label">Source</label><input class="input" id="utmSource" value="whatsapp" oninput="buildUTM()"></div><div class="form-group"><label class="label">Medium</label><input class="input" id="utmMedium" value="campaign" oninput="buildUTM()"></div></div><div class="form-group"><label class="label">Campaign name</label><input class="input" id="utmCampaign" value="winter_sale_2026" oninput="buildUTM()"></div><div class="form-group"><label class="label">Custom short code</label><input class="input" placeholder="e.g. wsale26" value="wsale26"></div></div><div class="utm-result" id="utmResult">https://mamaboutique.co.za/winter-sale?utm_source=whatsapp&amp;utm_medium=campaign&amp;utm_campaign=winter_sale_2026</div><div class="shortlink-result"><div class="shortlink-url">wzy.co.za/wsale26</div><button class="btn btn-primary btn-sm" onclick="toast('Short link copied!','success')">📋 Copy</button></div><button class="btn btn-ghost btn-sm" style="width:100%;margin-top:8px" onclick="toast('QR code generated!','success')">📱 Generate QR for this link</button></div></div>
+    <div class="card"><div class="card-hdr"><div class="card-ttl">📊 Link Performance</div></div><div class="card-body"><div class="chart-area" style="height:110px;margin-bottom:14px"><div class="ch-col"><div class="ch-bar-wrap"><div class="ch-bar" style="height:40%;background:linear-gradient(to top,#1D4ED8,var(--blue))"></div></div><div class="ch-lbl">Mon</div></div><div class="ch-col"><div class="ch-bar-wrap"><div class="ch-bar" style="height:65%;background:linear-gradient(to top,#1D4ED8,var(--blue))"></div></div><div class="ch-lbl">Tue</div></div><div class="ch-col"><div class="ch-bar-wrap"><div class="ch-bar" style="height:30%;background:linear-gradient(to top,#1D4ED8,var(--blue))"></div></div><div class="ch-lbl">Wed</div></div><div class="ch-col"><div class="ch-bar-wrap"><div class="ch-bar" style="height:90%;background:linear-gradient(to top,#1D4ED8,var(--blue))"></div></div><div class="ch-lbl">Thu</div></div><div class="ch-col"><div class="ch-bar-wrap"><div class="ch-bar" style="height:75%;background:linear-gradient(to top,#1D4ED8,var(--blue))"></div></div><div class="ch-lbl">Fri</div></div><div class="ch-col"><div class="ch-bar-wrap"><div class="ch-bar" style="height:55%;background:linear-gradient(to top,#1D4ED8,var(--blue))"></div></div><div class="ch-lbl">Sat</div></div><div class="ch-col"><div class="ch-bar-wrap"><div class="ch-bar" style="height:45%;background:linear-gradient(to top,#1D4ED8,var(--blue))"></div></div><div class="ch-lbl">Sun</div></div></div><div class="kpi-row"><div class="kpi-lbl">Total clicks</div><div class="kpi-val" style="color:var(--blue)">1,892</div></div><div class="kpi-row"><div class="kpi-lbl">Unique visitors</div><div class="kpi-val">1,244</div></div><div class="kpi-row"><div class="kpi-lbl">Conversions</div><div class="kpi-val" style="color:var(--a)">312</div></div><div class="kpi-row"><div class="kpi-lbl">Conversion rate</div><div class="kpi-val" style="color:var(--a)">16.5%</div></div></div></div>
+  </div>
+  <div class="card"><div class="card-hdr"><div class="card-ttl">🔗 All Short Links</div></div><div class="card-body" style="padding:0 20px"><table class="tbl"><thead><tr><th>Short link</th><th>Destination</th><th>Campaign</th><th>Clicks</th><th>Conversions</th><th>Created</th></tr></thead><tbody><tr><td><span class="link-url" onclick="toast('Copied!','success')">wzy.co.za/wsale26</span></td><td style="font-size:12px;color:var(--tx2)">mamaboutique.co.za/winter-sale</td><td><span class="tag tag-o">winter_sale_2026</span></td><td style="color:var(--a)">1,892</td><td style="color:var(--a)">312</td><td style="font-family:var(--fm);font-size:12px;color:var(--tx3)">2 Jun</td></tr><tr><td><span class="link-url" onclick="toast('Copied!','success')">wzy.co.za/vip25</span></td><td style="font-size:12px;color:var(--tx2)">mamaboutique.co.za/vip</td><td><span class="tag tag-p">vip_offer</span></td><td style="color:var(--a)">456</td><td style="color:var(--a)">89</td><td style="font-family:var(--fm);font-size:12px;color:var(--tx3)">28 May</td></tr><tr><td><span class="link-url" onclick="toast('Copied!','success')">wzy.co.za/newjune</span></td><td style="font-size:12px;color:var(--tx2)">mamaboutique.co.za/new-arrivals</td><td><span class="tag tag-g">new_arrivals_june</span></td><td style="color:var(--a)">734</td><td style="color:var(--a)">102</td><td style="font-family:var(--fm);font-size:12px;color:var(--tx3)">1 Jun</td></tr></tbody></table></div></div>
+</div>
+
+<!-- ██ QR GENERATOR ██ -->
+<div class="page" id="page-qr">
+  <div class="sec-hdr"><h2>QR Code Generator</h2><p>Print-ready QR codes that open WhatsApp chats directly</p></div>
+  <div class="qr-wrap">
+    <div class="card"><div class="card-hdr"><div class="card-ttl">⚙️ Configure</div></div><div class="card-body">
+      <div class="form-group"><label class="label">WhatsApp number</label><input class="input" value="+27 21 000 1234" readonly></div>
+      <div class="form-group"><label class="label">Pre-filled message</label><textarea class="textarea" style="min-height:60px" oninput="updateQR()">Hi! I saw your sale and I'd like to place an order 🛍️</textarea></div>
+      <div class="form-group"><label class="label">QR Type</label><div class="qr-tpl-grid"><div class="qr-tpl-btn active" onclick="setQRType(this,'💬')">💬 WhatsApp chat</div><div class="qr-tpl-btn" onclick="setQRType(this,'🛒')">🛒 Product catalogue</div><div class="qr-tpl-btn" onclick="setQRType(this,'🎧')">🎧 Support</div><div class="qr-tpl-btn" onclick="setQRType(this,'📅')">📅 Book appointment</div></div></div>
+      <div class="form-group"><label class="label">QR colour</label><div class="qr-color-row"><div class="qr-color-btn active" style="background:#25D366" onclick="setQRColor(this)"></div><div class="qr-color-btn" style="background:#075E54" onclick="setQRColor(this)"></div><div class="qr-color-btn" style="background:#000" onclick="setQRColor(this)"></div><div class="qr-color-btn" style="background:#1877F2" onclick="setQRColor(this)"></div><div class="qr-color-btn" style="background:#34D399" onclick="setQRColor(this)"></div></div></div>
+      <div class="form-group"><label class="label">Label text</label><input class="input" id="qrLabel" value="Scan to chat with us on WhatsApp" oninput="document.getElementById('qrLabelDisplay').textContent=this.value"></div>
+    </div></div>
+    <div>
+      <div class="card mb-16"><div class="card-hdr"><div class="card-ttl">👁️ Preview</div></div><div class="card-body"><div class="qr-preview"><div class="qr-canvas" id="qrCanvas">📱</div><div style="font-size:13px;font-weight:600;text-align:center" id="qrLabelDisplay">Scan to chat with us on WhatsApp</div><div style="font-size:11.5px;color:var(--tx2);text-align:center">wa.me/27210001234?text=Hi%21...</div></div></div></div>
+      <div class="card"><div class="card-hdr"><div class="card-ttl">💾 Download</div></div><div class="card-body" style="display:flex;flex-direction:column;gap:8px"><button class="btn btn-primary" onclick="toast('QR downloaded as PNG (300dpi)','success')">📥 Download PNG (print-ready)</button><button class="btn btn-ghost" onclick="toast('QR downloaded as SVG','success')">📥 Download SVG (vector)</button><button class="btn btn-ghost" onclick="toast('QR downloaded as PDF','success')">📥 Download PDF (A4)</button><div class="divider"></div><div style="font-size:12px;color:var(--tx2)">📌 Use on: menus, flyers, receipts, storefronts, packaging, business cards</div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ██ OPT-IN WIDGET ██ -->
+<div class="page" id="page-widget">
+  <div class="sec-hdr"><h2>Opt-in Widget Builder</h2><p>Embed a WhatsApp chat button or popup on your website</p></div>
+  <div class="widget-wrap">
+    <div>
+      <div class="card mb-16"><div class="card-hdr"><div class="card-ttl">⚙️ Settings</div></div><div class="card-body">
+        <div class="form-group"><label class="label">Widget type</label><div class="msg-type-grid"><div class="mt-btn active" onclick="setWidgetType(this,'float')"><span class="mt-ico">💬</span>Float button</div><div class="mt-btn" onclick="setWidgetType(this,'popup')"><span class="mt-ico">🪟</span>Popup chat</div><div class="mt-btn" onclick="setWidgetType(this,'banner')"><span class="mt-ico">📢</span>Banner bar</div><div class="mt-btn" onclick="setWidgetType(this,'embed')"><span class="mt-ico">📋</span>Embed form</div></div></div>
+        <div class="form-group"><label class="label">Button text</label><input class="input" value="Chat with us" id="widgetBtnText" oninput="updateWidget()"></div>
+        <div class="form-group"><label class="label">Greeting message</label><textarea class="textarea" style="min-height:70px" id="widgetGreeting" oninput="updateWidget()">👋 Hi! Welcome to Mama Zinhle's Boutique. How can I help you today?</textarea></div>
+        <div class="form-group"><label class="label">Show popup after (seconds)</label><input class="input" type="number" value="5" min="0" max="60"></div>
+        <div class="form-group"><label class="label">Collect opt-in?</label><select class="select"><option>Yes — show opt-in checkbox</option><option>No — direct to WhatsApp</option></select></div>
+      </div></div>
+      <div class="card"><div class="card-hdr"><div class="card-ttl">📋 Embed Code</div><button class="card-act" onclick="toast('Code copied!','success')">Copy code</button></div><div class="card-body"><div class="embed-code-box">&lt;!-- Wazify WhatsApp Widget --&gt;<br>&lt;script src="https://cdn.wazify.co.za/widget.js"<br>&nbsp;&nbsp;data-account="acct_8x92k"<br>&nbsp;&nbsp;data-type="float"<br>&nbsp;&nbsp;data-text="Chat with us"<br>&nbsp;&nbsp;data-delay="5"<br>&nbsp;&nbsp;data-optin="true"&gt;<br>&lt;/script&gt;</div><div style="font-size:11.5px;color:var(--tx2);margin-top:10px">Paste just before your closing &lt;/body&gt; tag</div></div></div>
+    </div>
+    <div class="card"><div class="card-hdr"><div class="card-ttl">👁️ Live Preview</div></div><div class="card-body" style="padding:0"><div class="widget-preview-area">
+      <div style="position:absolute;top:14px;left:14px;font-size:11.5px;color:var(--tx3)">yourwebsite.co.za</div>
+      <div id="widgetPopup" class="wa-popup"><div class="wa-popup-hdr"><div class="wa-popup-av">🏪</div><div><div class="wa-popup-name">Mama Zinhle's Boutique</div><div class="wa-popup-sub">Typically replies in minutes</div></div></div><div class="wa-popup-body"><div class="wa-popup-msg" id="widgetGreetingDisplay">👋 Hi! Welcome to Mama Zinhle's Boutique. How can I help you today?</div><button class="wa-popup-cta" onclick="toast('Redirecting to WhatsApp!','success')">💬 Start WhatsApp Chat</button></div></div>
+      <div class="wa-float-btn"><span style="font-size:22px">💬</span><div id="widgetBtnDisplay">Chat with us</div></div>
+    </div></div></div>
+  </div>
+</div>
+
+<!-- ██ AGENCY PORTAL ██ -->
+<div class="page" id="page-agency">
+  <div class="between"><div class="sec-hdr" style="margin-bottom:0"><h2>Agency Portal</h2><p>Manage all your client accounts from one dashboard</p></div><button class="btn btn-primary btn-sm" onclick="toast('New client account created!','success')">+ Add Client</button></div>
+  <div class="agency-summary"><div><div class="as-val">12</div><div class="as-lbl">Active clients</div></div><div><div class="as-val" style="color:var(--orange)">R 18,400</div><div class="as-lbl">Monthly recurring revenue</div></div><div><div class="as-val">98,234</div><div class="as-lbl">Total messages sent</div></div><div><div class="as-val" style="color:var(--purple)">3</div><div class="as-lbl">Trial accounts</div></div></div>
+  <div class="agency-grid">
+    <div class="client-card"><div class="cc-hdr"><div class="cc-logo" style="background:rgba(52,211,153,.1)">🛒</div><div><div class="cc-name">Mama Zinhle's Boutique</div><div class="cc-plan-lbl">Growth · R799/mo</div></div><span class="pill pill-g">Active</span></div><div class="cc-body"><div class="cc-stat-row"><div class="cc-stat"><div class="cc-stat-val" style="color:var(--a)">2,341</div><div class="cc-stat-lbl">Contacts</div></div><div class="cc-stat"><div class="cc-stat-val">14</div><div class="cc-stat-lbl">Campaigns</div></div><div class="cc-stat"><div class="cc-stat-val" style="color:var(--blue)">84%</div><div class="cc-stat-lbl">Read rate</div></div></div><div class="cc-revenue"><div class="cc-rev-lbl">Your margin</div><div class="cc-rev-val">R 300/mo</div></div></div></div>
+    <div class="client-card"><div class="cc-hdr"><div class="cc-logo" style="background:rgba(96,165,250,.1)">🍕</div><div><div class="cc-name">Kasi Eats Restaurant</div><div class="cc-plan-lbl">Starter · R299/mo</div></div><span class="pill pill-g">Active</span></div><div class="cc-body"><div class="cc-stat-row"><div class="cc-stat"><div class="cc-stat-val" style="color:var(--a)">892</div><div class="cc-stat-lbl">Contacts</div></div><div class="cc-stat"><div class="cc-stat-val">6</div><div class="cc-stat-lbl">Campaigns</div></div><div class="cc-stat"><div class="cc-stat-val" style="color:var(--blue)">79%</div><div class="cc-stat-lbl">Read rate</div></div></div><div class="cc-revenue"><div class="cc-rev-lbl">Your margin</div><div class="cc-rev-val">R 100/mo</div></div></div></div>
+    <div class="client-card"><div class="cc-hdr"><div class="cc-logo" style="background:rgba(251,146,60,.1)">🏠</div><div><div class="cc-name">Ubuntu Properties</div><div class="cc-plan-lbl">Growth · R799/mo</div></div><span class="pill pill-g">Active</span></div><div class="cc-body"><div class="cc-stat-row"><div class="cc-stat"><div class="cc-stat-val" style="color:var(--a)">1,104</div><div class="cc-stat-lbl">Contacts</div></div><div class="cc-stat"><div class="cc-stat-val">9</div><div class="cc-stat-lbl">Campaigns</div></div><div class="cc-stat"><div class="cc-stat-val" style="color:var(--blue)">87%</div><div class="cc-stat-lbl">Read rate</div></div></div><div class="cc-revenue"><div class="cc-rev-lbl">Your margin</div><div class="cc-rev-val">R 300/mo</div></div></div></div>
+    <div class="client-card"><div class="cc-hdr"><div class="cc-logo" style="background:rgba(167,139,250,.1)">💊</div><div><div class="cc-name">Thabo's Pharmacy</div><div class="cc-plan-lbl">Starter · R299/mo</div></div><span class="pill pill-o">Trial</span></div><div class="cc-body"><div class="cc-stat-row"><div class="cc-stat"><div class="cc-stat-val" style="color:var(--a)">312</div><div class="cc-stat-lbl">Contacts</div></div><div class="cc-stat"><div class="cc-stat-val">2</div><div class="cc-stat-lbl">Campaigns</div></div><div class="cc-stat"><div class="cc-stat-val" style="color:var(--blue)">81%</div><div class="cc-stat-lbl">Read rate</div></div></div><div class="cc-revenue"><div class="cc-rev-lbl">Trial — 6 days left</div><div class="cc-rev-val" style="color:var(--orange)">R 0</div></div></div></div>
+    <div class="client-card"><div class="cc-hdr"><div class="cc-logo" style="background:rgba(45,212,191,.1)">💇</div><div><div class="cc-name">Glam &amp; Glow Salon</div><div class="cc-plan-lbl">Growth · R799/mo</div></div><span class="pill pill-g">Active</span></div><div class="cc-body"><div class="cc-stat-row"><div class="cc-stat"><div class="cc-stat-val" style="color:var(--a)">678</div><div class="cc-stat-lbl">Contacts</div></div><div class="cc-stat"><div class="cc-stat-val">11</div><div class="cc-stat-lbl">Campaigns</div></div><div class="cc-stat"><div class="cc-stat-val" style="color:var(--blue)">91%</div><div class="cc-stat-lbl">Read rate</div></div></div><div class="cc-revenue"><div class="cc-rev-lbl">Your margin</div><div class="cc-rev-val">R 300/mo</div></div></div></div>
+    <div class="client-card" style="border:2px dashed var(--b2);background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;min-height:160px" onclick="toast('New client setup wizard opened!','success')"><div style="text-align:center;color:var(--tx3)"><div style="font-size:30px;margin-bottom:8px">➕</div><div style="font-size:13px;font-weight:600">Add new client</div></div></div>
+  </div>
+  <div class="card"><div class="card-hdr"><div class="card-ttl">🏷️ White-label Settings</div><span class="tag tag-p">Pro feature</span></div><div class="card-body"><div class="grid-2"><div><div class="form-group"><label class="label">Your brand name</label><input class="input" value="ChatGrow Pro"></div><div class="form-group"><label class="label">Custom domain</label><input class="input" value="app.chatgrow.co.za"></div><div class="form-group"><label class="label">Primary colour</label><input class="input" type="color" value="#34D399" style="height:40px;padding:4px"></div></div><div><div class="form-group"><label class="label">Logo URL</label><input class="input" placeholder="https://youragency.co.za/logo.png"></div><div class="form-group"><label class="label">Support email</label><input class="input" value="hello@chatgrow.co.za"></div><button class="btn btn-primary btn-sm" onclick="toast('White-label settings saved!','success')">Save white-label config</button></div></div></div></div>
+</div>
+
+<!-- ██ POPIA ██ -->
+<div class="page" id="page-popia">
+  <div class="sec-hdr"><h2>POPIA Compliance Centre</h2><p>Protection of Personal Information Act — manage consent, data rights, and audit trails</p></div>
+  <div class="popia-score"><div class="score-ring"><div class="score-inner"><div class="score-num">82</div><div class="score-lbl-sm">/ 100</div></div></div><div class="score-info"><h3>Compliance Score: Good</h3><p>Your account meets most POPIA requirements. Two items need attention: enable double opt-in confirmation and set a data retention policy to reach 100%.</p></div><button class="btn btn-primary btn-sm" style="margin-left:auto;flex-shrink:0" onclick="toast('Full compliance report downloaded','success')">Download report</button></div>
+  <div class="popia-grid">
+    <div class="card"><div class="card-hdr"><div class="card-ttl">✅ Compliance Checklist</div></div><div class="card-body">
+      <div class="popia-check"><div class="pc-ico">✅</div><div><div class="pc-title">Opt-in consent captured</div><div class="pc-desc">All 2,189 opted-in contacts have explicit consent on record with timestamp and source.</div></div></div>
+      <div class="popia-check"><div class="pc-ico">✅</div><div><div class="pc-title">Opt-out mechanism active</div><div class="pc-desc">STOP keyword automatically removes contacts from all future campaigns within 24 hours.</div></div></div>
+      <div class="popia-check"><div class="pc-ico">✅</div><div><div class="pc-title">Privacy policy linked</div><div class="pc-desc">Your WhatsApp Business profile includes a link to your privacy policy.</div></div></div>
+      <div class="popia-check"><div class="pc-ico">⚠️</div><div><div class="pc-title" style="color:var(--orange)">Double opt-in not enabled</div><div class="pc-desc">Recommended: send a confirmation message after initial opt-in to create a clear audit trail.</div></div></div>
+      <div class="popia-check"><div class="pc-ico">✅</div><div><div class="pc-title">Data deletion on request</div><div class="pc-desc">Contacts can request full data deletion via WhatsApp keyword DELETE MY DATA.</div></div></div>
+      <div class="popia-check"><div class="pc-ico">⚠️</div><div><div class="pc-title" style="color:var(--orange)">Data retention policy not set</div><div class="pc-desc">Set how long you retain customer data before automatic deletion to comply with POPIA s14.</div></div></div>
+      <div class="popia-check"><div class="pc-ico">✅</div><div><div class="pc-title">Data breach notification plan</div><div class="pc-desc">Wazify will notify you within 72 hours of any breach affecting your customer data.</div></div></div>
+    </div></div>
+    <div class="card"><div class="card-hdr"><div class="card-ttl">🛡️ Consent Settings</div></div><div class="card-body">
+      <div class="settings-row"><div><div style="font-size:13px;font-weight:600">Double opt-in confirmation</div><div class="sr-key">Send confirmation message after opt-in</div></div><div class="toggle off" onclick="this.classList.toggle('on');this.classList.toggle('off')"></div></div>
+      <div class="settings-row"><div><div style="font-size:13px;font-weight:600">Auto opt-out on STOP</div><div class="sr-key">Remove on STOP, UNSUBSCRIBE, CANCEL</div></div><div class="toggle on" onclick="this.classList.toggle('on');this.classList.toggle('off')"></div></div>
+      <div class="settings-row"><div><div style="font-size:13px;font-weight:600">Data deletion keyword</div><div class="sr-key">Current: DELETE MY DATA</div></div><div class="toggle on" onclick="this.classList.toggle('on');this.classList.toggle('off')"></div></div>
+      <div class="settings-row"><div><div style="font-size:13px;font-weight:600">Data retention (months)</div></div><input class="input input-sm" style="width:80px" value="24" type="number"></div>
+      <div class="settings-row"><div><div style="font-size:13px;font-weight:600">POPIA officer email</div></div><input class="input input-sm" style="width:180px" value="zinhle@mamaboutique.co.za" type="email"></div>
+      <button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="toast('Consent settings saved!','success')">Save settings</button>
+    </div></div>
+  </div>
+  <div class="card"><div class="card-hdr"><div class="card-ttl">📋 Consent Audit Log</div><button class="card-act" onclick="toast('Audit log exported as CSV','success')">Export CSV</button></div><div class="card-body" style="padding:0 20px">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:12px;padding:8px 0;border-bottom:1px solid var(--b1);font-size:10.5px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.07em"><span>Contact</span><span>Event</span><span>Source &amp; time</span><span>Status</span></div>
+    <div class="consent-row"><span style="font-family:var(--fm);font-size:12px">+27 82 345 6789</span><span style="color:var(--a)">Opted in</span><span style="font-size:12px;color:var(--tx2)">QR scan · 2 Jun 09:12</span><span class="tag tag-g">Valid</span></div>
+    <div class="consent-row"><span style="font-family:var(--fm);font-size:12px">+27 83 901 2345</span><span style="color:var(--a)">Opted in</span><span style="font-size:12px;color:var(--tx2)">Website widget · 1 Jun 14:32</span><span class="tag tag-g">Valid</span></div>
+    <div class="consent-row"><span style="font-family:var(--fm);font-size:12px">+27 84 123 4567</span><span style="color:var(--red)">Opted out</span><span style="font-size:12px;color:var(--tx2)">STOP keyword · 3 Apr 11:05</span><span class="tag tag-r">Removed</span></div>
+    <div class="consent-row"><span style="font-family:var(--fm);font-size:12px">+27 71 234 5678</span><span style="color:var(--a)">Opted in</span><span style="font-size:12px;color:var(--tx2)">In-store QR · 31 May 16:20</span><span class="tag tag-g">Valid</span></div>
+    <div class="consent-row"><span style="font-family:var(--fm);font-size:12px">+27 60 789 0123</span><span style="color:var(--blue)">Data deleted</span><span style="font-size:12px;color:var(--tx2)">DELETE MY DATA · 15 Apr 09:00</span><span class="tag tag-b">Done</span></div>
+  </div></div>
+</div>
+
+<!-- ██ BILLING ██ -->
+<div class="page" id="page-billing">
+  <div class="billing-banner"><div class="bb-ico">🟢</div><div class="flex-1"><div class="bb-plan">Growth Plan — Active</div><div class="bb-sub">R 799/month · Renews <strong>1 July 2026</strong> · Auto-charge via PayFast (card ending 4521)</div></div><div style="display:flex;gap:8px;flex-shrink:0"><button class="btn btn-ghost btn-sm">Upgrade plan</button><button class="btn btn-primary btn-sm" onclick="toast('Redirecting to secure payment...','success')">+ Pay now</button></div></div>
+  <div class="dash-stats mb-20">
+    <div class="stat-card"><div class="stat-ico">💰</div><div class="stat-val" style="color:var(--a)">R 799</div><div class="stat-lbl">Monthly plan fee</div><div class="stat-chg" style="color:var(--tx3)">Next: 1 July 2026</div></div>
+    <div class="stat-card"><div class="stat-ico">📲</div><div class="stat-val" style="color:var(--blue)">R 312.40</div><div class="stat-lbl">Meta API spend (June)</div><div class="stat-chg chg-up">↑ 18% vs last month</div></div>
+    <div class="stat-card"><div class="stat-ico">🧾</div><div class="stat-val">R 1,111</div><div class="stat-lbl">Total spend this month</div></div>
+    <div class="stat-card"><div class="stat-ico">📈</div><div class="stat-val" style="color:var(--orange)">43×</div><div class="stat-lbl">Return on spend</div><div class="stat-chg chg-up">R 48,230 revenue</div></div>
+  </div>
+  <div class="between" style="margin-bottom:14px"><div style="font-family:var(--fh);font-size:16px;font-weight:700">🇿🇦 SA Payment Providers</div></div>
+  <div class="prov-cards">
+    <div class="prov-card connected"><div class="prov-hdr"><div class="prov-logo" style="background:rgba(0,174,239,.1)">💳</div><span class="tag tag-g">✓ Connected</span></div><div class="prov-body"><div class="prov-name">PayFast</div><div class="prov-desc">Best for SA SMEs. Native subscriptions &amp; tokenization. Zero setup fee.</div><div class="prov-rate">3.5% + R2 (cards) · 2% (EFT)</div><button class="prov-btn active">✓ Active</button></div></div>
+    <div class="prov-card"><div class="prov-hdr"><div class="prov-logo" style="background:rgba(228,67,147,.1)">🍑</div><span class="tag tag-b">Available</span></div><div class="prov-body"><div class="prov-name">Peach Payments</div><div class="prov-desc">Enterprise-grade with multi-currency &amp; advanced tokenization.</div><div class="prov-rate">Custom / volume-based</div><button class="prov-btn inactive" onclick="toast('Connect Peach Payments...','success')">Connect</button></div></div>
+    <div class="prov-card"><div class="prov-hdr"><div class="prov-logo" style="background:rgba(108,99,255,.1)">🏦</div><span class="tag tag-b">Available</span></div><div class="prov-body"><div class="prov-name">Ozow</div><div class="prov-desc">Instant EFT. 47M+ bank accounts. Zero chargeback risk.</div><div class="prov-rate">1.5% per transaction</div><button class="prov-btn inactive" onclick="toast('Connect Ozow...','success')">Connect</button></div></div>
+    <div class="prov-card"><div class="prov-hdr"><div class="prov-logo" style="background:rgba(232,40,43,.1)">🔴</div><span class="tag tag-b">Available</span></div><div class="prov-body"><div class="prov-name">PayGate</div><div class="prov-desc">Enterprise, recurring billing, negotiable rates for high volume.</div><div class="prov-rate">Quote-based</div><button class="prov-btn inactive" onclick="toast('Connect PayGate...','success')">Connect</button></div></div>
+    <div class="prov-card"><div class="prov-hdr"><div class="prov-logo" style="background:rgba(255,210,0,.1)">🟡</div><span class="tag tag-b">Available</span></div><div class="prov-body"><div class="prov-name">Yoco</div><div class="prov-desc">Mobile-first payment links. Great if you already use Yoco POS.</div><div class="prov-rate">2.95% per transaction</div><button class="prov-btn inactive" onclick="toast('Connect Yoco...','success')">Connect</button></div></div>
+    <div class="prov-card"><div class="prov-hdr"><div class="prov-logo" style="background:rgba(0,166,81,.1)">🔗</div><span class="tag tag-o">Coming soon</span></div><div class="prov-body"><div class="prov-name">Netcash</div><div class="prov-desc">Debit orders &amp; DebiCheck for recurring collections.</div><div class="prov-rate">Monthly fee + per transaction</div><button class="prov-btn inactive" onclick="toast('Notify me when Netcash is available!','success')">Notify me</button></div></div>
+  </div>
+  <div class="card"><div class="card-hdr"><div class="card-ttl">🧾 Invoice History</div><button class="card-act" onclick="toast('All invoices downloading...','success')">Download all ↓</button></div><div class="card-body" style="padding:0 20px"><table class="tbl"><thead><tr><th>Invoice</th><th>Date</th><th>Plan</th><th>Provider</th><th>Amount</th><th>Status</th><th></th></tr></thead><tbody>
+    <tr><td style="font-family:var(--fm);font-size:12px;color:var(--tx2)">#WZ-2026-0006</td><td>1 Jun 2026</td><td>Growth</td><td><span class="tag tag-b">PayFast</span></td><td style="font-family:var(--fm);font-weight:600">R 799.00</td><td><span class="pill pill-g">Paid</span></td><td><button class="btn btn-ghost btn-sm" onclick="toast('Invoice downloaded','success')">PDF ↓</button></td></tr>
+    <tr><td style="font-family:var(--fm);font-size:12px;color:var(--tx2)">#WZ-2026-0005</td><td>1 May 2026</td><td>Growth</td><td><span class="tag tag-b">PayFast</span></td><td style="font-family:var(--fm);font-weight:600">R 799.00</td><td><span class="pill pill-g">Paid</span></td><td><button class="btn btn-ghost btn-sm" onclick="toast('Invoice downloaded','success')">PDF ↓</button></td></tr>
+    <tr><td style="font-family:var(--fm);font-size:12px;color:var(--tx2)">#WZ-2026-0004</td><td>1 Apr 2026</td><td>Growth</td><td><span class="tag tag-p">Peach</span></td><td style="font-family:var(--fm);font-weight:600">R 799.00</td><td><span class="pill pill-g">Paid</span></td><td><button class="btn btn-ghost btn-sm" onclick="toast('Invoice downloaded','success')">PDF ↓</button></td></tr>
+    <tr><td style="font-family:var(--fm);font-size:12px;color:var(--tx2)">#WZ-2026-0001</td><td>1 Jan 2026</td><td>Starter</td><td><span class="tag tag-y">Yoco</span></td><td style="font-family:var(--fm);font-weight:600">R 299.00</td><td><span class="pill pill-g">Paid</span></td><td><button class="btn btn-ghost btn-sm" onclick="toast('Invoice downloaded','success')">PDF ↓</button></td></tr>
+  </tbody></table></div></div>
+</div>
+
+<!-- ██ SETTINGS ██ -->
+<div class="page" id="page-settings">
+  <div class="sec-hdr"><h2>Settings &amp; API</h2><p>Configure your Meta WhatsApp Cloud API connection and account preferences</p></div>
+  <div class="meta-banner"><div class="meta-banner-ico">📱</div><div><div style="font-family:var(--fh);font-size:16px;font-weight:700;margin-bottom:3px">Meta WhatsApp Cloud API — Connected ✅</div><div style="font-size:12.5px;color:var(--tx2)">Phone: +27 21 000 1234 · WABA: 987654321098765 · API v21.0 · Quality: 🟢 High</div></div><button class="btn btn-ghost btn-sm" style="margin-left:auto;flex-shrink:0">Reconnect</button></div>
+  <div class="settings-grid">
+    <div class="card"><div class="card-hdr"><div class="card-ttl">🔑 Meta API Credentials</div></div><div class="card-body"><div class="form-group"><label class="label">Phone Number ID</label><input class="input" value="123456789012345" style="font-family:var(--fm)"></div><div class="form-group"><label class="label">WABA ID</label><input class="input" value="987654321098765" style="font-family:var(--fm)"></div><div class="form-group"><label class="label">Access Token</label><input class="input" type="password" value="EAAxxxxxxxxxxxxxxxx" style="font-family:var(--fm)"></div><div class="form-group"><label class="label">Webhook URL (copy to Meta)</label><input class="input" value="https://app.wazify.co.za/webhook/acct_8x92k" style="font-family:var(--fm);font-size:11.5px" readonly onclick="navigator.clipboard.writeText(this.value);toast('Copied!','success')"></div><button class="btn btn-primary btn-sm" onclick="toast('Credentials saved &amp; verified!','success')">Save credentials</button></div></div>
+    <div class="card"><div class="card-hdr"><div class="card-ttl">🔔 Notifications &amp; Automations</div></div><div class="card-body">
+      <div class="settings-row"><div><div style="font-size:13px;font-weight:600">New reply notifications</div><div class="sr-key">Alert on customer reply</div></div><div class="toggle on" onclick="this.classList.toggle('on');this.classList.toggle('off')"></div></div>
+      <div class="settings-row"><div><div style="font-size:13px;font-weight:600">Auto opt-out on STOP</div><div class="sr-key">Remove contacts on STOP keyword</div></div><div class="toggle on" onclick="this.classList.toggle('on');this.classList.toggle('off')"></div></div>
+      <div class="settings-row"><div><div style="font-size:13px;font-weight:600">Delivery receipt tracking</div><div class="sr-key">Track delivered &amp; read status</div></div><div class="toggle on" onclick="this.classList.toggle('on');this.classList.toggle('off')"></div></div>
+      <div class="settings-row"><div><div style="font-size:13px;font-weight:600">AI optimal send time</div><div class="sr-key">Let AI pick best time to send</div></div><div class="toggle off" onclick="this.classList.toggle('on');this.classList.toggle('off')"></div></div>
+      <div class="settings-row"><div><div style="font-size:13px;font-weight:600">Weekly analytics email</div><div class="sr-key">Summary every Monday at 8am</div></div><div class="toggle on" onclick="this.classList.toggle('on');this.classList.toggle('off')"></div></div>
+    </div></div>
+    <div class="card"><div class="card-hdr"><div class="card-ttl">🏢 Business Profile</div></div><div class="card-body"><div class="form-group"><label class="label">Business name</label><input class="input" value="Mama Zinhle's Boutique"></div><div class="form-group"><label class="label">Display name (on WhatsApp)</label><input class="input" value="Mama Zinhle's"></div><div class="form-group"><label class="label">Industry</label><select class="select"><option selected>Fashion &amp; Retail</option><option>Food &amp; Restaurant</option><option>Healthcare</option><option>Services</option></select></div><div class="form-group"><label class="label">Contact email</label><input class="input" value="zinhle@mamaboutique.co.za"></div><button class="btn btn-primary btn-sm" onclick="toast('Business profile saved!','success')">Save profile</button></div></div>
+    <div class="card"><div class="card-hdr"><div class="card-ttl">💳 Plan &amp; Billing</div></div><div class="card-body"><div class="settings-row"><div class="sr-key">Current plan</div><div class="sr-val" style="color:var(--a)">Growth · R799/mo</div></div><div class="settings-row"><div class="sr-key">Next billing date</div><div class="sr-val">1 July 2026</div></div><div class="settings-row"><div class="sr-key">Contacts used</div><div class="sr-val">4,312 / 10,000</div></div><div class="settings-row"><div class="sr-key">Payment method</div><div class="sr-val">Card ····4521</div></div><div class="settings-row"><div class="sr-key">Meta API spend (June)</div><div class="sr-val">R 312.40</div></div><div style="height:10px"></div><button class="btn btn-primary btn-sm" onclick="showPage('billing')">Manage billing →</button></div></div>
+  </div>
+</div>
+
+<!-- ██ HELP CENTRE ██ -->
+<div class="page" id="page-help">
+  <div class="between"><div class="sec-hdr" style="margin-bottom:0"><h2>Help Centre</h2><p>Guides, tutorials, and answers for SA business owners</p></div><div class="search-wrap" style="width:280px"><span class="search-ico">🔍</span><input class="input" placeholder="Search help articles..."></div></div>
+  <div class="help-grid mb-20">
+    <div class="help-cat" onclick="toast('Opening Getting Started guide...','success')"><div class="help-cat-ico">🚀</div><div><div class="help-cat-name">Getting Started</div><div class="help-cat-desc">Connect your WhatsApp number, import contacts, and send your first campaign in under 10 minutes.</div></div></div>
+    <div class="help-cat" onclick="toast('Opening Campaign guides...','success')"><div class="help-cat-ico">📣</div><div><div class="help-cat-name">Campaigns &amp; Broadcasting</div><div class="help-cat-desc">How to build campaigns, get templates approved, schedule sends, and track results.</div></div></div>
+    <div class="help-cat" onclick="toast('Opening Chatbot guides...','success')"><div class="help-cat-ico">🤖</div><div><div class="help-cat-name">Chatbot &amp; Automation</div><div class="help-cat-desc">Build automated flows, set up triggers, and let your WhatsApp work 24/7.</div></div></div>
+    <div class="help-cat" onclick="toast('Opening POPIA guide...','success')"><div class="help-cat-ico">🛡️</div><div><div class="help-cat-name">POPIA &amp; Compliance</div><div class="help-cat-desc">Stay compliant with South African privacy law. Consent management, opt-outs, data rights.</div></div></div>
+    <div class="help-cat" onclick="toast('Opening Billing guide...','success')"><div class="help-cat-ico">💳</div><div><div class="help-cat-name">Billing &amp; Payments</div><div class="help-cat-desc">Understand your plan, Meta API costs, PayFast setup, and invoice management.</div></div></div>
+    <div class="help-cat" onclick="toast('Opening API docs...','success')"><div class="help-cat-ico">🔌</div><div><div class="help-cat-name">API &amp; Developer Docs</div><div class="help-cat-desc">Integrate Wazify with your systems. Webhooks, REST API, and code examples.</div></div></div>
+  </div>
+  <div class="card mb-16"><div class="card-hdr"><div class="card-ttl">❓ Frequently Asked Questions</div></div><div class="card-body">
+    <div class="faq-item"><div class="faq-q">What is the difference between Wazify's fee and Meta's fee?<div class="faq-ico">▾</div></div><div class="faq-a">Wazify charges a flat monthly platform fee (R299–R1,999) for access to the dashboard, features, and support. Meta charges separately per WhatsApp conversation — typically R0.01–R0.05 per conversation. You pay Meta directly through your own Meta Business account. We never mark up Meta's fees.</div></div>
+    <div class="faq-item"><div class="faq-q">Do my customers need to opt in before I can message them?<div class="faq-ico">▾</div></div><div class="faq-a">Yes — this is both a Meta requirement and a POPIA requirement. Customers must actively opt in before you can send them marketing messages. Wazify provides QR codes, website widgets, and keyword opt-in flows to make this easy. Service messages (replies within 24 hours of a customer messaging you) are free and don't require a template.</div></div>
+    <div class="faq-item"><div class="faq-q">What is a WhatsApp template and how do I get one approved?<div class="faq-ico">▾</div></div><div class="faq-a">A WhatsApp template is a pre-approved message format required for sending outbound messages outside a 24-hour customer-initiated window. You submit templates through Meta's WhatsApp Business Manager. Wazify helps you submit templates directly from the Templates page. Approval typically takes 24–48 hours.</div></div>
+    <div class="faq-item"><div class="faq-q">Can I use Wazify for multiple businesses?<div class="faq-ico">▾</div></div><div class="faq-a">Yes — the Pro plan includes the Agency Portal which lets you manage unlimited client sub-accounts from one dashboard. Each client has their own contacts, campaigns, inbox, and billing. You can also white-label the entire platform under your own brand and domain and resell it as your own product.</div></div>
+    <div class="faq-item"><div class="faq-q">What SA payment methods can I use to pay for Wazify?<div class="faq-ico">▾</div></div><div class="faq-a">You can pay your Wazify subscription via PayFast (credit/debit cards, Instant EFT, SnapScan, Zapper), Ozow (Instant EFT from all major SA banks), PayGate, or Yoco payment links. PayFast is the default and supports auto-recurring monthly billing with tokenized card storage.</div></div>
+    <div class="faq-item"><div class="faq-q">Is Wazify POPIA compliant?<div class="faq-ico">▾</div></div><div class="faq-a">Yes. Wazify includes a full POPIA Compliance Centre with consent audit logs, double opt-in support, automatic opt-out on STOP keyword, data deletion on request, data retention policy settings, and downloadable compliance reports. Your compliance score is shown on the POPIA page.</div></div>
+  </div></div>
+  <div class="card"><div class="card-hdr"><div class="card-ttl">📞 Contact Support</div></div><div class="card-body"><div class="grid-3"><div style="text-align:center;padding:16px"><div style="font-size:28px;margin-bottom:8px">💬</div><div style="font-weight:700;margin-bottom:4px">WhatsApp Support</div><div style="font-size:12.5px;color:var(--tx2);margin-bottom:12px">Chat with our team. Avg response: 2 hours during business hours.</div><button class="btn btn-primary btn-sm" onclick="toast('Opening WhatsApp support...','success')">Chat on WhatsApp</button></div><div style="text-align:center;padding:16px"><div style="font-size:28px;margin-bottom:8px">📧</div><div style="font-weight:700;margin-bottom:4px">Email Support</div><div style="font-size:12.5px;color:var(--tx2);margin-bottom:12px">hello@wazify.co.za · We respond within 1 business day to all Growth &amp; Pro plans.</div><button class="btn btn-ghost btn-sm" onclick="toast('Opening email client...','success')">Send email</button></div><div style="text-align:center;padding:16px"><div style="font-size:28px;margin-bottom:8px">📹</div><div style="font-weight:700;margin-bottom:4px">Video Tutorials</div><div style="font-size:12.5px;color:var(--tx2);margin-bottom:12px">Watch step-by-step tutorials covering every Wazify feature in plain English.</div><button class="btn btn-ghost btn-sm" onclick="toast('Opening YouTube channel...','success')">Watch tutorials</button></div></div></div></div>
+</div>
+
+  </div><!-- /content -->
+</div><!-- /main-col -->
+</div><!-- /app-wrap -->
+</div><!-- /app -->
+
+<!-- ██ IMPORT MODAL ██ -->
+<div class="overlay" id="importModal">
+  <div class="modal"><div class="modal-hdr"><div class="modal-ttl">⬆️ Import Contacts from CSV</div><button class="modal-close" onclick="document.getElementById('importModal').classList.remove('open')">✕</button></div><div class="modal-body"><div class="drop-zone" onclick="toast('File browser would open here','success')"><div class="dz-ico">📂</div><div style="font-size:15px;font-weight:600;margin-bottom:6px">Drop your CSV or Excel file here</div><div style="font-size:13px;color:var(--tx2)">or click to browse · Supports .csv, .xlsx</div></div><div style="margin-top:14px;font-size:12.5px;color:var(--tx2)">💡 Include a phone number column with country code (e.g. +27821234567). Optional: name, email, tags.</div></div><div class="modal-ftr"><button class="btn btn-ghost" onclick="document.getElementById('importModal').classList.remove('open')">Cancel</button><button class="btn btn-primary" onclick="document.getElementById('importModal').classList.remove('open');toast('2,341 contacts imported successfully!','success')">Import contacts →</button></div></div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"><span class="t-ico">✓</span><span id="toastMsg">Done!</span></div>
+
+<script>
+/* ── NAVIGATION ── */
+const TITLES = {dashboard:'Dashboard',campaigns:'Campaign Builder',chatbot:'Chatbot Flow Builder',automation:'Automation Rules',contacts:'Contacts',inbox:'Inbox',templates:'Template Library',analytics:'Analytics',links:'Link Shortener & UTM',qr:'QR Generator',widget:'Opt-in Widget Builder',agency:'Agency Portal',popia:'POPIA Compliance',billing:'Billing & Payments',settings:'Settings & API',help:'Help Centre'};
+function showApp(){document.getElementById('landing').style.display='none';document.getElementById('app').style.display='block'}
+function showLanding(){document.getElementById('app').style.display='none';document.getElementById('landing').style.display='block';window.scrollTo(0,0)}
+function showPage(id,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.sb-item').forEach(b=>b.classList.remove('active'));
+  const page=document.getElementById('page-'+id);
+  if(page){page.classList.add('active');showApp()}
+  if(el) el.classList.add('active');
+  else{const n=document.getElementById('nav-'+id);if(n)n.classList.add('active')}
+  document.getElementById('pageTitle').textContent=TITLES[id]||id;
+  document.getElementById('breadcrumb').textContent='Wazify / '+(TITLES[id]||id);
+}
+
+/* ── ONBOARDING ── */
+function startOnboarding(){document.getElementById('onboarding').classList.add('open');showObStep(2)}
+function closeOnboarding(){document.getElementById('onboarding').classList.remove('open');showApp();showPage('dashboard')}
+function obNext(step){showObStep(step)}
+function showObStep(step){
+  document.querySelectorAll('.ob-step-content').forEach(s=>s.classList.remove('active'));
+  const el=document.getElementById('ob-step-'+step);if(el)el.classList.add('active');
+  for(let i=1;i<=4;i++){
+    const num=document.getElementById('ob'+i);
+    const line=document.getElementById('obl'+i);
+    if(!num)continue;
+    num.className='ob-num '+(i<step?'done':i===step?'active':'pending');
+    num.textContent=i<step?'✓':i;
+    if(line)line.className='ob-line '+(i<step?'done':'');
+  }
+}
+
+/* ── CAMPAIGN BUILDER ── */
+function updatePreview(){
+  const h=document.getElementById('msgHeader')?.value||'';
+  const b=document.getElementById('msgBody')?.value||'';
+  const f=document.getElementById('msgFooter')?.value||'';
+  if(!document.getElementById('previewHeader'))return;
+  document.getElementById('previewHeader').textContent=h;
+  document.getElementById('previewBody').textContent=b.replace(/\*(.*?)\*/g,'$1');
+  document.getElementById('previewFooter').textContent=f;
+  const btns=document.getElementById('previewBtns');
+  if(btns){const inputs=document.querySelectorAll('#btnBuilder .btn-row input');btns.innerHTML=[...inputs].map(i=>i.value?`<div class="ph-bbl-btn">${i.value}</div>`:'').join('')}
+}
+function setMsgType(el,type){document.querySelectorAll('#page-campaigns .mt-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');const img=document.getElementById('previewImg');if(img)img.style.display=type==='media'?'flex':'none'}
+function addBtn(){const builder=document.getElementById('btnBuilder');if(!builder||builder.children.length>=3){toast('Maximum 3 buttons allowed','error');return}const row=document.createElement('div');row.className='btn-row';row.innerHTML=`<input class="input" placeholder="Button text" oninput="updatePreview()"><button class="btn-remove" onclick="removeBtn(this)">✕</button>`;builder.appendChild(row);updatePreview()}
+function removeBtn(btn){btn.closest('.btn-row').remove();updatePreview()}
+function launchCampaign(){const name=document.getElementById('campName')?.value||'Unnamed Campaign';toast(`🚀 "${name}" launched to Meta API!`,'success');setTimeout(()=>toast('✅ 2,341 messages queued!','success'),2000)}
+
+/* ── CHATBOT FLOW BUILDER ── */
+let nodeCount=10;
+const NODE_CFG={trigger:{bg:'rgba(52,211,153,.1)',ico:'⚡',labels:{keyword:'Keyword Trigger',first:'First Message',button:'Button Reply',schedule:'Scheduled'}},message:{bg:'rgba(96,165,250,.1)',ico:'💬',labels:{text:'Send Text',buttons:'Send Buttons',list:'Send List',media:'Send Media',template:'Send Template'}},logic:{bg:'rgba(167,139,250,.1)',ico:'🔀',labels:{condition:'If/Else',delay:'Wait / Delay',jump:'Jump to Step'}},action:{bg:'rgba(251,146,60,.1)',ico:'⚡',labels:{tag:'Add/Remove Tag',agent:'Agent Handoff',webhook:'Call Webhook',optin:'Set Opt-in'}}};
+function dragNode(e,type,sub){e.dataTransfer.setData('ntype',type);e.dataTransfer.setData('nsub',sub)}
+function dropNode(e){
+  e.preventDefault();
+  const type=e.dataTransfer.getData('ntype');const sub=e.dataTransfer.getData('nsub');
+  if(!type)return;
+  const canvas=document.getElementById('flowCanvas');const rect=canvas.getBoundingClientRect();
+  addFlowNodeAt(type,sub,e.clientX-rect.left+canvas.scrollLeft-100,e.clientY-rect.top+canvas.scrollTop-40);
+}
+function addFlowNode(){addFlowNodeAt('message','text',250+Math.random()*250,300+Math.random()*250)}
+function addFlowNodeAt(type,sub,x,y){
+  nodeCount++;const id='fn-'+nodeCount;const cfg=NODE_CFG[type]||NODE_CFG.message;
+  const title=(cfg.labels||{})[sub]||'New Node';
+  const node=document.createElement('div');node.className='flow-node';node.id=id;
+  node.style.cssText=`left:${Math.max(0,x)}px;top:${Math.max(0,y)}px`;
+  node.innerHTML=`<div class="node-hdr"><div class="node-ico" style="background:${cfg.bg}">${cfg.ico}</div><div class="node-title">${title}</div></div><div class="node-body">Click to configure this step</div><div class="node-ports"><div class="node-port"></div><div class="node-port-lbl">→ next</div><div class="node-port"></div></div><div class="node-acts"><button class="node-btn" onclick="selectNode(this.closest('.flow-node'),'${title}','')">Edit</button><button class="node-btn" onclick="this.closest('.flow-node').remove();toast('Node removed','success')">Remove</button></div>`;
+  makeDraggableNode(node);node.addEventListener('click',()=>selectNode(node,title,'Click to configure'));
+  document.getElementById('canvasInner').appendChild(node);toast(`${title} added`,'success');
+}
+function makeDraggableNode(node){
+  let sx,sy,ox,oy;
+  node.addEventListener('mousedown',e=>{
+    if(e.target.tagName==='BUTTON')return;
+    sx=parseInt(node.style.left)||0;sy=parseInt(node.style.top)||0;ox=e.clientX;oy=e.clientY;
+    const mv=ev=>{node.style.left=(sx+ev.clientX-ox)+'px';node.style.top=(sy+ev.clientY-oy)+'px'};
+    const up=()=>{document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up)};
+    document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);
+  });
+}
+document.querySelectorAll('.flow-node').forEach(makeDraggableNode);
+function selectNode(node,title,desc){
+  document.querySelectorAll('.flow-node').forEach(n=>n.classList.remove('selected'));
+  if(node&&node.classList)node.classList.add('selected');
+  const panel=document.getElementById('nodePanel');panel.classList.add('open');
+  document.getElementById('nodePanelTitle').textContent=title||'Properties';
+  document.getElementById('nodePanelContent').innerHTML=`<div class="form-group"><label class="label">Node label</label><input class="input input-sm" value="${title||''}"></div><div class="form-group"><label class="label">Content</label><textarea class="textarea" style="min-height:80px;font-size:12px">${desc||''}</textarea></div><div class="form-group"><label class="label">On success → go to</label><select class="select" style="font-size:12px"><option>Next node</option><option>End flow</option><option>Specific node...</option></select></div><button class="btn btn-primary btn-sm" style="width:100%;margin-top:6px" onclick="toast('Node updated!','success')">Update node</button>`;
+}
+function zoomCanvas(factor){const ci=document.getElementById('canvasInner');const current=parseFloat(ci.style.transform?.replace('scale(',''))||1);ci.style.transform=`scale(${Math.max(.3,Math.min(2,current*factor))})`;ci.style.transformOrigin='top left'}
+
+/* ── INBOX ── */
+function loadConvo(el,name,av,phone){document.querySelectorAll('.inbox-item').forEach(i=>i.classList.remove('active'));el.classList.add('active');el.querySelector('.inbox-unread')?.remove();document.getElementById('convoAv').textContent=av;document.getElementById('convoName').textContent=name;document.getElementById('convoPhone').textContent=phone+' · Last seen today'}
+function sendReply(){const input=document.getElementById('replyInput');const text=input.value.trim();if(!text)return;const msgs=document.getElementById('convoMsgs');const bbl=document.createElement('div');bbl.className='c-bbl out';bbl.innerHTML=text+`<div class="c-bbl-t">${getTime()} ✓✓</div>`;msgs.appendChild(bbl);msgs.scrollTop=msgs.scrollHeight;input.value='';toast('Reply sent via Meta Cloud API ✓','success')}
+
+/* ── LINK SHORTENER ── */
+function buildUTM(){const url=document.getElementById('utmUrl')?.value||'';const src=document.getElementById('utmSource')?.value||'';const med=document.getElementById('utmMedium')?.value||'';const cam=document.getElementById('utmCampaign')?.value||'';const result=document.getElementById('utmResult');if(!result)return;const p=new URLSearchParams();if(src)p.set('utm_source',src);if(med)p.set('utm_medium',med);if(cam)p.set('utm_campaign',cam);result.textContent=url+(p.toString()?'?'+p.toString():'')}
+
+/* ── QR GENERATOR ── */
+function setQRType(el,ico){document.querySelectorAll('.qr-tpl-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');const c=document.getElementById('qrCanvas');if(c)c.textContent=ico}
+function setQRColor(el){document.querySelectorAll('.qr-color-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');const c=document.getElementById('qrCanvas');if(c)c.style.boxShadow=`0 4px 20px ${el.style.background}55`}
+function updateQR(){const l=document.getElementById('qrLabel');const d=document.getElementById('qrLabelDisplay');if(l&&d)d.textContent=l.value}
+
+/* ── OPT-IN WIDGET ── */
+function setWidgetType(el,type){document.querySelectorAll('#page-widget .mt-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');const popup=document.getElementById('widgetPopup');if(popup)popup.style.display=type==='popup'?'block':'block'}
+function updateWidget(){const b=document.getElementById('widgetBtnText')?.value||'';const g=document.getElementById('widgetGreeting')?.value||'';const bd=document.getElementById('widgetBtnDisplay');const gd=document.getElementById('widgetGreetingDisplay');if(bd)bd.textContent=b;if(gd)gd.textContent=g}
+
+/* ── TOAST ── */
+function toast(msg,type='success'){const t=document.getElementById('toast');const ico=t.querySelector('.t-ico');const txt=document.getElementById('toastMsg');txt.textContent=msg;t.className=`toast ${type} show`;ico.textContent=type==='success'?'✓':'✕';clearTimeout(window._tt);window._tt=setTimeout(()=>t.classList.remove('show'),3800)}
+
+/* ── HELPERS ── */
+function getTime(){const n=new Date();return n.getHours().toString().padStart(2,'0')+':'+n.getMinutes().toString().padStart(2,'0')}
+function updateClock(){const el=document.getElementById('phTime');if(el)el.textContent=getTime()}
+
+/* ── INIT ── */
+(function init(){
+  updateClock();setInterval(updateClock,30000);
+  updatePreview();buildUTM();
+  document.querySelectorAll('.overlay').forEach(ov=>ov.addEventListener('click',e=>{if(e.target===ov)ov.classList.remove('open')}));
+  document.querySelectorAll('.faq-item').forEach(item=>{
+    item.querySelector('.faq-q')?.addEventListener('click',()=>{const open=item.classList.contains('open');document.querySelectorAll('.faq-item').forEach(i=>i.classList.remove('open'));if(!open)item.classList.add('open')});
+  });
+  setTimeout(()=>{document.querySelectorAll('.ch-bar,.big-bar,.m-bar').forEach(bar=>{const h=bar.style.height;bar.style.height='0';requestAnimationFrame(()=>{bar.style.transition='height .6s cubic-bezier(.4,0,.2,1)';bar.style.height=h})})},300);
+  console.log('Wazify Platform v3.0 — All 16 pages loaded ✓');
+})();
+</script>
+</body>
+</html>
