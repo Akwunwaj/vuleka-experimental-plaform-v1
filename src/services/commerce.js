@@ -1625,22 +1625,29 @@ async function getCommerceAnalytics(businessId) {
 
 async function getOrderByPaymentReference({ businessId, paymentReference }) {
   if (!paymentReference) throw notFound('Payment reference not found');
+  const order = await findOrderByPaymentReference({ businessId, paymentReference });
+  if (!order) throw notFound('Order not found');
+  return order;
+}
+
+async function findOrderByPaymentReference({ businessId, paymentReference }) {
+  if (!paymentReference) return null;
   if (!hasDatabaseConfig()) {
     const order = demoOrders.find((item) => (
       Number(item.businessId || item.business_id || 1) === Number(businessId) &&
       String(item.paymentReference || item.payment_reference || '') === String(paymentReference)
     ));
-    if (!order) throw notFound('Order not found');
+    if (!order) return null;
     return getOrderById(businessId, order.id);
   }
 
   const rows = await query(
     `select id from commerce_orders
      where business_id = :businessId and payment_reference = :paymentReference
-     limit 1`,
+    limit 1`,
     { businessId, paymentReference }
   );
-  if (!rows[0]) throw notFound('Order not found');
+  if (!rows[0]) return null;
   return getOrderById(businessId, rows[0].id);
 }
 
@@ -1757,6 +1764,21 @@ function buildCommerceMessagePayload({ to, products, body, footer }) {
 async function recordOrderFromMetaEvent({ businessId, event }) {
   const order = event.raw?.order;
   if (!order?.product_items?.length) return null;
+  const paymentReference = event.messageId;
+  if (paymentReference) {
+    const existing = await findOrderByPaymentReference({ businessId, paymentReference });
+    if (existing) {
+      await recordOrderEvent({
+        businessId,
+        orderId: existing.id,
+        eventType: 'order.webhook_duplicate',
+        status: existing.status,
+        note: 'Duplicate WhatsApp order webhook ignored',
+        metadata: { messageId: paymentReference, catalogId: order.catalog_id || null }
+      });
+      return { ...existing, duplicate: true };
+    }
+  }
   const products = await listProducts(businessId);
   const items = order.product_items.map((item) => {
     const product = products.find((candidate) => candidate.metaProductRetailerId === item.product_retailer_id || candidate.sku === item.product_retailer_id);
@@ -1764,19 +1786,34 @@ async function recordOrderFromMetaEvent({ businessId, event }) {
       productId: product?.id,
       productName: product?.name || item.product_retailer_id,
       sku: product?.sku || item.product_retailer_id,
+      metaProductRetailerId: item.product_retailer_id,
       quantity: Math.max(1, Number(item.quantity || 1)),
       unitPriceCents: Math.round(Number(item.item_price || 0) * 100),
       currency: item.currency || product?.currency || 'ZAR'
     };
   });
+  const unmatchedItems = items
+    .filter((item) => !item.productId)
+    .map((item) => ({
+      productRetailerId: item.metaProductRetailerId,
+      quantity: item.quantity,
+      itemPriceCents: item.unitPriceCents,
+      currency: item.currency
+    }));
   const totalCents = items.reduce((sum, item) => sum + item.quantity * item.unitPriceCents, 0);
   const payload = {
     customerName: event.profileName || 'WhatsApp customer',
     customerPhone: event.from,
     status: 'new',
     source: 'whatsapp_catalog',
-    paymentReference: event.messageId,
+    paymentReference,
     items: []
+  };
+  const metadata = {
+    catalogId: order.catalog_id || null,
+    text: order.text || null,
+    messageId: paymentReference || null,
+    unmatchedItems
   };
 
   if (hasDatabaseConfig()) {
@@ -1793,7 +1830,7 @@ async function recordOrderFromMetaEvent({ businessId, event }) {
         totalCents,
         subtotalCents: totalCents,
         paymentReference: payload.paymentReference,
-        metadata: JSON.stringify({ catalogId: order.catalog_id, text: order.text || null })
+        metadata: JSON.stringify(metadata)
       }
     );
     for (const item of items) {
@@ -1806,7 +1843,24 @@ async function recordOrderFromMetaEvent({ businessId, event }) {
       );
       if (item.productId) await decrementProductInventory({ businessId, productId: item.productId, quantity: item.quantity });
     }
-    await recordOrderEvent({ businessId, orderId: result.insertId, eventType: 'order.received_from_whatsapp', status: 'new', note: 'Order received from WhatsApp catalog' });
+    await recordOrderEvent({
+      businessId,
+      orderId: result.insertId,
+      eventType: 'order.received_from_whatsapp',
+      status: 'new',
+      note: 'Order received from WhatsApp catalog',
+      metadata
+    });
+    if (unmatchedItems.length) {
+      await recordOrderEvent({
+        businessId,
+        orderId: result.insertId,
+        eventType: 'order.catalog_item_unmatched',
+        status: 'new',
+        note: `${unmatchedItems.length} WhatsApp catalog item(s) did not match local products`,
+        metadata: { catalogId: order.catalog_id || null, unmatchedItems }
+      });
+    }
     return { ...(await getOrderById(businessId, result.insertId)), items };
   }
 
@@ -1821,6 +1875,7 @@ async function recordOrderFromMetaEvent({ businessId, event }) {
     totalCents,
     itemCount: items.length,
     items,
+    metadata,
     createdAt: new Date().toISOString()
   };
   demoOrders.unshift(stored);
@@ -1828,15 +1883,24 @@ async function recordOrderFromMetaEvent({ businessId, event }) {
     const product = demoProducts.find((candidate) => Number(candidate.id) === Number(item.productId));
     if (product) product.inventoryCount = Math.max(0, Number(product.inventoryCount || 0) - item.quantity);
   }
-  demoOrderEvents.unshift({
-    id: nextOrderEventId++,
-    businessId: Number(businessId),
+  await recordOrderEvent({
+    businessId,
     orderId: stored.id,
     eventType: 'order.received_from_whatsapp',
     status: 'new',
     note: 'Order received from WhatsApp catalog',
-    createdAt: new Date().toISOString()
+    metadata
   });
+  if (unmatchedItems.length) {
+    await recordOrderEvent({
+      businessId,
+      orderId: stored.id,
+      eventType: 'order.catalog_item_unmatched',
+      status: 'new',
+      note: `${unmatchedItems.length} WhatsApp catalog item(s) did not match local products`,
+      metadata: { catalogId: order.catalog_id || null, unmatchedItems }
+    });
+  }
   return normalizeOrder(stored);
 }
 
@@ -2324,6 +2388,7 @@ function normalizeOrder(order) {
     trackingNumber: order.trackingNumber || order.tracking_number || '',
     trackingUrl: order.trackingUrl || order.tracking_url || '',
     fulfilledAt: order.fulfilledAt || order.fulfilled_at || null,
+    metadata: order.metadata || parseJson(order.metadata_json) || {},
     createdAt: order.createdAt || order.created_at || null,
     items: order.items || undefined
   };
@@ -2353,6 +2418,7 @@ function normalizeOrderItem(item) {
     productId: item.productId || item.product_id,
     productName: item.productName || item.product_name,
     sku: item.sku,
+    metaProductRetailerId: item.metaProductRetailerId || item.meta_product_retailer_id || item.sku,
     quantity: Number(item.quantity || 1),
     unitPriceCents: Number(item.unitPriceCents || item.unit_price_cents || 0),
     unitPrice: cents(Number(item.unitPriceCents || item.unit_price_cents || 0)),

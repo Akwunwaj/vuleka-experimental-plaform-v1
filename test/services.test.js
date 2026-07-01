@@ -2896,13 +2896,64 @@ test('Meta order webhooks are extracted and recorded as commerce orders', async 
     ]
   });
   const processed = await processMetaEvent(events[0]);
+  const duplicate = await processMetaEvent(events[0]);
   const orders = await listOrders(986);
+  const recorded = orders.find((order) => order.paymentReference === 'wamid.order.1');
+  const detail = await getOrderById(986, recorded.id);
 
   assert.equal(events[0].messageType, 'order');
   assert.equal(events[0].profileName, 'Order Buyer');
   assert.equal(processed.commerceOrder.totalCents, 39900);
+  assert.equal(processed.commerceOrder.metadata.catalogId, 'catalog_986');
+  assert.deepEqual(processed.commerceOrder.metadata.unmatchedItems, []);
+  assert.equal(duplicate.commerceOrder.duplicate, true);
   assert.equal(processed.chatbot, null);
-  assert.equal(orders.some((order) => order.paymentReference === 'wamid.order.1'), true);
+  assert.equal(orders.filter((order) => order.paymentReference === 'wamid.order.1').length, 1);
+  assert.equal(detail.events.some((event) => event.eventType === 'order.webhook_duplicate'), true);
+});
+
+test('Meta order webhooks flag unmatched catalog retailer IDs for merchant follow-up', async () => {
+  await saveMetaCredentials(987, {
+    wabaId: 'waba_commerce_unmatched',
+    phoneNumberId: 'phone_commerce_unmatched',
+    accessToken: 'EAA_SECRET_TOKEN',
+    verifyToken: 'verify_commerce_unmatched'
+  });
+  const events = extractMetaEvents({
+    entry: [
+      {
+        changes: [
+          {
+            value: {
+              metadata: { phone_number_id: 'phone_commerce_unmatched' },
+              contacts: [{ wa_id: '27825550000', profile: { name: 'Catalog Buyer' } }],
+              messages: [
+                {
+                  from: '27825550000',
+                  id: 'wamid.order.unmatched.1',
+                  type: 'order',
+                  order: {
+                    catalog_id: 'catalog_unmatched',
+                    product_items: [
+                      { product_retailer_id: 'missing-retailer-id', quantity: 2, item_price: 125, currency: 'ZAR' }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  });
+
+  const processed = await processMetaEvent(events[0]);
+  const detail = await getOrderById(987, processed.commerceOrder.id);
+
+  assert.equal(processed.commerceOrder.totalCents, 25000);
+  assert.equal(processed.commerceOrder.metadata.unmatchedItems[0].productRetailerId, 'missing-retailer-id');
+  assert.equal(detail.items[0].productId, undefined);
+  assert.equal(detail.events.some((event) => event.eventType === 'order.catalog_item_unmatched'), true);
 });
 
 test('published chatbot flows respond to matching inbound Meta messages', async () => {
