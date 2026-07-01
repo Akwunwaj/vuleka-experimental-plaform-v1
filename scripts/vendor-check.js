@@ -30,6 +30,10 @@ async function main() {
     await verifyPayFast(cookie);
   }
 
+  if (checkList.includes('commerce')) {
+    await verifyCommerceAutomation(cookie);
+  }
+
   console.log('\nVendor check passed.');
 }
 
@@ -121,6 +125,28 @@ async function verifyPayFast(cookie) {
   }
 }
 
+async function verifyCommerceAutomation(cookie) {
+  const response = await request('/api/commerce/automation-insights', { cookie });
+  assertStatus(response, 200, 'commerce automation insights');
+  const readiness = response.body?.summary?.templateReadiness || {};
+  const total = Number(readiness.total || 0);
+  const ready = Number(readiness.ready || 0);
+  const blocked = Number(readiness.blocked || 0);
+  pass(`commerce automation template readiness ${ready}/${total} approved`);
+
+  if (blocked > 0) {
+    const blockedRules = (response.body?.rules || [])
+      .filter((rule) => !rule.templateReadiness?.ready)
+      .map((rule) => `${rule.ruleKey}:${rule.templateReadiness?.status || 'Missing'}`)
+      .join(', ');
+    const message = `${blocked} commerce automation rule(s) are not approved-template ready${blockedRules ? `: ${blockedRules}` : ''}`;
+    if (process.env.VENDOR_REQUIRE_COMMERCE_AUTOMATION_READY === 'true') {
+      throw new Error(`VENDOR_REQUIRE_COMMERCE_AUTOMATION_READY=true but ${message}`);
+    }
+    warn(message);
+  }
+}
+
 async function simulatePayFastItn({ cookie, checkout }) {
   const fields = checkout.fields;
   const payload = {
@@ -207,7 +233,7 @@ function parseChecks(value) {
     .split(',')
     .map((item) => item.trim().toLowerCase())
     .filter(Boolean);
-  const allowed = new Set(['smtp', 'meta', 'payfast']);
+  const allowed = new Set(['smtp', 'meta', 'payfast', 'commerce']);
   for (const check of checks) {
     if (!allowed.has(check)) throw new Error(`Unsupported vendor check: ${check}`);
   }
@@ -226,6 +252,10 @@ function normalizeBaseUrl(value) {
 
 function pass(message) {
   console.log(`[pass] ${message}`);
+}
+
+function warn(message) {
+  console.log(`[warn] ${message}`);
 }
 
 function wait(ms) {

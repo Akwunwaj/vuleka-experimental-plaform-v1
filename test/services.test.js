@@ -607,6 +607,16 @@ test('critical campaign and contact write routes require owner or admin role', (
   }
 });
 
+test('vendor check can enforce commerce automation template readiness', () => {
+  const vendorCheckSource = fs.readFileSync(require.resolve('../scripts/vendor-check'), 'utf8');
+
+  assert.match(vendorCheckSource, /'commerce'/);
+  assert.match(vendorCheckSource, /\/api\/commerce\/automation-insights/);
+  assert.match(vendorCheckSource, /VENDOR_REQUIRE_COMMERCE_AUTOMATION_READY/);
+  assert.match(vendorCheckSource, /templateReadiness/);
+  assert.match(vendorCheckSource, /commerce automation template readiness/);
+});
+
 test('auth password hashing verifies valid passwords and rejects invalid ones', async () => {
   const hash = await hashPassword('CorrectHorseBatteryStaple!');
 

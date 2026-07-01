@@ -138,6 +138,19 @@ npm run ops:vendor-check
 
 Use `VENDOR_CHECKS="smtp,meta,payfast"` to run the full vendor suite.
 
+To verify WhatsApp commerce automation template readiness after Meta template sync:
+
+```powershell
+$env:VENDOR_BASE_URL = "https://your-domain.co.za"
+$env:VENDOR_EMAIL = "admin@example.co.za"
+$env:VENDOR_PASSWORD = "your-password"
+$env:VENDOR_CHECKS = "commerce"
+$env:VENDOR_REQUIRE_COMMERCE_AUTOMATION_READY = "true"
+npm run ops:vendor-check
+```
+
+The commerce check calls the authenticated automation insights endpoint and fails in strict mode when any enabled post-purchase automation is still missing an approved WhatsApp template. This protects proactive WhatsApp commerce sends that may occur outside the 24-hour customer-service window.
+
 ## Configure MariaDB
 
 1. Copy `.env.example` to `.env`.
