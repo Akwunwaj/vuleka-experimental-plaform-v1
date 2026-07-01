@@ -182,6 +182,7 @@ const {
   listProducts,
   listProductVariants,
   listReturnRequests,
+  linkOrderItemToProduct,
   previewCommerceAutomationRule,
   reconcileOrderPayment,
   sendAbandonedCartRecovery,
@@ -533,6 +534,19 @@ test('Commerce page renders automation insight hydration targets', () => {
   assert.match(appSource, /function automationReadinessNextAction/);
   assert.match(appSource, /function setAutomationActionBusy/);
   assert.match(appSource, /function refreshAutomationPreviewIfOpen/);
+  assert.match(appSource, /function renderOrderDiagnostics/);
+  assert.match(appSource, /WhatsApp catalog diagnostics/);
+  assert.match(appSource, /metadata\.catalogId/);
+  assert.match(appSource, /metadata\.messageId/);
+  assert.match(appSource, /metaProductRetailerId/);
+  assert.match(appSource, /order-item-unmatched/);
+  assert.match(appSource, /data-order-item-link/);
+  assert.match(appSource, /function openOrderItemProductPicker/);
+  assert.match(appSource, /function renderOrderProductPickerList/);
+  assert.match(appSource, /data-product-picker-search/);
+  assert.match(appSource, /data-product-picker-choice/);
+  assert.match(appSource, /items\/link-product/);
+  assert.doesNotMatch(appSource, /Local product ID to link/);
   assert.match(appSource, /currentAutomationPreviewRuleKey/);
   assert.match(appSource, /data-recommendation-template/);
   assert.match(appSource, /data-recommendation-preview/);
@@ -552,6 +566,9 @@ test('Commerce page renders automation insight hydration targets', () => {
   assert.match(cssSource, /\.automation-apply-result/);
   assert.match(cssSource, /\.automation-template-pill/);
   assert.match(cssSource, /\.automation-readiness/);
+  assert.match(cssSource, /\.order-diagnostics/);
+  assert.match(cssSource, /\.order-item-unmatched/);
+  assert.match(cssSource, /\.order-product-picker/);
 });
 
 test('critical campaign and contact write routes require owner or admin role', () => {
@@ -587,6 +604,7 @@ test('critical campaign and contact write routes require owner or admin role', (
     /router\.patch\('\/commerce\/automation-rules\/:id', requireRole\(\['owner', 'admin'\]\)/,
     /router\.patch\('\/commerce\/orders\/:id\/status', requireRole\(\['owner', 'admin', 'agent'\]\)/,
     /router\.patch\('\/commerce\/orders\/:id\/fulfilment', requireRole\(\['owner', 'admin', 'agent'\]\)/,
+    /router\.patch\('\/commerce\/orders\/:id\/items\/link-product', requireRole\(\['owner', 'admin', 'agent'\]\)/,
     /router\.post\('\/commerce\/orders\/:id\/coupon', requireRole\(\['owner', 'admin', 'agent'\]\)/,
     /router\.post\('\/commerce\/orders\/:id\/recover-cart', requireRole\(\['owner', 'admin', 'agent'\]\)/,
     /router\.post\('\/commerce\/orders\/:id\/reconcile-payment', requireRole\(\['owner', 'admin', 'agent'\]\)/,
@@ -2949,11 +2967,28 @@ test('Meta order webhooks flag unmatched catalog retailer IDs for merchant follo
 
   const processed = await processMetaEvent(events[0]);
   const detail = await getOrderById(987, processed.commerceOrder.id);
-
   assert.equal(processed.commerceOrder.totalCents, 25000);
   assert.equal(processed.commerceOrder.metadata.unmatchedItems[0].productRetailerId, 'missing-retailer-id');
   assert.equal(detail.items[0].productId, undefined);
   assert.equal(detail.events.some((event) => event.eventType === 'order.catalog_item_unmatched'), true);
+
+  const product = await createProduct(987, {
+    name: 'Resolved Catalog Item',
+    sku: 'resolved-catalog-item',
+    price: '125.00',
+    metaCatalogId: 'catalog_unmatched',
+    metaProductRetailerId: 'missing-retailer-id'
+  });
+  const linked = await linkOrderItemToProduct({
+    businessId: 987,
+    orderId: processed.commerceOrder.id,
+    retailerId: 'missing-retailer-id',
+    productId: product.id
+  });
+
+  assert.equal(linked.items[0].productId, product.id);
+  assert.equal(linked.metadata.unmatchedItems.length, 0);
+  assert.equal(linked.events.some((event) => event.eventType === 'order.catalog_item_linked'), true);
 });
 
 test('published chatbot flows respond to matching inbound Meta messages', async () => {

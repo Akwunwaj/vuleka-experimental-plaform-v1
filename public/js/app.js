@@ -1323,16 +1323,116 @@ if (productForm) {
     const detail = await response.json().catch(() => ({}));
     if (!response.ok) return showToast(detail.error || 'Order could not load');
     orderDetail.innerHTML = renderOrderDetail(detail);
+    bindOrderDetailActions(detail);
   }
 
   function renderOrderDetail(order) {
-    const items = (order.items || []).map((item) => `<li>${Number(item.quantity || 1)} x ${htmlEscape(item.productName || item.sku)} · R ${htmlEscape(item.unitPrice || '0.00')}</li>`).join('');
-    const events = (order.events || []).slice(0, 5).map((event) => `<li>${htmlEscape(event.eventType)} ${event.status ? `· ${htmlEscape(event.status)}` : ''}<small>${htmlEscape(event.note || '')}</small></li>`).join('');
+    const metadata = order.metadata || {};
+    const unmatchedItems = Array.isArray(metadata.unmatchedItems) ? metadata.unmatchedItems : [];
+    const diagnostics = renderOrderDiagnostics(order, metadata, unmatchedItems);
+    const items = (order.items || []).map((item) => {
+      const retailerId = item.metaProductRetailerId || item.sku || '';
+      const unmatched = !item.productId || unmatchedItems.some((entry) => entry.productRetailerId === retailerId);
+      const action = unmatched ? `<button class="link-button" data-order-item-link="${htmlEscape(item.id || '')}" data-order-item-retailer="${htmlEscape(retailerId)}" type="button">Link product</button>` : '';
+      return `<li class="${unmatched ? 'order-item-unmatched' : ''}"><span>${Number(item.quantity || 1)} x ${htmlEscape(item.productName || item.sku)} · R ${htmlEscape(item.unitPrice || '0.00')}</span><small>${retailerId ? `Retailer ID ${htmlEscape(retailerId)}` : 'No retailer ID'}${unmatched ? ' · needs catalogue match' : ''}</small>${action}</li>`;
+    }).join('');
+    const events = (order.events || []).slice(0, 6).map((event) => `<li>${htmlEscape(event.eventType)} ${event.status ? `· ${htmlEscape(event.status)}` : ''}<small>${htmlEscape(event.note || '')}</small></li>`).join('');
     const fulfilment = order.trackingNumber || order.fulfilmentProvider || order.trackingUrl
       ? `<p>${htmlEscape(order.fulfilmentProvider || 'Fulfilment')} ${order.trackingNumber ? `· ${htmlEscape(order.trackingNumber)}` : ''} ${order.trackingUrl ? `· ${htmlEscape(order.trackingUrl)}` : ''}</p>`
       : '';
     const discount = order.discountCode ? `<p>Coupon ${htmlEscape(order.discountCode)} saved R ${htmlEscape(order.discount || '0.00')} from subtotal R ${htmlEscape(order.subtotal || order.total)}</p>` : '';
-    return `<article><header><h4>Order #${htmlEscape(order.id)}</h4><span class="status">${htmlEscape(order.status)}</span></header><p>${htmlEscape(order.customerName)} · ${htmlEscape(order.customerPhone)}</p><p><strong>R ${htmlEscape(order.total)}</strong> ${order.paymentReady ? '· payment link ready' : '· no payment link yet'}</p>${discount}${fulfilment}<ul>${items || '<li>No line items found.</li>'}</ul><h4>Timeline</h4><ul>${events || '<li>No events yet.</li>'}</ul></article>`;
+    return `<article><header><h4>Order #${htmlEscape(order.id)}</h4><span class="status">${htmlEscape(order.status)}</span></header><p>${htmlEscape(order.customerName)} · ${htmlEscape(order.customerPhone)}</p><p><strong>R ${htmlEscape(order.total)}</strong> ${order.paymentReady ? '· payment link ready' : '· no payment link yet'}</p>${diagnostics}${discount}${fulfilment}<ul class="order-line-items">${items || '<li>No line items found.</li>'}</ul><h4>Timeline</h4><ul>${events || '<li>No events yet.</li>'}</ul></article>`;
+  }
+
+  function renderOrderDiagnostics(order, metadata, unmatchedItems) {
+    const isWhatsAppCatalog = order.source === 'whatsapp_catalog' || metadata.catalogId || metadata.messageId || unmatchedItems.length;
+    if (!isWhatsAppCatalog) return '';
+    const statusClass = unmatchedItems.length ? 'needs-attention' : 'ready';
+    const statusText = unmatchedItems.length ? `${unmatchedItems.length} catalogue match needed` : 'Catalog matched';
+    const unmatched = unmatchedItems.length
+      ? `<ul>${unmatchedItems.map((item) => `<li><strong>${htmlEscape(item.productRetailerId || 'unknown')}</strong><small>${Number(item.quantity || 1)} x ${htmlEscape(item.currency || order.currency || 'ZAR')} ${htmlEscape(centsFromMetadata(item.itemPriceCents))}</small></li>`).join('')}</ul>`
+      : '<p class="muted-copy">Every WhatsApp retailer ID matched a local product.</p>';
+    return `<section class="order-diagnostics ${statusClass}"><header><h4>WhatsApp catalog diagnostics</h4><span>${htmlEscape(statusText)}</span></header><div><p><strong>Catalog</strong> ${htmlEscape(metadata.catalogId || 'Not supplied')}</p><p><strong>Message</strong> ${htmlEscape(metadata.messageId || order.paymentReference || 'Not supplied')}</p>${metadata.text ? `<p><strong>Buyer note</strong> ${htmlEscape(metadata.text)}</p>` : ''}</div>${unmatched}</section>`;
+  }
+
+  function centsFromMetadata(value) {
+    return (Number(value || 0) / 100).toFixed(2);
+  }
+
+  function bindOrderDetailActions(order) {
+    orderDetail.querySelectorAll('[data-order-item-link]').forEach((button) => {
+      button.addEventListener('click', () => openOrderItemProductPicker({
+        orderId: order.id,
+        itemId: button.dataset.orderItemLink,
+        retailerId: button.dataset.orderItemRetailer
+      }));
+    });
+  }
+
+  async function openOrderItemProductPicker({ orderId, itemId, retailerId }) {
+    const products = await ensureCommerceProducts();
+    const existing = orderDetail.querySelector('.order-product-picker');
+    if (existing) existing.remove();
+    const panel = document.createElement('section');
+    panel.className = 'order-product-picker';
+    panel.innerHTML = `
+      <header>
+        <div><h4>Link catalog item</h4><p>Choose the local product for retailer ID ${htmlEscape(retailerId || 'unknown')}.</p></div>
+        <button class="link-button" data-product-picker-close type="button">Close</button>
+      </header>
+      <input type="search" placeholder="Search products by name, SKU, or retailer ID" data-product-picker-search>
+      <div class="order-product-picker-list">${renderOrderProductPickerList(products, { orderId, itemId, retailerId })}</div>
+    `;
+    const anchor = orderDetail.querySelector('.order-diagnostics') || orderDetail.querySelector('article');
+    anchor.insertAdjacentElement(anchor.classList.contains('order-diagnostics') ? 'afterend' : 'beforeend', panel);
+    bindOrderProductPicker(panel, products, { orderId, itemId, retailerId });
+  }
+
+  async function ensureCommerceProducts() {
+    if (currentProducts.length) return currentProducts;
+    const response = await fetch('/api/commerce/products');
+    const result = await response.json().catch(() => ({ products: [] }));
+    if (response.ok) currentProducts = result.products || [];
+    return currentProducts;
+  }
+
+  function renderOrderProductPickerList(products, context) {
+    const active = products.filter((product) => product.status !== 'archived');
+    if (!active.length) return '<p class="muted-copy">Add products before linking WhatsApp catalog items.</p>';
+    return active.map((product) => `
+      <button type="button" data-product-picker-choice="${htmlEscape(product.id)}" data-search-text="${htmlEscape(`${product.name || ''} ${product.sku || ''} ${product.metaProductRetailerId || ''}`.toLowerCase())}">
+        <span><strong>${htmlEscape(product.name)}</strong><small>${htmlEscape(product.sku || 'No SKU')} · Retailer ${htmlEscape(product.metaProductRetailerId || product.sku || 'not set')}</small></span>
+        <em>R ${htmlEscape(product.price || '0.00')}</em>
+      </button>
+    `).join('');
+  }
+
+  function bindOrderProductPicker(panel, products, context) {
+    panel.querySelector('[data-product-picker-close]')?.addEventListener('click', () => panel.remove());
+    panel.querySelector('[data-product-picker-search]')?.addEventListener('input', (event) => {
+      const term = event.target.value.trim().toLowerCase();
+      panel.querySelectorAll('[data-product-picker-choice]').forEach((button) => {
+        button.hidden = term && !button.dataset.searchText.includes(term);
+      });
+    });
+    panel.querySelectorAll('[data-product-picker-choice]').forEach((button) => {
+      button.addEventListener('click', () => linkOrderItemToProduct({ ...context, productId: button.dataset.productPickerChoice }));
+    });
+  }
+
+  async function linkOrderItemToProduct({ orderId, itemId, retailerId, productId }) {
+    const response = await fetch(`/api/commerce/orders/${encodeURIComponent(orderId)}/items/link-product`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ itemId: itemId || null, retailerId, productId })
+    });
+    const result = await response.json().catch(() => ({}));
+    showToast(response.ok ? 'Catalog item linked' : result.error || 'Catalog item could not be linked');
+    if (response.ok) {
+      orderDetail.innerHTML = renderOrderDetail(result);
+      bindOrderDetailActions(result);
+      loadCommerce();
+    }
   }
 
   async function loadCatalogSyncPreview() {

@@ -83,6 +83,7 @@ const {
   listProducts,
   listProductVariants,
   listReturnRequests,
+  linkOrderItemToProduct,
   previewCommerceAutomationRule,
   reconcileOrderPayment,
   sendAbandonedCartRecovery,
@@ -935,6 +936,22 @@ router.patch('/commerce/orders/:id/fulfilment', requireRole(['owner', 'admin', '
         trackingUrl: req.body.trackingUrl,
         note: req.body.note,
         sendWhatsApp: req.body.sendWhatsApp === true
+      })
+    );
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch('/commerce/orders/:id/items/link-product', requireRole(['owner', 'admin', 'agent']), async (req, res, next) => {
+  try {
+    res.json(
+      await linkOrderItemToProduct({
+        businessId: req.businessId,
+        orderId: req.params.id,
+        itemId: req.body.itemId,
+        retailerId: req.body.retailerId,
+        productId: req.body.productId
       })
     );
   } catch (err) {

@@ -663,6 +663,70 @@ async function getOrderById(businessId, orderId) {
   return { ...normalizeOrder(rows[0]), items: items.map(normalizeOrderItem), events: events.map(normalizeOrderEvent) };
 }
 
+async function linkOrderItemToProduct({ businessId, orderId, itemId = null, retailerId = '', productId }) {
+  if (!productId) {
+    const error = new Error('productId is required');
+    error.status = 400;
+    throw error;
+  }
+  const product = await getProductById(businessId, productId);
+  const order = await getOrderById(businessId, orderId);
+  const target = findOrderItemForLink(order.items || [], { itemId, retailerId });
+  if (!target) throw notFound('Order item not found');
+  const originalRetailerId = target.metaProductRetailerId || target.sku || retailerId || '';
+
+  if (hasDatabaseConfig()) {
+    await query(
+      `update commerce_order_items
+       set product_id = :productId,
+           product_name = :productName,
+           sku = :sku,
+           currency = :currency
+       where business_id = :businessId
+         and order_id = :orderId
+         and (:itemId is null or id = :itemId)
+         and (:itemId is not null or sku = :retailerId)`,
+      {
+        businessId,
+        orderId,
+        itemId: itemId || null,
+        retailerId: originalRetailerId,
+        productId: product.id,
+        productName: product.name,
+        sku: product.sku || product.metaProductRetailerId,
+        currency: product.currency || target.currency || order.currency || 'ZAR'
+      }
+    );
+    await updateOrderMetadata(businessId, orderId, removeUnmatchedOrderItem(order.metadata, originalRetailerId));
+  } else {
+    const stored = demoOrders.find((item) => Number(item.id) === Number(orderId) && Number(item.businessId || item.business_id || 1) === Number(businessId));
+    if (!stored) throw notFound('Order not found');
+    const storedItem = findOrderItemForLink(stored.items || [], { itemId, retailerId: originalRetailerId });
+    if (!storedItem) throw notFound('Order item not found');
+    storedItem.productId = product.id;
+    storedItem.productName = product.name;
+    storedItem.sku = product.sku || product.metaProductRetailerId;
+    storedItem.currency = product.currency || storedItem.currency || stored.currency || 'ZAR';
+    stored.metadata = removeUnmatchedOrderItem(stored.metadata, originalRetailerId);
+  }
+
+  await recordOrderEvent({
+    businessId,
+    orderId,
+    eventType: 'order.catalog_item_linked',
+    status: order.status,
+    note: `Linked WhatsApp retailer ID ${originalRetailerId || target.sku || target.id} to ${product.name}`,
+    metadata: {
+      productId: product.id,
+      sku: product.sku,
+      productRetailerId: product.metaProductRetailerId,
+      originalRetailerId
+    }
+  });
+
+  return getOrderById(businessId, orderId);
+}
+
 async function findRecentPostPurchaseSend({ businessId, customerPhone, excludeOrderId = null }) {
   const normalizedPhone = normalizeCustomerPhone(customerPhone);
   if (!normalizedPhone) return null;
@@ -2426,6 +2490,35 @@ function normalizeOrderItem(item) {
   };
 }
 
+function findOrderItemForLink(items, { itemId = null, retailerId = '' }) {
+  const normalizedRetailerId = key(retailerId);
+  return items.find((item) => {
+    if (itemId && String(item.id || '') === String(itemId)) return true;
+    const itemRetailerId = key(item.metaProductRetailerId || item.sku);
+    return normalizedRetailerId && itemRetailerId === normalizedRetailerId;
+  });
+}
+
+function removeUnmatchedOrderItem(metadata = {}, retailerId = '') {
+  const normalizedRetailerId = key(retailerId);
+  const current = metadata && typeof metadata === 'object' ? metadata : {};
+  const unmatchedItems = Array.isArray(current.unmatchedItems)
+    ? current.unmatchedItems.filter((item) => key(item.productRetailerId) !== normalizedRetailerId)
+    : [];
+  return { ...current, unmatchedItems };
+}
+
+async function updateOrderMetadata(businessId, orderId, metadata) {
+  if (!hasDatabaseConfig()) return;
+  await query(
+    `update commerce_orders
+     set metadata_json = :metadata,
+         updated_at = current_timestamp
+     where business_id = :businessId and id = :orderId`,
+    { businessId, orderId, metadata: JSON.stringify(metadata || {}) }
+  );
+}
+
 function normalizeOrderEvent(event) {
   return {
     id: event.id,
@@ -3331,6 +3424,7 @@ module.exports = {
   listProducts,
   listProductVariants,
   listReturnRequests,
+  linkOrderItemToProduct,
   previewCommerceAutomationRule,
   recordOrderFromMetaEvent,
   reconcileOrderPayment,
