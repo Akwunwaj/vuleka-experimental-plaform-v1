@@ -1667,6 +1667,7 @@ async function getCommerceAnalytics(businessId) {
   const totalRevenueCents = paidOrders.reduce((sum, order) => sum + Number(order.totalCents || 0), 0);
   const averageOrderValueCents = paidOrders.length ? Math.round(totalRevenueCents / paidOrders.length) : 0;
   const lowStock = products.filter((product) => Number(product.inventoryCount || 0) > 0 && Number(product.inventoryCount || 0) <= 5);
+  const catalogIssues = orders.filter((order) => orderCatalogIssueCount(order) > 0);
 
   return {
     currency: 'ZAR',
@@ -1680,9 +1681,11 @@ async function getCommerceAnalytics(businessId) {
       totalRevenue: cents(totalRevenueCents),
       averageOrderValueCents,
       averageOrderValue: cents(averageOrderValueCents),
-      lowStock: lowStock.length
+      lowStock: lowStock.length,
+      catalogIssues: catalogIssues.length
     },
     statusBreakdown: summarizeByStatus(orders),
+    catalogIssues,
     lowStock
   };
 }
@@ -2426,6 +2429,7 @@ function normalizeVariant(variant) {
 }
 
 function normalizeOrder(order) {
+  const metadata = order.metadata || parseJson(order.metadata_json) || {};
   return {
     id: order.id,
     businessId: order.businessId || order.business_id,
@@ -2452,7 +2456,8 @@ function normalizeOrder(order) {
     trackingNumber: order.trackingNumber || order.tracking_number || '',
     trackingUrl: order.trackingUrl || order.tracking_url || '',
     fulfilledAt: order.fulfilledAt || order.fulfilled_at || null,
-    metadata: order.metadata || parseJson(order.metadata_json) || {},
+    metadata,
+    catalogIssueCount: orderCatalogIssueCount({ ...order, metadata }),
     createdAt: order.createdAt || order.created_at || null,
     items: order.items || undefined
   };
@@ -2506,6 +2511,11 @@ function removeUnmatchedOrderItem(metadata = {}, retailerId = '') {
     ? current.unmatchedItems.filter((item) => key(item.productRetailerId) !== normalizedRetailerId)
     : [];
   return { ...current, unmatchedItems };
+}
+
+function orderCatalogIssueCount(order = {}) {
+  const metadata = order.metadata || parseJson(order.metadata_json) || {};
+  return Array.isArray(metadata.unmatchedItems) ? metadata.unmatchedItems.length : 0;
 }
 
 async function updateOrderMetadata(businessId, orderId, metadata) {

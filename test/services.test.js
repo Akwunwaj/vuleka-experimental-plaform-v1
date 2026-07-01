@@ -536,6 +536,9 @@ test('Commerce page renders automation insight hydration targets', () => {
   assert.match(appSource, /function refreshAutomationPreviewIfOpen/);
   assert.match(appSource, /function renderOrderDiagnostics/);
   assert.match(appSource, /WhatsApp catalog diagnostics/);
+  assert.match(appSource, /Catalog issues/);
+  assert.match(appSource, /order-issue-badge/);
+  assert.match(appSource, /order-row-needs-attention/);
   assert.match(appSource, /metadata\.catalogId/);
   assert.match(appSource, /metadata\.messageId/);
   assert.match(appSource, /metaProductRetailerId/);
@@ -569,6 +572,8 @@ test('Commerce page renders automation insight hydration targets', () => {
   assert.match(cssSource, /\.order-diagnostics/);
   assert.match(cssSource, /\.order-item-unmatched/);
   assert.match(cssSource, /\.order-product-picker/);
+  assert.match(cssSource, /\.order-issue-badge/);
+  assert.match(cssSource, /\.order-row-needs-attention/);
 });
 
 test('critical campaign and contact write routes require owner or admin role', () => {
@@ -2967,8 +2972,12 @@ test('Meta order webhooks flag unmatched catalog retailer IDs for merchant follo
 
   const processed = await processMetaEvent(events[0]);
   const detail = await getOrderById(987, processed.commerceOrder.id);
+  const analyticsBeforeLink = await getCommerceAnalytics(987);
   assert.equal(processed.commerceOrder.totalCents, 25000);
   assert.equal(processed.commerceOrder.metadata.unmatchedItems[0].productRetailerId, 'missing-retailer-id');
+  assert.equal(processed.commerceOrder.catalogIssueCount, 1);
+  assert.equal(analyticsBeforeLink.summary.catalogIssues, 1);
+  assert.equal(analyticsBeforeLink.catalogIssues[0].catalogIssueCount, 1);
   assert.equal(detail.items[0].productId, undefined);
   assert.equal(detail.events.some((event) => event.eventType === 'order.catalog_item_unmatched'), true);
 
@@ -2985,9 +2994,12 @@ test('Meta order webhooks flag unmatched catalog retailer IDs for merchant follo
     retailerId: 'missing-retailer-id',
     productId: product.id
   });
+  const analyticsAfterLink = await getCommerceAnalytics(987);
 
   assert.equal(linked.items[0].productId, product.id);
   assert.equal(linked.metadata.unmatchedItems.length, 0);
+  assert.equal(linked.catalogIssueCount, 0);
+  assert.equal(analyticsAfterLink.summary.catalogIssues, 0);
   assert.equal(linked.events.some((event) => event.eventType === 'order.catalog_item_linked'), true);
 });
 
