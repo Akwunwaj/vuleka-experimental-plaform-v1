@@ -93,6 +93,7 @@ const {
   shareCatalog,
   shareProductCollection,
   submitCommerceAutomationTemplate,
+  syncCommerceAutomationTemplates,
   updateCommerceAutomationRule,
   updateOrderFulfilment,
   updateProduct,
@@ -752,6 +753,14 @@ router.post('/commerce/automation-rules/:id/template/submit', requireRole(['owne
         ruleId: req.params.id
       })
     );
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/commerce/automation-templates/sync', requireRole(['owner', 'admin']), async (req, res, next) => {
+  try {
+    res.json(await syncCommerceAutomationTemplates(req.businessId));
   } catch (err) {
     next(err);
   }

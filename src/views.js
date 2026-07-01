@@ -356,8 +356,9 @@ Classic Tee,classic-tee,199,25,https://example.co.za/classic-tee.jpg,demo_catalo
           <div class="customer-segment-list" id="customerSegmentList"><p class="muted-copy">Buyer segments will appear after orders are created.</p></div>
         </article>
         <article class="panel">
-          <header><h3>Automation rules</h3><span class="status" id="commerceAutomationRuleCount">0</span></header>
+          <header><h3>Automation rules</h3><div class="commerce-row-actions"><button class="link-button" id="syncCommerceAutomationTemplatesBtn" type="button">Sync templates</button><span class="status" id="commerceAutomationRuleCount">0</span></div></header>
           <div class="automation-insight-strip" id="commerceAutomationInsightStrip"><span>Scheduled 0</span><span>Sent 0</span><span>Suppressed 0</span><span>Revenue R 0.00</span><span>Cost R 0.00</span><span>ROI --</span><span>Rate 0%</span></div>
+          <div class="automation-readiness" id="commerceAutomationReadiness"><p class="muted-copy">Template readiness will appear here.</p></div>
           <div class="automation-recommendation-list" id="commerceAutomationRecommendationList"><p class="muted-copy">Automation recommendations will appear after activity.</p></div>
           <div class="automation-activity-list" id="commerceAutomationActivityList"><p class="muted-copy">Automation activity will appear here.</p></div>
           <div class="automation-preview-panel hidden" id="commerceAutomationPreviewPanel"></div>

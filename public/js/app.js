@@ -659,9 +659,11 @@ if (productForm) {
   const commerceAutomationRuleList = document.getElementById('commerceAutomationRuleList');
   const commerceAutomationRuleCount = document.getElementById('commerceAutomationRuleCount');
   const commerceAutomationInsightStrip = document.getElementById('commerceAutomationInsightStrip');
+  const commerceAutomationReadiness = document.getElementById('commerceAutomationReadiness');
   const commerceAutomationRecommendationList = document.getElementById('commerceAutomationRecommendationList');
   const commerceAutomationActivityList = document.getElementById('commerceAutomationActivityList');
   const commerceAutomationPreviewPanel = document.getElementById('commerceAutomationPreviewPanel');
+  const syncCommerceAutomationTemplatesBtn = document.getElementById('syncCommerceAutomationTemplatesBtn');
   const inventoryAlertList = document.getElementById('inventoryAlertList');
   const inventoryAlertCount = document.getElementById('inventoryAlertCount');
   const productSubmitBtn = document.getElementById('productSubmitBtn');
@@ -927,6 +929,7 @@ if (productForm) {
       const roi = summary.roi === null || summary.roi === undefined ? '--' : `${Number(summary.roi).toFixed(2)}x`;
       commerceAutomationInsightStrip.innerHTML = `<span>Scheduled ${Number(summary.scheduled || 0)}</span><span>Sent ${Number(summary.sent || 0)}</span><span>Suppressed ${Number(summary.suppressed || 0)}</span><span>Revenue R ${htmlEscape(summary.attributedRevenue || '0.00')}</span><span>Cost R ${htmlEscape(summary.estimatedCost || '0.00')}</span><span>ROI ${htmlEscape(roi)}</span><span>Rate ${Number(summary.sendRate || 0)}%</span>`;
     }
+    renderAutomationReadiness(rules);
     if (commerceAutomationRecommendationList) {
       const recommendations = insights?.recommendations || [];
       commerceAutomationRecommendationList.innerHTML = recommendations.length
@@ -978,6 +981,80 @@ if (productForm) {
         return `<article><strong>${htmlEscape(label)}</strong><span>${htmlEscape(event.ruleKey || '')}</span><small>${htmlEscape(detail)}</small></article>`;
       }).join('')
       : '<p class="muted-copy">Automation activity will appear here.</p>';
+  }
+
+  function renderAutomationReadiness(rules) {
+    if (!commerceAutomationReadiness) return;
+    const counts = rules.reduce((acc, rule) => {
+      const template = rule.templateReadiness || {};
+      if (template.ready) acc.ready += 1;
+      else if (template.status === 'Submitted') acc.pending += 1;
+      else if (template.status === 'Draft') acc.draft += 1;
+      else acc.missing += 1;
+      return acc;
+    }, { ready: 0, pending: 0, draft: 0, missing: 0 });
+    const total = rules.length;
+    const nextRule = rules.find((rule) => !rule.templateReadiness?.ready) || null;
+    const next = automationReadinessNextAction(nextRule);
+    commerceAutomationReadiness.innerHTML = `
+      <article class="${counts.ready === total && total ? 'ready' : 'attention'}">
+        <small>Template readiness</small>
+        <strong>${Number(counts.ready)} / ${Number(total)}</strong>
+        <span>${counts.ready === total && total ? 'Ready for live automation' : 'Needs template work before live automation'}</span>
+      </article>
+      <article><small>Awaiting Meta</small><strong>${Number(counts.pending)}</strong><span>Submitted templates</span></article>
+      <article><small>Drafts</small><strong>${Number(counts.draft)}</strong><span>Ready to submit</span></article>
+      <article><small>Missing</small><strong>${Number(counts.missing)}</strong><span>Need a template</span></article>
+      <article class="automation-readiness-next"><small>Next action</small><strong>${htmlEscape(next.label)}</strong><span>${htmlEscape(next.detail)}</span>${next.button}</article>
+    `;
+    commerceAutomationReadiness.querySelector('[data-readiness-template]')?.addEventListener('click', (event) => {
+      installAutomationTemplate(event.currentTarget.dataset.readinessTemplate);
+    });
+    commerceAutomationReadiness.querySelector('[data-readiness-submit]')?.addEventListener('click', (event) => {
+      submitAutomationTemplate(event.currentTarget.dataset.readinessSubmit);
+    });
+    commerceAutomationReadiness.querySelector('[data-readiness-sync]')?.addEventListener('click', syncAutomationTemplates);
+    commerceAutomationReadiness.querySelector('[data-readiness-preview]')?.addEventListener('click', (event) => {
+      previewAutomationRule(event.currentTarget.dataset.readinessPreview);
+    });
+  }
+
+  function automationReadinessNextAction(rule) {
+    if (!rule) {
+      return {
+        label: 'All templates ready',
+        detail: 'Approved templates are available for every automation.',
+        button: '<button class="link-button" data-readiness-sync type="button">Sync templates</button>'
+      };
+    }
+    const template = rule.templateReadiness || {};
+    const ruleKey = htmlEscape(rule.ruleKey || '');
+    if (template.status === 'Missing') {
+      return {
+        label: 'Create template',
+        detail: `${rule.name || 'Automation'} needs an approved template.`,
+        button: `<button class="link-button" data-readiness-template="${ruleKey}" type="button">Create</button>`
+      };
+    }
+    if (template.status === 'Draft') {
+      return {
+        label: 'Submit to Meta',
+        detail: `${template.templateLabel || template.templateName || 'Template'} is still a draft.`,
+        button: `<button class="link-button" data-readiness-submit="${ruleKey}" type="button">Submit</button>`
+      };
+    }
+    if (template.status === 'Submitted') {
+      return {
+        label: 'Sync approval',
+        detail: `${template.templateLabel || template.templateName || 'Template'} is awaiting review.`,
+        button: '<button class="link-button" data-readiness-sync type="button">Sync</button>'
+      };
+    }
+    return {
+      label: 'Review template',
+      detail: template.message || `${rule.name || 'Automation'} is not ready for live sends.`,
+      button: `<button class="link-button" data-readiness-preview="${ruleKey}" type="button">Preview</button>`
+    };
   }
 
   function renderAutomationTemplateAction(ruleKey, template, buttonClass = 'button') {
@@ -1048,6 +1125,7 @@ if (productForm) {
         <span><strong>${Number(summary.alreadyScheduled || 0)}</strong> already scheduled</span>
         <span><strong>${Number(summary.suppressedByConsent || 0)}</strong> opted out</span>
         <span><strong>${Number(summary.suppressedByCooldown || 0)}</strong> in cooldown</span>
+        <span><strong>${Number(summary.suppressedByTemplate || 0)}</strong> template hold</span>
       </div>
       <div class="automation-preview-orders">
         ${orders.length ? orders.slice(0, 8).map(renderAutomationPreviewOrder).join('') : '<p class="muted-copy">No matching orders for this rule yet.</p>'}
@@ -1116,6 +1194,16 @@ if (productForm) {
     showToast(response.ok
       ? `${result.template?.name || 'Automation template'} submitted to Meta`
       : result.error || 'Automation template could not be submitted');
+    if (response.ok) loadCommerce();
+  }
+
+  async function syncAutomationTemplates() {
+    const response = await fetch('/api/commerce/automation-templates/sync', { method: 'POST' });
+    const result = await response.json().catch(() => ({}));
+    const changed = Number(result.sync?.synced || 0);
+    showToast(response.ok
+      ? `Template status sync complete${changed ? ` · ${changed} update(s)` : ''}`
+      : result.error || 'Template status sync failed');
     if (response.ok) loadCommerce();
   }
 
@@ -1467,6 +1555,7 @@ if (productForm) {
   });
 
   previewCatalogSyncBtn?.addEventListener('click', loadCatalogSyncPreview);
+  syncCommerceAutomationTemplatesBtn?.addEventListener('click', syncAutomationTemplates);
 
   catalogSyncForm?.addEventListener('submit', async (event) => {
     event.preventDefault();

@@ -7,7 +7,7 @@ const { enqueueJob } = require('./jobQueue');
 const { metaRateConfig } = require('./metaCosts');
 const { getContactConsentState } = require('./consent');
 const { createTemplate, listTemplates } = require('./templates');
-const { submitTemplateToMeta } = require('./metaTemplates');
+const { submitTemplateToMeta, syncMetaTemplates } = require('./metaTemplates');
 
 const demoProducts = [...(demo.products || [])];
 const demoOrders = [...(demo.orders || [])];
@@ -1213,6 +1213,14 @@ async function submitCommerceAutomationTemplate({ businessId, ruleId }) {
   };
 }
 
+async function syncCommerceAutomationTemplates(businessId, options = {}) {
+  const sync = await syncMetaTemplates(businessId, options);
+  return {
+    sync,
+    rules: await listCommerceAutomationRules(businessId)
+  };
+}
+
 async function previewCommerceAutomationRule({ businessId, ruleId, limit = 10 }) {
   const rules = await listCommerceAutomationRules(businessId);
   const rule = rules.find((item) => item.ruleKey === String(ruleId || '').trim());
@@ -1250,6 +1258,7 @@ async function previewCommerceAutomationRule({ businessId, ruleId, limit = 10 })
   const alreadyScheduled = matchingOrders.filter((order) => order.alreadyScheduled).length;
   const suppressedByConsent = matchingOrders.filter((order) => order.suppressionReason === 'customer_opted_out').length;
   const suppressedByCooldown = matchingOrders.filter((order) => order.suppressionReason === 'automation_cooldown').length;
+  const suppressedByTemplate = matchingOrders.filter((order) => order.suppressionReason === 'template_missing' || order.suppressionReason === 'configured_template_missing' || order.suppressionReason === 'template_not_approved').length;
   const sendableToSchedule = matchingOrders.filter((order) => order.sendable).length;
   const orderLimit = Math.max(0, Number(limit ?? 10));
   return {
@@ -1261,6 +1270,7 @@ async function previewCommerceAutomationRule({ businessId, ruleId, limit = 10 })
       sendableToSchedule,
       suppressedByConsent,
       suppressedByCooldown,
+      suppressedByTemplate,
       enabled: rule.enabled,
       delayValue: rule.delayValue,
       delayUnit: rule.delayUnit
@@ -1286,6 +1296,17 @@ async function automationRulePreviewOrder({ businessId, order, rule }) {
       previousSentAt: recentSend.event.createdAt
     };
   }
+  const templateGuard = automationTemplateGuard(rule);
+  if (templateGuard) {
+    return {
+      ...order,
+      sendable: false,
+      suppressionReason: templateGuard.reason,
+      suppressionLabel: templateGuard.label,
+      templateStatus: templateGuard.status,
+      templateName: templateGuard.templateName
+    };
+  }
   return { ...order, sendable: Boolean(rule.enabled), suppressionReason: rule.enabled ? '' : 'disabled', suppressionLabel: rule.enabled ? '' : 'Rule paused' };
 }
 
@@ -1296,6 +1317,18 @@ async function scheduleAutomationRuleForOrder({ businessId, order, rule, source 
   }
   if (!isPromptEligibleForOrder(order, rule.promptType)) {
     return { skipped: { ruleKey: rule.ruleKey, reason: 'order not eligible' } };
+  }
+  const templateGuard = automationTemplateGuard(rule);
+  if (templateGuard) {
+    return {
+      skipped: {
+        ruleKey: rule.ruleKey,
+        reason: templateGuard.reason,
+        label: templateGuard.label,
+        templateStatus: templateGuard.status,
+        templateName: templateGuard.templateName
+      }
+    };
   }
 
   const runAt = new Date(Date.now() + automationRuleDelayMs(rule));
@@ -1383,6 +1416,7 @@ async function applyCommerceAutomationRuleToReadyOrders({ businessId, ruleId, so
       sendableToSchedule: preview.summary.sendableToSchedule,
       suppressedByConsent: preview.summary.suppressedByConsent,
       suppressedByCooldown: preview.summary.suppressedByCooldown,
+      suppressedByTemplate: preview.summary.suppressedByTemplate,
       scheduled: scheduled.length,
       skipped: skipped.length
     },
@@ -2452,6 +2486,34 @@ function automationCustomerCooldownMs() {
   return automationCustomerCooldownHours() * 60 * 60 * 1000;
 }
 
+function commerceAutomationRequiresApprovedTemplates() {
+  const explicit = String(process.env.COMMERCE_AUTOMATION_REQUIRE_APPROVED_TEMPLATES || '').trim().toLowerCase();
+  if (['1', 'true', 'yes', 'on'].includes(explicit)) return true;
+  if (['0', 'false', 'no', 'off'].includes(explicit)) return false;
+  return String(process.env.META_SEND_MODE || '').trim().toLowerCase() === 'live';
+}
+
+function automationTemplateGuard(rule) {
+  if (!commerceAutomationRequiresApprovedTemplates()) return null;
+  if (rule.templateReadiness?.ready) return null;
+  const readiness = rule.templateReadiness || {};
+  const reason = readiness.reason || 'template_not_approved';
+  const status = readiness.status || 'Missing';
+  const label = status === 'Submitted'
+    ? 'Template awaiting approval'
+    : status === 'Rejected'
+      ? 'Template rejected'
+      : status === 'Missing'
+        ? 'Approved template required'
+        : 'Template not approved';
+  return {
+    reason,
+    label,
+    status,
+    templateName: readiness.templateName || readiness.templateLabel || ''
+  };
+}
+
 async function enrichAutomationRulesWithTemplates(businessId, rules) {
   let templates = [];
   try {
@@ -2714,6 +2776,9 @@ function buildCommerceAutomationInsights({ rules, events, orders = [], attributi
         suppressed: Number(ruleStats.suppressed || 0),
         suppressedReasons: { ...(ruleStats.suppressedReasons || {}) },
         deduped: Number(ruleStats.deduped || 0),
+        templateReady: Boolean(rule.templateReadiness?.ready),
+        templateStatus: rule.templateReadiness?.status || 'Missing',
+        templateBlocker: rule.templateReadiness?.ready ? '' : (rule.templateReadiness?.reason || 'template_not_ready'),
         estimatedCostCents,
         estimatedCost: cents(estimatedCostCents),
         attributedOrders: Number(ruleStats.attributedOrders || 0),
@@ -2731,6 +2796,10 @@ function buildCommerceAutomationInsights({ rules, events, orders = [], attributi
   const summary = ruleRows.reduce((totals, rule) => {
     totals.rules += 1;
     if (rule.enabled) totals.enabledRules += 1;
+    if (rule.templateReadiness?.ready) totals.templateReady += 1;
+    else if (rule.templateReadiness?.status === 'Submitted') totals.templatePending += 1;
+    else if (rule.templateReadiness?.status === 'Draft') totals.templateDraft += 1;
+    else totals.templateMissing += 1;
     totals.scheduled += rule.metrics.scheduled;
     totals.sent += rule.metrics.sent;
     totals.suppressed += rule.metrics.suppressed;
@@ -2739,11 +2808,19 @@ function buildCommerceAutomationInsights({ rules, events, orders = [], attributi
     totals.attributedOrders += rule.metrics.attributedOrders;
     totals.attributedRevenueCents += rule.metrics.attributedRevenueCents;
     return totals;
-  }, { rules: 0, enabledRules: 0, scheduled: 0, sent: 0, suppressed: 0, deduped: 0, estimatedCostCents: 0, estimatedCost: '0.00', attributedOrders: 0, attributedRevenueCents: 0, attributedRevenue: '0.00', roi: null, sendRate: 0 });
+  }, { rules: 0, enabledRules: 0, templateReady: 0, templatePending: 0, templateDraft: 0, templateMissing: 0, scheduled: 0, sent: 0, suppressed: 0, deduped: 0, estimatedCostCents: 0, estimatedCost: '0.00', attributedOrders: 0, attributedRevenueCents: 0, attributedRevenue: '0.00', roi: null, sendRate: 0 });
   summary.sendRate = summary.scheduled ? Math.round((summary.sent / summary.scheduled) * 100) : 0;
   summary.estimatedCost = cents(summary.estimatedCostCents);
   summary.attributedRevenue = cents(summary.attributedRevenueCents);
   summary.roi = summary.estimatedCostCents ? Number((summary.attributedRevenueCents / summary.estimatedCostCents).toFixed(2)) : null;
+  summary.templateReadiness = {
+    ready: summary.templateReady,
+    pending: summary.templatePending,
+    draft: summary.templateDraft,
+    missing: summary.templateMissing,
+    blocked: Math.max(0, summary.rules - summary.templateReady),
+    total: summary.rules
+  };
 
   return {
     attribution: {
@@ -2765,20 +2842,13 @@ function buildCommerceAutomationInsights({ rules, events, orders = [], attributi
 
 function automationRuleRecommendation(rule) {
   const metrics = rule.metrics || {};
+  const template = rule.templateReadiness || {};
   if (!rule.enabled) {
     return {
       ruleKey: rule.ruleKey,
       priority: 'low',
       action: 'Paused',
       message: 'This automation is paused. Enable it when you want it to schedule prompts again.'
-    };
-  }
-  if (!metrics.scheduled && !metrics.sent) {
-    return {
-      ruleKey: rule.ruleKey,
-      priority: 'medium',
-      action: 'Watch setup',
-      message: `No matching ${rule.triggerStatus} orders have triggered this automation yet.`
     };
   }
   if (metrics.suppressedReasons?.customer_opted_out && metrics.suppressedReasons.customer_opted_out >= metrics.sent) {
@@ -2795,6 +2865,37 @@ function automationRuleRecommendation(rule) {
       priority: 'medium',
       action: 'Check frequency',
       message: `${metrics.suppressedReasons.automation_cooldown} prompt(s) were held back by the customer cooldown. Keep the cooldown if you want a quieter buyer experience.`
+    };
+  }
+  if (!template.ready) {
+    const status = template.status || 'Missing';
+    const action = status === 'Missing'
+      ? 'Create template'
+      : status === 'Draft'
+        ? 'Submit template'
+        : status === 'Submitted'
+          ? 'Sync approval'
+          : 'Review template';
+    const message = status === 'Missing'
+      ? `${rule.name} needs an approved WhatsApp template before proactive live automation can send.`
+      : status === 'Draft'
+        ? `${template.templateLabel || template.templateName || 'This template'} is drafted but not submitted to Meta yet.`
+        : status === 'Submitted'
+          ? `${template.templateLabel || template.templateName || 'This template'} is awaiting Meta review. Sync template status after approval.`
+          : template.message || `${rule.name} needs template attention before live automation.`;
+    return {
+      ruleKey: rule.ruleKey,
+      priority: status === 'Submitted' ? 'medium' : 'high',
+      action,
+      message
+    };
+  }
+  if (!metrics.scheduled && !metrics.sent) {
+    return {
+      ruleKey: rule.ruleKey,
+      priority: 'medium',
+      action: 'Watch setup',
+      message: `No matching ${rule.triggerStatus} orders have triggered this automation yet.`
     };
   }
   if (metrics.scheduled > 0 && !metrics.sent) {
@@ -3175,6 +3276,7 @@ module.exports = {
   shareCatalog,
   shareProductCollection,
   submitCommerceAutomationTemplate,
+  syncCommerceAutomationTemplates,
   updateCommerceAutomationRule,
   updateOrderFulfilment,
   updateProduct,

@@ -192,6 +192,7 @@ const {
   shareCatalog,
   shareProductCollection,
   submitCommerceAutomationTemplate,
+  syncCommerceAutomationTemplates,
   updateCommerceAutomationRule,
   updateOrderFulfilment,
   updateProduct,
@@ -518,15 +519,23 @@ test('Commerce page renders automation insight hydration targets', () => {
 
   assert.match(page, /id="commerceAutomationInsightStrip"/);
   assert.match(page, /Suppressed 0/);
+  assert.match(page, /id="commerceAutomationReadiness"/);
   assert.match(page, /id="commerceAutomationRecommendationList"/);
   assert.match(page, /id="commerceAutomationActivityList"/);
   assert.match(page, /id="commerceAutomationPreviewPanel"/);
+  assert.match(page, /id="syncCommerceAutomationTemplatesBtn"/);
   assert.match(appSource, /function renderAutomationActivity/);
   assert.match(appSource, /automationActivityLabel/);
   assert.match(appSource, /function renderAutomationPreview/);
+  assert.match(appSource, /function renderAutomationReadiness/);
+  assert.match(appSource, /function automationReadinessNextAction/);
+  assert.match(appSource, /data-readiness-template/);
+  assert.match(appSource, /Template readiness/);
   assert.match(appSource, /function renderAutomationApplyResult/);
   assert.match(appSource, /function installAutomationTemplate/);
   assert.match(appSource, /function submitAutomationTemplate/);
+  assert.match(appSource, /function syncAutomationTemplates/);
+  assert.match(appSource, /automation-templates\/sync/);
   assert.match(appSource, /data-automation-template/);
   assert.match(appSource, /data-automation-template-submit/);
   assert.match(appSource, /automation-template-pill/);
@@ -535,6 +544,7 @@ test('Commerce page renders automation insight hydration targets', () => {
   assert.match(cssSource, /\.automation-preview-panel/);
   assert.match(cssSource, /\.automation-apply-result/);
   assert.match(cssSource, /\.automation-template-pill/);
+  assert.match(cssSource, /\.automation-readiness/);
 });
 
 test('critical campaign and contact write routes require owner or admin role', () => {
@@ -545,6 +555,7 @@ test('critical campaign and contact write routes require owner or admin role', (
     /router\.post\('\/campaigns\/:id\/dispatch', requireRole\(\['owner', 'admin'\]\)/,
     /router\.post\('\/commerce\/automation-rules\/:id\/template', requireRole\(\['owner', 'admin'\]\)/,
     /router\.post\('\/commerce\/automation-rules\/:id\/template\/submit', requireRole\(\['owner', 'admin'\]\)/,
+    /router\.post\('\/commerce\/automation-templates\/sync', requireRole\(\['owner', 'admin'\]\)/,
     /router\.post\('\/contacts', requireRole\(\['owner', 'admin'\]\)/,
     /router\.post\('\/contacts\/import', requireRole\(\['owner', 'admin'\]\)/,
     /router\.put\('\/integrations\/meta\/business-profile', requireRole\(\['owner', 'admin'\]\)/,
@@ -2164,6 +2175,34 @@ test('commerce automation template submitter sends drafts to Meta review', async
   assert.equal(review.templateReadiness.templateId, installedTemplateId);
 });
 
+test('commerce automation template sync refreshes rule readiness', async () => {
+  const businessId = 961;
+
+  const submitted = await submitCommerceAutomationTemplate({
+    businessId,
+    ruleId: 'follow_up_after_payment'
+  });
+  const synced = await syncCommerceAutomationTemplates(businessId, {
+    remoteTemplates: [
+      {
+        id: submitted.template.metaTemplateId,
+        name: submitted.template.slug,
+        status: 'APPROVED',
+        category: submitted.template.category,
+        language: submitted.template.language,
+        components: [{ type: 'BODY', text: submitted.template.body }]
+      }
+    ]
+  });
+  const followUp = synced.rules.find((rule) => rule.ruleKey === 'follow_up_after_payment');
+
+  assert.equal(synced.sync.mode, 'provided');
+  assert.equal(synced.sync.synced, 1);
+  assert.equal(followUp.templateReadiness.ready, true);
+  assert.equal(followUp.templateReadiness.status, 'Approved');
+  assert.equal(followUp.templateReadiness.metaTemplateId, submitted.template.metaTemplateId);
+});
+
 test('commerce automation rule preview shows ready and already scheduled orders', async () => {
   const businessId = 969;
   const product = await createProduct(businessId, {
@@ -2253,6 +2292,67 @@ test('commerce automation rules can bulk apply to ready orders', async () => {
   assert.equal(worker.processed >= 1, true);
   assert.equal(detail.events.some((event) => event.eventType === 'automation.rules_applied'), true);
   assert.equal(detail.events.some((event) => event.eventType === 'post_purchase.follow_up.sent'), true);
+});
+
+test('commerce automation holds live scheduling until the WhatsApp template is approved', async () => {
+  const businessId = 958;
+  const previousStrictMode = process.env.COMMERCE_AUTOMATION_REQUIRE_APPROVED_TEMPLATES;
+  process.env.COMMERCE_AUTOMATION_REQUIRE_APPROVED_TEMPLATES = 'true';
+  try {
+    const product = await createProduct(businessId, {
+      name: 'Template Guard Product',
+      sku: 'template-guard-product',
+      price: 375,
+      inventoryCount: 5,
+      metaCatalogId: 'catalog_958',
+      metaProductRetailerId: 'template-guard-product'
+    });
+    await updateCommerceAutomationRule({
+      businessId,
+      ruleId: 'follow_up_after_payment',
+      enabled: true,
+      delayValue: 0,
+      delayUnit: 'minutes'
+    });
+    const order = await createOrder(businessId, {
+      customerName: 'Template Guard Buyer',
+      customerPhone: '+27821230016',
+      items: [{ productId: product.id, quantity: 1 }]
+    });
+    await reconcileOrderPayment({
+      businessId,
+      orderId: order.id,
+      provider: 'payfast',
+      providerPaymentId: 'automation_template_guard_paid_1',
+      amount: '375.00',
+      paymentStatus: 'COMPLETE'
+    });
+
+    const preview = await previewCommerceAutomationRule({ businessId, ruleId: 'follow_up_after_payment' });
+    const applied = await applyCommerceAutomationRuleToReadyOrders({
+      businessId,
+      ruleId: 'follow_up_after_payment',
+      source: 'test_template_guard'
+    });
+    const queued = (await listJobs({ status: 'queued', limit: 1000 }))
+      .filter((job) => job.type === 'commerce.post_purchase_prompt' && Number(job.payload?.businessId) === businessId);
+
+    assert.equal(preview.summary.matchingOrders, 1);
+    assert.equal(preview.summary.sendableToSchedule, 0);
+    assert.equal(preview.summary.suppressedByTemplate, 1);
+    assert.equal(preview.orders[0].suppressionReason, 'template_missing');
+    assert.equal(preview.orders[0].suppressionLabel, 'Approved template required');
+    assert.equal(applied.summary.scheduled, 0);
+    assert.equal(applied.summary.suppressedByTemplate, 1);
+    assert.equal(applied.skipped[0].reason, 'template_missing');
+    assert.equal(queued.length, 0);
+  } finally {
+    if (previousStrictMode === undefined) {
+      delete process.env.COMMERCE_AUTOMATION_REQUIRE_APPROVED_TEMPLATES;
+    } else {
+      process.env.COMMERCE_AUTOMATION_REQUIRE_APPROVED_TEMPLATES = previousStrictMode;
+    }
+  }
 });
 
 test('commerce automation suppresses opted-out post-purchase prompts', async () => {
@@ -2524,7 +2624,8 @@ test('commerce automation insights attribute scheduled and sent prompts to rules
   assert.equal(followUp.metrics.sent, 1);
   assert.equal(followUp.metrics.estimatedCostCents >= 0, true);
   assert.equal(followUp.metrics.sendRate, 100);
-  assert.equal(followUp.recommendation.action, 'Monitor');
+  assert.equal(followUp.metrics.templateReady, false);
+  assert.equal(followUp.recommendation.action, 'Create template');
   assert.equal(insights.recommendations.length >= 1, true);
   assert.equal(insights.recent.some((event) => event.ruleKey === 'follow_up_after_payment' && event.type === 'sent'), true);
 });
@@ -2586,7 +2687,8 @@ test('commerce automation insights attribute later paid orders as rule revenue',
   assert.equal(reorder.metrics.attributedRevenue, '1220.00');
   assert.equal(reorder.metrics.estimatedCostCents >= 0, true);
   assert.equal(reorder.metrics.roi === null || reorder.metrics.roi >= 0, true);
-  assert.equal(['Scale', 'Keep running'].includes(reorder.recommendation.action), true);
+  assert.equal(reorder.metrics.templateReady, false);
+  assert.equal(reorder.recommendation.action, 'Create template');
   assert.equal(insights.summary.attributedRevenue, '1220.00');
   assert.equal(insights.summary.roi === null || insights.summary.roi >= 0, true);
   assert.equal(insights.attribution.windowDays, 30);
@@ -2595,12 +2697,18 @@ test('commerce automation insights attribute later paid orders as rule revenue',
   assert.equal(expiredReorder.metrics.attributedOrders, 1);
 });
 
-test('commerce automation insights recommend setup checks for idle rules', async () => {
+test('commerce automation insights recommend template setup before idle checks', async () => {
   const insights = await getCommerceAutomationInsights(970);
   const idleRule = insights.rules.find((rule) => rule.ruleKey === 'follow_up_after_payment');
 
-  assert.equal(idleRule.recommendation.action, 'Watch setup');
-  assert.equal(insights.recommendations.some((item) => item.action === 'Watch setup'), true);
+  assert.equal(insights.summary.templateReadiness.total, 3);
+  assert.equal(insights.summary.templateReadiness.missing, 3);
+  assert.equal(insights.summary.templateReadiness.blocked, 3);
+  assert.equal(idleRule.metrics.templateReady, false);
+  assert.equal(idleRule.metrics.templateStatus, 'Missing');
+  assert.equal(idleRule.metrics.templateBlocker, 'template_missing');
+  assert.equal(idleRule.recommendation.action, 'Create template');
+  assert.equal(insights.recommendations.some((item) => item.action === 'Create template'), true);
 });
 
 test('Meta catalog sync builds readiness checks and items_batch payloads in mock mode', async () => {
