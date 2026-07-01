@@ -92,6 +92,7 @@ const {
   schedulePostPurchasePrompts,
   shareCatalog,
   shareProductCollection,
+  submitCommerceAutomationTemplate,
   updateCommerceAutomationRule,
   updateOrderFulfilment,
   updateProduct,
@@ -734,6 +735,19 @@ router.post('/commerce/automation-rules/:id/template', requireRole(['owner', 'ad
   try {
     res.status(201).json(
       await installCommerceAutomationTemplate({
+        businessId: req.businessId,
+        ruleId: req.params.id
+      })
+    );
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/commerce/automation-rules/:id/template/submit', requireRole(['owner', 'admin']), async (req, res, next) => {
+  try {
+    res.status(202).json(
+      await submitCommerceAutomationTemplate({
         businessId: req.businessId,
         ruleId: req.params.id
       })

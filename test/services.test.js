@@ -191,6 +191,7 @@ const {
   schedulePostPurchasePrompts,
   shareCatalog,
   shareProductCollection,
+  submitCommerceAutomationTemplate,
   updateCommerceAutomationRule,
   updateOrderFulfilment,
   updateProduct,
@@ -525,7 +526,9 @@ test('Commerce page renders automation insight hydration targets', () => {
   assert.match(appSource, /function renderAutomationPreview/);
   assert.match(appSource, /function renderAutomationApplyResult/);
   assert.match(appSource, /function installAutomationTemplate/);
+  assert.match(appSource, /function submitAutomationTemplate/);
   assert.match(appSource, /data-automation-template/);
+  assert.match(appSource, /data-automation-template-submit/);
   assert.match(appSource, /automation-template-pill/);
   assert.doesNotMatch(appSource, /window\.alert\(\[/);
   assert.doesNotMatch(appSource, /window\.confirm\('Schedule this automation/);
@@ -541,6 +544,7 @@ test('critical campaign and contact write routes require owner or admin role', (
     /router\.post\('\/campaigns\/:id\/recipients\/prepare', requireRole\(\['owner', 'admin'\]\)/,
     /router\.post\('\/campaigns\/:id\/dispatch', requireRole\(\['owner', 'admin'\]\)/,
     /router\.post\('\/commerce\/automation-rules\/:id\/template', requireRole\(\['owner', 'admin'\]\)/,
+    /router\.post\('\/commerce\/automation-rules\/:id\/template\/submit', requireRole\(\['owner', 'admin'\]\)/,
     /router\.post\('\/contacts', requireRole\(\['owner', 'admin'\]\)/,
     /router\.post\('\/contacts\/import', requireRole\(\['owner', 'admin'\]\)/,
     /router\.put\('\/integrations\/meta\/business-profile', requireRole\(\['owner', 'admin'\]\)/,
@@ -2133,6 +2137,31 @@ test('commerce automation template installer creates recommended drafts', async 
   assert.equal(reorder.templateReadiness.reason, 'template_not_approved');
   assert.equal(secondInstall.created, false);
   assert.equal(secondInstall.template.id, installed.template.id);
+});
+
+test('commerce automation template submitter sends drafts to Meta review', async () => {
+  const businessId = 962;
+
+  const installed = await installCommerceAutomationTemplate({
+    businessId,
+    ruleId: 'review_after_completion'
+  });
+  const installedTemplateId = installed.template.id;
+  const installedStatus = installed.template.status;
+  const submitted = await submitCommerceAutomationTemplate({
+    businessId,
+    ruleId: 'review_after_completion'
+  });
+  const rules = await listCommerceAutomationRules(businessId);
+  const review = rules.find((rule) => rule.ruleKey === 'review_after_completion');
+
+  assert.equal(installedStatus, 'Draft');
+  assert.equal(submitted.mode, 'mock');
+  assert.equal(submitted.template.status, 'Submitted');
+  assert.match(submitted.template.metaTemplateId, /^mock_tpl_/);
+  assert.equal(submitted.rule.templateReadiness.templateId, installedTemplateId);
+  assert.equal(review.templateReadiness.status, 'Submitted');
+  assert.equal(review.templateReadiness.templateId, installedTemplateId);
 });
 
 test('commerce automation rule preview shows ready and already scheduled orders', async () => {

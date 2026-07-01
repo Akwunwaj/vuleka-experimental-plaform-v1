@@ -944,7 +944,7 @@ if (productForm) {
         const template = rule.templateReadiness || {};
         const templateClass = template.ready ? 'ready' : 'missing';
         const templateLabel = template.ready ? 'Template ready' : 'Template needed';
-        const templateAction = template.ready ? '' : `<button class="link-button" data-automation-template="${htmlEscape(rule.ruleKey)}" type="button">Create template</button>`;
+        const templateAction = renderAutomationTemplateAction(rule.ruleKey, template, 'link-button');
         return `<article><div><strong>${htmlEscape(rule.name)}</strong><span>${htmlEscape(rule.triggerStatus)} · ${htmlEscape(rule.promptType)}</span><small>${htmlEscape(rule.description || '')}</small><small>${Number(rule.delayValue || 0)} ${htmlEscape(rule.delayUnit || 'hours')} delay · ${rule.enabled ? 'enabled' : 'paused'}</small><small><span class="automation-template-pill ${templateClass}">${htmlEscape(templateLabel)}</span> ${htmlEscape(template.templateName || '')} · ${htmlEscape(template.status || 'Missing')} · ${htmlEscape(template.category || '')}</small><small>${Number(metrics.scheduled || 0)} scheduled · ${Number(metrics.sent || 0)} sent · ${Number(metrics.suppressed || 0)} suppressed · ${Number(metrics.attributedOrders || 0)} order(s)</small><small>R ${htmlEscape(metrics.attributedRevenue || '0.00')} revenue · R ${htmlEscape(metrics.estimatedCost || '0.00')} cost · ROI ${htmlEscape(roi)}</small><small>${htmlEscape(rule.recommendation?.action || 'Monitor')}: ${htmlEscape(rule.recommendation?.message || 'Let this automation gather more activity.')}</small></div><div class="commerce-row-actions"><button class="link-button" data-automation-preview="${htmlEscape(rule.ruleKey)}" type="button">Preview</button><button class="link-button" data-automation-apply-ready="${htmlEscape(rule.ruleKey)}" type="button">Review apply</button>${templateAction}<button class="link-button" data-automation-toggle="${htmlEscape(rule.ruleKey)}" data-enabled="${rule.enabled ? 'true' : 'false'}" type="button">${rule.enabled ? 'Pause' : 'Enable'}</button><button class="link-button" data-automation-delay="${htmlEscape(rule.ruleKey)}" data-delay-value="${htmlEscape(rule.delayValue)}" data-delay-unit="${htmlEscape(rule.delayUnit)}" type="button">Tune</button></div></article>`;
       }).join('')
       : '<p class="muted-copy">Post-purchase automation rules will appear here.</p>';
@@ -956,6 +956,9 @@ if (productForm) {
     });
     commerceAutomationRuleList.querySelectorAll('[data-automation-template]').forEach((button) => {
       button.addEventListener('click', () => installAutomationTemplate(button.dataset.automationTemplate));
+    });
+    commerceAutomationRuleList.querySelectorAll('[data-automation-template-submit]').forEach((button) => {
+      button.addEventListener('click', () => submitAutomationTemplate(button.dataset.automationTemplateSubmit));
     });
     commerceAutomationRuleList.querySelectorAll('[data-automation-toggle]').forEach((button) => {
       button.addEventListener('click', () => updateAutomationRule(button.dataset.automationToggle, {
@@ -975,6 +978,17 @@ if (productForm) {
         return `<article><strong>${htmlEscape(label)}</strong><span>${htmlEscape(event.ruleKey || '')}</span><small>${htmlEscape(detail)}</small></article>`;
       }).join('')
       : '<p class="muted-copy">Automation activity will appear here.</p>';
+  }
+
+  function renderAutomationTemplateAction(ruleKey, template, buttonClass = 'button') {
+    if (template?.ready) return '';
+    if (template?.templateId && template.status !== 'Submitted') {
+      return `<button class="${buttonClass}" data-automation-template-submit="${htmlEscape(ruleKey)}" type="button">Submit template</button>`;
+    }
+    if (!template?.templateId) {
+      return `<button class="${buttonClass}" data-automation-template="${htmlEscape(ruleKey)}" type="button">Create template</button>`;
+    }
+    return '';
   }
 
   function automationActivityLabel(event) {
@@ -1011,7 +1025,8 @@ if (productForm) {
     const sendableToSchedule = summary.sendableToSchedule ?? summary.readyToSchedule ?? 0;
     const template = result.rule?.templateReadiness || {};
     const applyDisabled = Number(sendableToSchedule) < 1 ? ' disabled' : '';
-    const templateAction = template.ready ? '' : `<button class="button" data-preview-template="${htmlEscape(result.rule?.ruleKey || result.rule?.id || '')}" type="button">Create template</button>`;
+    const ruleKey = result.rule?.ruleKey || result.rule?.id || '';
+    const templateAction = renderAutomationTemplateAction(ruleKey, template, 'button');
     commerceAutomationPreviewPanel.classList.remove('hidden');
     commerceAutomationPreviewPanel.innerHTML = `
       <header>
@@ -1049,6 +1064,14 @@ if (productForm) {
       const ruleKey = event.currentTarget.dataset.previewTemplate;
       if (ruleKey) installAutomationTemplate(ruleKey);
     });
+    commerceAutomationPreviewPanel.querySelector('[data-automation-template]')?.addEventListener('click', (event) => {
+      const ruleKey = event.currentTarget.dataset.automationTemplate;
+      if (ruleKey) installAutomationTemplate(ruleKey);
+    });
+    commerceAutomationPreviewPanel.querySelector('[data-automation-template-submit]')?.addEventListener('click', (event) => {
+      const ruleKey = event.currentTarget.dataset.automationTemplateSubmit;
+      if (ruleKey) submitAutomationTemplate(ruleKey);
+    });
   }
 
   function renderAutomationPreviewOrder(order) {
@@ -1084,6 +1107,15 @@ if (productForm) {
     showToast(response.ok
       ? `${result.created ? 'Created' : 'Found'} ${result.template?.name || 'automation template'}`
       : result.error || 'Automation template could not be created');
+    if (response.ok) loadCommerce();
+  }
+
+  async function submitAutomationTemplate(ruleKey) {
+    const response = await fetch(`/api/commerce/automation-rules/${encodeURIComponent(ruleKey)}/template/submit`, { method: 'POST' });
+    const result = await response.json().catch(() => ({}));
+    showToast(response.ok
+      ? `${result.template?.name || 'Automation template'} submitted to Meta`
+      : result.error || 'Automation template could not be submitted');
     if (response.ok) loadCommerce();
   }
 

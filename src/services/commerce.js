@@ -7,6 +7,7 @@ const { enqueueJob } = require('./jobQueue');
 const { metaRateConfig } = require('./metaCosts');
 const { getContactConsentState } = require('./consent');
 const { createTemplate, listTemplates } = require('./templates');
+const { submitTemplateToMeta } = require('./metaTemplates');
 
 const demoProducts = [...(demo.products || [])];
 const demoOrders = [...(demo.orders || [])];
@@ -1185,6 +1186,29 @@ async function installCommerceAutomationTemplate({ businessId, ruleId }) {
   return {
     created: !existing,
     template,
+    rule: refreshedRules.find((item) => item.ruleKey === rule.ruleKey)
+  };
+}
+
+async function submitCommerceAutomationTemplate({ businessId, ruleId }) {
+  let rules = await listCommerceAutomationRules(businessId);
+  let rule = rules.find((item) => item.ruleKey === String(ruleId || '').trim());
+  if (!rule) throw notFound('Automation rule not found');
+  if (!rule.templateReadiness?.templateId) {
+    await installCommerceAutomationTemplate({ businessId, ruleId });
+    rules = await listCommerceAutomationRules(businessId);
+    rule = rules.find((item) => item.ruleKey === String(ruleId || '').trim());
+  }
+  const templateId = rule.templateReadiness?.templateId;
+  if (!templateId) {
+    const error = new Error('Automation template could not be found or created');
+    error.status = 400;
+    throw error;
+  }
+  const submission = await submitTemplateToMeta({ businessId, templateId });
+  const refreshedRules = await listCommerceAutomationRules(businessId);
+  return {
+    ...submission,
     rule: refreshedRules.find((item) => item.ruleKey === rule.ruleKey)
   };
 }
@@ -2460,11 +2484,13 @@ function buildAutomationTemplateReadiness(rule, templates) {
     return {
       ready: true,
       required: true,
+      templateId: approved.id,
       templateName: approved.slug || approved.name,
       templateLabel: approved.name,
       language: approved.language || language,
       status: approved.status,
       category: approved.category,
+      metaTemplateId: approved.metaTemplateId || null,
       message: 'Approved WhatsApp template ready for outbound automation.'
     };
   }
@@ -2472,11 +2498,13 @@ function buildAutomationTemplateReadiness(rule, templates) {
     return {
       ready: false,
       required: true,
+      templateId: selected.id,
       templateName: selected.slug || selected.name,
       templateLabel: selected.name,
       language: selected.language || language,
       status: selected.status,
       category: selected.category,
+      metaTemplateId: selected.metaTemplateId || null,
       reason: 'template_not_approved',
       message: `Template exists but is ${selected.status.toLowerCase()}. Submit and approve it before live outbound automation.`
     };
@@ -3146,6 +3174,7 @@ module.exports = {
   schedulePostPurchasePrompts,
   shareCatalog,
   shareProductCollection,
+  submitCommerceAutomationTemplate,
   updateCommerceAutomationRule,
   updateOrderFulfilment,
   updateProduct,
