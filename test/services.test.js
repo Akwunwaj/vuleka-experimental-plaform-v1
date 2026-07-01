@@ -528,7 +528,14 @@ test('Commerce page renders automation insight hydration targets', () => {
   assert.match(appSource, /automationActivityLabel/);
   assert.match(appSource, /function renderAutomationPreview/);
   assert.match(appSource, /function renderAutomationReadiness/);
+  assert.match(appSource, /function renderAutomationRecommendations/);
+  assert.match(appSource, /function automationRecommendationAction/);
   assert.match(appSource, /function automationReadinessNextAction/);
+  assert.match(appSource, /function setAutomationActionBusy/);
+  assert.match(appSource, /function refreshAutomationPreviewIfOpen/);
+  assert.match(appSource, /currentAutomationPreviewRuleKey/);
+  assert.match(appSource, /data-recommendation-template/);
+  assert.match(appSource, /data-recommendation-preview/);
   assert.match(appSource, /data-readiness-template/);
   assert.match(appSource, /Template readiness/);
   assert.match(appSource, /function renderAutomationApplyResult/);

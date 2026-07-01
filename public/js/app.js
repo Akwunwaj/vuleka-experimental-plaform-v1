@@ -671,6 +671,7 @@ if (productForm) {
   const commerceMetrics = document.getElementById('commerceMetrics');
   const orderDetail = document.getElementById('orderDetail');
   let currentProducts = [];
+  let currentAutomationPreviewRuleKey = '';
 
   async function loadCommerce() {
     const [productsResponse, ordersResponse, analyticsResponse, collectionsResponse, inventoryAlertsResponse, couponsResponse, abandonedCartsResponse, returnsResponse, segmentsResponse, automationRulesResponse, automationInsightsResponse] = await Promise.all([
@@ -932,9 +933,7 @@ if (productForm) {
     renderAutomationReadiness(rules);
     if (commerceAutomationRecommendationList) {
       const recommendations = insights?.recommendations || [];
-      commerceAutomationRecommendationList.innerHTML = recommendations.length
-        ? recommendations.map((item) => `<article><strong>${htmlEscape(item.action)}</strong><span>${htmlEscape(item.priority || 'low')}</span><small>${htmlEscape(item.message || '')}</small></article>`).join('')
-        : '<p class="muted-copy">Automation recommendations will appear after activity.</p>';
+      renderAutomationRecommendations(recommendations);
     }
     if (commerceAutomationActivityList) {
       renderAutomationActivity(insights?.recent || []);
@@ -958,10 +957,10 @@ if (productForm) {
       button.addEventListener('click', () => previewAutomationRule(button.dataset.automationApplyReady));
     });
     commerceAutomationRuleList.querySelectorAll('[data-automation-template]').forEach((button) => {
-      button.addEventListener('click', () => installAutomationTemplate(button.dataset.automationTemplate));
+      button.addEventListener('click', () => installAutomationTemplate(button.dataset.automationTemplate, { button }));
     });
     commerceAutomationRuleList.querySelectorAll('[data-automation-template-submit]').forEach((button) => {
-      button.addEventListener('click', () => submitAutomationTemplate(button.dataset.automationTemplateSubmit));
+      button.addEventListener('click', () => submitAutomationTemplate(button.dataset.automationTemplateSubmit, { button }));
     });
     commerceAutomationRuleList.querySelectorAll('[data-automation-toggle]').forEach((button) => {
       button.addEventListener('click', () => updateAutomationRule(button.dataset.automationToggle, {
@@ -981,6 +980,40 @@ if (productForm) {
         return `<article><strong>${htmlEscape(label)}</strong><span>${htmlEscape(event.ruleKey || '')}</span><small>${htmlEscape(detail)}</small></article>`;
       }).join('')
       : '<p class="muted-copy">Automation activity will appear here.</p>';
+  }
+
+  function renderAutomationRecommendations(recommendations) {
+    if (!commerceAutomationRecommendationList) return;
+    commerceAutomationRecommendationList.innerHTML = recommendations.length
+      ? recommendations.map((item) => `<article><div><strong>${htmlEscape(item.action)}</strong><span>${htmlEscape(item.priority || 'low')}</span><small>${htmlEscape(item.message || '')}</small></div>${automationRecommendationAction(item)}</article>`).join('')
+      : '<p class="muted-copy">Automation recommendations will appear after activity.</p>';
+    commerceAutomationRecommendationList.querySelectorAll('[data-recommendation-template]').forEach((button) => {
+      button.addEventListener('click', () => installAutomationTemplate(button.dataset.recommendationTemplate, { button }));
+    });
+    commerceAutomationRecommendationList.querySelectorAll('[data-recommendation-submit]').forEach((button) => {
+      button.addEventListener('click', () => submitAutomationTemplate(button.dataset.recommendationSubmit, { button }));
+    });
+    commerceAutomationRecommendationList.querySelectorAll('[data-recommendation-sync]').forEach((button) => {
+      button.addEventListener('click', () => syncAutomationTemplates({ button }));
+    });
+    commerceAutomationRecommendationList.querySelectorAll('[data-recommendation-preview]').forEach((button) => {
+      button.addEventListener('click', () => previewAutomationRule(button.dataset.recommendationPreview));
+    });
+  }
+
+  function automationRecommendationAction(item) {
+    const ruleKey = htmlEscape(item.ruleKey || '');
+    if (!ruleKey && item.action !== 'Sync approval') return '';
+    if (item.action === 'Create template') {
+      return `<button class="link-button" data-recommendation-template="${ruleKey}" type="button">Create</button>`;
+    }
+    if (item.action === 'Submit template') {
+      return `<button class="link-button" data-recommendation-submit="${ruleKey}" type="button">Submit</button>`;
+    }
+    if (item.action === 'Sync approval') {
+      return '<button class="link-button" data-recommendation-sync type="button">Sync</button>';
+    }
+    return `<button class="link-button" data-recommendation-preview="${ruleKey}" type="button">Review</button>`;
   }
 
   function renderAutomationReadiness(rules) {
@@ -1008,12 +1041,14 @@ if (productForm) {
       <article class="automation-readiness-next"><small>Next action</small><strong>${htmlEscape(next.label)}</strong><span>${htmlEscape(next.detail)}</span>${next.button}</article>
     `;
     commerceAutomationReadiness.querySelector('[data-readiness-template]')?.addEventListener('click', (event) => {
-      installAutomationTemplate(event.currentTarget.dataset.readinessTemplate);
+      installAutomationTemplate(event.currentTarget.dataset.readinessTemplate, { button: event.currentTarget });
     });
     commerceAutomationReadiness.querySelector('[data-readiness-submit]')?.addEventListener('click', (event) => {
-      submitAutomationTemplate(event.currentTarget.dataset.readinessSubmit);
+      submitAutomationTemplate(event.currentTarget.dataset.readinessSubmit, { button: event.currentTarget });
     });
-    commerceAutomationReadiness.querySelector('[data-readiness-sync]')?.addEventListener('click', syncAutomationTemplates);
+    commerceAutomationReadiness.querySelector('[data-readiness-sync]')?.addEventListener('click', (event) => {
+      syncAutomationTemplates({ button: event.currentTarget });
+    });
     commerceAutomationReadiness.querySelector('[data-readiness-preview]')?.addEventListener('click', (event) => {
       previewAutomationRule(event.currentTarget.dataset.readinessPreview);
     });
@@ -1104,6 +1139,7 @@ if (productForm) {
     const applyDisabled = Number(sendableToSchedule) < 1 ? ' disabled' : '';
     const ruleKey = result.rule?.ruleKey || result.rule?.id || '';
     const templateAction = renderAutomationTemplateAction(ruleKey, template, 'button');
+    currentAutomationPreviewRuleKey = ruleKey;
     commerceAutomationPreviewPanel.classList.remove('hidden');
     commerceAutomationPreviewPanel.innerHTML = `
       <header>
@@ -1133,6 +1169,7 @@ if (productForm) {
     `;
     commerceAutomationPreviewPanel.querySelector('[data-preview-close]')?.addEventListener('click', () => {
       commerceAutomationPreviewPanel.classList.add('hidden');
+      currentAutomationPreviewRuleKey = '';
     });
     commerceAutomationPreviewPanel.querySelector('[data-preview-apply]')?.addEventListener('click', (event) => {
       const ruleKey = event.currentTarget.dataset.previewApply;
@@ -1140,15 +1177,15 @@ if (productForm) {
     });
     commerceAutomationPreviewPanel.querySelector('[data-preview-template]')?.addEventListener('click', (event) => {
       const ruleKey = event.currentTarget.dataset.previewTemplate;
-      if (ruleKey) installAutomationTemplate(ruleKey);
+      if (ruleKey) installAutomationTemplate(ruleKey, { button: event.currentTarget });
     });
     commerceAutomationPreviewPanel.querySelector('[data-automation-template]')?.addEventListener('click', (event) => {
       const ruleKey = event.currentTarget.dataset.automationTemplate;
-      if (ruleKey) installAutomationTemplate(ruleKey);
+      if (ruleKey) installAutomationTemplate(ruleKey, { button: event.currentTarget });
     });
     commerceAutomationPreviewPanel.querySelector('[data-automation-template-submit]')?.addEventListener('click', (event) => {
       const ruleKey = event.currentTarget.dataset.automationTemplateSubmit;
-      if (ruleKey) submitAutomationTemplate(ruleKey);
+      if (ruleKey) submitAutomationTemplate(ruleKey, { button: event.currentTarget });
     });
   }
 
@@ -1179,32 +1216,68 @@ if (productForm) {
     }
   }
 
-  async function installAutomationTemplate(ruleKey) {
+  async function installAutomationTemplate(ruleKey, options = {}) {
+    const resetButton = setAutomationActionBusy(options.button, 'Creating...');
     const response = await fetch(`/api/commerce/automation-rules/${encodeURIComponent(ruleKey)}/template`, { method: 'POST' });
     const result = await response.json().catch(() => ({}));
     showToast(response.ok
       ? `${result.created ? 'Created' : 'Found'} ${result.template?.name || 'automation template'}`
       : result.error || 'Automation template could not be created');
-    if (response.ok) loadCommerce();
+    if (response.ok) {
+      await loadCommerce();
+      await refreshAutomationPreviewIfOpen(ruleKey);
+    } else {
+      resetButton();
+    }
   }
 
-  async function submitAutomationTemplate(ruleKey) {
+  async function submitAutomationTemplate(ruleKey, options = {}) {
+    const resetButton = setAutomationActionBusy(options.button, 'Submitting...');
     const response = await fetch(`/api/commerce/automation-rules/${encodeURIComponent(ruleKey)}/template/submit`, { method: 'POST' });
     const result = await response.json().catch(() => ({}));
     showToast(response.ok
       ? `${result.template?.name || 'Automation template'} submitted to Meta`
       : result.error || 'Automation template could not be submitted');
-    if (response.ok) loadCommerce();
+    if (response.ok) {
+      await loadCommerce();
+      await refreshAutomationPreviewIfOpen(ruleKey);
+    } else {
+      resetButton();
+    }
   }
 
-  async function syncAutomationTemplates() {
+  async function syncAutomationTemplates(options = {}) {
+    const resetButton = setAutomationActionBusy(options.button, 'Syncing...');
     const response = await fetch('/api/commerce/automation-templates/sync', { method: 'POST' });
     const result = await response.json().catch(() => ({}));
     const changed = Number(result.sync?.synced || 0);
     showToast(response.ok
       ? `Template status sync complete${changed ? ` · ${changed} update(s)` : ''}`
       : result.error || 'Template status sync failed');
-    if (response.ok) loadCommerce();
+    if (response.ok) {
+      await loadCommerce();
+      await refreshAutomationPreviewIfOpen();
+    } else {
+      resetButton();
+    }
+  }
+
+  function setAutomationActionBusy(button, label) {
+    if (!button) return () => {};
+    const text = button.textContent;
+    button.disabled = true;
+    button.textContent = label;
+    return () => {
+      button.disabled = false;
+      button.textContent = text;
+    };
+  }
+
+  async function refreshAutomationPreviewIfOpen(ruleKey = '') {
+    const openRuleKey = currentAutomationPreviewRuleKey;
+    if (!openRuleKey || commerceAutomationPreviewPanel?.classList.contains('hidden')) return;
+    if (ruleKey && String(ruleKey) !== String(openRuleKey)) return;
+    await previewAutomationRule(openRuleKey);
   }
 
   function renderAutomationApplyResult(result, ok) {
@@ -1555,7 +1628,9 @@ if (productForm) {
   });
 
   previewCatalogSyncBtn?.addEventListener('click', loadCatalogSyncPreview);
-  syncCommerceAutomationTemplatesBtn?.addEventListener('click', syncAutomationTemplates);
+  syncCommerceAutomationTemplatesBtn?.addEventListener('click', (event) => {
+    syncAutomationTemplates({ button: event.currentTarget });
+  });
 
   catalogSyncForm?.addEventListener('submit', async (event) => {
     event.preventDefault();
