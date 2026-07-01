@@ -6,7 +6,7 @@ const { sendInteractiveMessage, sendTemplateMessage, sendTextMessage } = require
 const { enqueueJob } = require('./jobQueue');
 const { metaRateConfig } = require('./metaCosts');
 const { getContactConsentState } = require('./consent');
-const { listTemplates } = require('./templates');
+const { createTemplate, listTemplates } = require('./templates');
 
 const demoProducts = [...(demo.products || [])];
 const demoOrders = [...(demo.orders || [])];
@@ -1170,6 +1170,23 @@ async function updateCommerceAutomationRule({ businessId, ruleId, enabled, delay
   if (index === -1) demoAutomationRules.push({ ...rule, updatedAt: new Date().toISOString() });
   else demoAutomationRules[index] = { ...demoAutomationRules[index], ...rule, updatedAt: new Date().toISOString() };
   return normalizeAutomationRule(demoAutomationRules.find((item) => Number(item.businessId) === Number(businessId) && item.ruleKey === rule.ruleKey));
+}
+
+async function installCommerceAutomationTemplate({ businessId, ruleId }) {
+  const rules = await listCommerceAutomationRules(businessId);
+  const rule = rules.find((item) => item.ruleKey === String(ruleId || '').trim());
+  if (!rule) throw notFound('Automation rule not found');
+
+  const draft = commerceAutomationTemplateDraft(rule);
+  const templates = await listTemplates(businessId);
+  const existing = templates.find((template) => template.slug === draft.slug || template.name === draft.name);
+  const template = existing || await createTemplate(businessId, draft);
+  const refreshedRules = await listCommerceAutomationRules(businessId);
+  return {
+    created: !existing,
+    template,
+    rule: refreshedRules.find((item) => item.ruleKey === rule.ruleKey)
+  };
 }
 
 async function previewCommerceAutomationRule({ businessId, ruleId, limit = 10 }) {
@@ -2479,6 +2496,36 @@ function buildAutomationTemplateReadiness(rule, templates) {
   };
 }
 
+function commerceAutomationTemplateDraft(rule) {
+  const promptType = normalizePostPurchasePromptType(rule.promptType);
+  const category = automationTemplateCategory(promptType);
+  const base = {
+    review: {
+      name: 'Wazify Review Prompt',
+      body: 'Hi {{1}}, thanks for order {{2}}. Reply {{3}} to share feedback or get help.'
+    },
+    reorder: {
+      name: 'Wazify Reorder Prompt',
+      body: 'Hi {{1}}, ready to reorder from order {{2}}? Reply {{3}} and we will help you check out on WhatsApp. Reply STOP to opt out.',
+      footer: 'Reply STOP to opt out.'
+    },
+    follow_up: {
+      name: 'Wazify Follow Up Prompt',
+      body: 'Hi {{1}}, checking in on order {{2}}. Reply {{3}} if you need help or a product recommendation.'
+    }
+  }[promptType];
+  return {
+    name: base.name,
+    slug: `wazify_${promptType}_prompt`,
+    category,
+    industry: 'ecommerce',
+    language: String(process.env.COMMERCE_POST_PURCHASE_TEMPLATE_LANGUAGE || 'en_ZA').trim() || 'en_ZA',
+    status: 'Draft',
+    body: base.body,
+    footer: base.footer || ''
+  };
+}
+
 function automationTemplateCategory(promptType) {
   return promptType === 'reorder' ? 'MARKETING' : 'UTILITY';
 }
@@ -3075,6 +3122,7 @@ module.exports = {
   createReturnRequest,
   getCommerceAnalytics,
   getCommerceAutomationInsights,
+  installCommerceAutomationTemplate,
   listCommerceAutomationRules,
   getCommerceCustomerSegments,
   getInventoryAlerts,

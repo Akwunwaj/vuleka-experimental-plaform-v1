@@ -173,6 +173,7 @@ const {
   importProducts,
   applyCommerceAutomationRuleToReadyOrders,
   applyCommerceAutomationRulesForOrder,
+  installCommerceAutomationTemplate,
   listCommerceAutomationRules,
   listAbandonedCarts,
   listCoupons,
@@ -523,6 +524,8 @@ test('Commerce page renders automation insight hydration targets', () => {
   assert.match(appSource, /automationActivityLabel/);
   assert.match(appSource, /function renderAutomationPreview/);
   assert.match(appSource, /function renderAutomationApplyResult/);
+  assert.match(appSource, /function installAutomationTemplate/);
+  assert.match(appSource, /data-automation-template/);
   assert.match(appSource, /automation-template-pill/);
   assert.doesNotMatch(appSource, /window\.alert\(\[/);
   assert.doesNotMatch(appSource, /window\.confirm\('Schedule this automation/);
@@ -537,6 +540,7 @@ test('critical campaign and contact write routes require owner or admin role', (
     /router\.post\('\/campaigns', requireRole\(\['owner', 'admin'\]\)/,
     /router\.post\('\/campaigns\/:id\/recipients\/prepare', requireRole\(\['owner', 'admin'\]\)/,
     /router\.post\('\/campaigns\/:id\/dispatch', requireRole\(\['owner', 'admin'\]\)/,
+    /router\.post\('\/commerce\/automation-rules\/:id\/template', requireRole\(\['owner', 'admin'\]\)/,
     /router\.post\('\/contacts', requireRole\(\['owner', 'admin'\]\)/,
     /router\.post\('\/contacts\/import', requireRole\(\['owner', 'admin'\]\)/,
     /router\.put\('\/integrations\/meta\/business-profile', requireRole\(\['owner', 'admin'\]\)/,
@@ -2104,6 +2108,31 @@ test('commerce automation rules surface approved template readiness', async () =
     if (previousDelay === undefined) delete process.env.COMMERCE_FOLLOW_UP_PROMPT_DELAY_HOURS;
     else process.env.COMMERCE_FOLLOW_UP_PROMPT_DELAY_HOURS = previousDelay;
   }
+});
+
+test('commerce automation template installer creates recommended drafts', async () => {
+  const businessId = 963;
+
+  const installed = await installCommerceAutomationTemplate({
+    businessId,
+    ruleId: 'reorder_after_completion'
+  });
+  const rules = await listCommerceAutomationRules(businessId);
+  const reorder = rules.find((rule) => rule.ruleKey === 'reorder_after_completion');
+  const secondInstall = await installCommerceAutomationTemplate({
+    businessId,
+    ruleId: 'reorder_after_completion'
+  });
+
+  assert.equal(installed.created, true);
+  assert.equal(installed.template.slug, 'wazify_reorder_prompt');
+  assert.equal(installed.template.category, 'MARKETING');
+  assert.equal(installed.template.status, 'Draft');
+  assert.match(installed.template.body, /\{\{1\}\}/);
+  assert.equal(reorder.templateReadiness.status, 'Draft');
+  assert.equal(reorder.templateReadiness.reason, 'template_not_approved');
+  assert.equal(secondInstall.created, false);
+  assert.equal(secondInstall.template.id, installed.template.id);
 });
 
 test('commerce automation rule preview shows ready and already scheduled orders', async () => {

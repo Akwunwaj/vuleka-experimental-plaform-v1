@@ -74,6 +74,7 @@ const {
   getOrderById,
   getProductCollectionById,
   importProducts,
+  installCommerceAutomationTemplate,
   listCommerceAutomationRules,
   listAbandonedCarts,
   listCoupons,
@@ -722,6 +723,19 @@ router.post('/commerce/automation-rules/:id/apply-ready', requireRole(['owner', 
         businessId: req.businessId,
         ruleId: req.params.id,
         source: 'manual_rule_apply'
+      })
+    );
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/commerce/automation-rules/:id/template', requireRole(['owner', 'admin']), async (req, res, next) => {
+  try {
+    res.status(201).json(
+      await installCommerceAutomationTemplate({
+        businessId: req.businessId,
+        ruleId: req.params.id
       })
     );
   } catch (err) {
