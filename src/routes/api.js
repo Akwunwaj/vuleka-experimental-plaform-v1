@@ -62,6 +62,7 @@ const {
   createOrderPaymentLink,
   createCoupon,
   createProduct,
+  createProductFromOrderItem,
   createProductCollection,
   createProductVariant,
   createReturnRequest,
@@ -952,6 +953,23 @@ router.patch('/commerce/orders/:id/items/link-product', requireRole(['owner', 'a
         itemId: req.body.itemId,
         retailerId: req.body.retailerId,
         productId: req.body.productId
+      })
+    );
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/commerce/orders/:id/items/create-product', requireRole(['owner', 'admin', 'agent']), async (req, res, next) => {
+  try {
+    const { itemId, retailerId, ...payload } = req.body || {};
+    res.status(201).json(
+      await createProductFromOrderItem({
+        businessId: req.businessId,
+        orderId: req.params.id,
+        itemId,
+        retailerId,
+        payload
       })
     );
   } catch (err) {

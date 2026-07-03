@@ -727,6 +727,47 @@ async function linkOrderItemToProduct({ businessId, orderId, itemId = null, reta
   return getOrderById(businessId, orderId);
 }
 
+async function createProductFromOrderItem({ businessId, orderId, itemId = null, retailerId = '', payload = {} }) {
+  const order = await getOrderById(businessId, orderId);
+  const target = findOrderItemForLink(order.items || [], { itemId, retailerId });
+  if (!target) throw notFound('Order item not found');
+  const productRetailerId = target.metaProductRetailerId || target.sku || retailerId || '';
+  const product = await createProduct(businessId, {
+    name: payload.name || target.productName || productRetailerId,
+    sku: payload.sku || productRetailerId,
+    description: payload.description || `Created from WhatsApp order #${order.id}.`,
+    priceCents: payload.priceCents || target.unitPriceCents,
+    currency: payload.currency || target.currency || order.currency || 'ZAR',
+    inventoryCount: payload.inventoryCount ?? payload.stock ?? 0,
+    status: payload.status || 'draft',
+    metaCatalogId: payload.metaCatalogId || order.metadata?.catalogId || '',
+    metaProductRetailerId: payload.metaProductRetailerId || productRetailerId,
+    imageUrl: payload.imageUrl || '',
+    paymentLinkUrl: payload.paymentLinkUrl || ''
+  });
+  const linked = await linkOrderItemToProduct({
+    businessId,
+    orderId,
+    itemId,
+    retailerId: productRetailerId,
+    productId: product.id
+  });
+  await recordOrderEvent({
+    businessId,
+    orderId,
+    eventType: 'order.catalog_product_created',
+    status: order.status,
+    note: `Created draft product ${product.name} from WhatsApp order item`,
+    metadata: {
+      productId: product.id,
+      sku: product.sku,
+      productRetailerId,
+      catalogId: product.metaCatalogId
+    }
+  });
+  return { order: await getOrderById(businessId, orderId), product, linked };
+}
+
 async function findRecentPostPurchaseSend({ businessId, customerPhone, excludeOrderId = null }) {
   const normalizedPhone = normalizeCustomerPhone(customerPhone);
   if (!normalizedPhone) return null;
@@ -2353,7 +2394,7 @@ function parseProductIds(value) {
 }
 
 function normalizeProduct(product) {
-  return {
+  const normalized = {
     id: product.id,
     businessId: product.businessId || product.business_id,
     name: product.name,
@@ -2369,6 +2410,26 @@ function normalizeProduct(product) {
     metaProductRetailerId: product.metaProductRetailerId || product.meta_product_retailer_id || product.sku,
     paymentLinkUrl: product.paymentLinkUrl || product.payment_link_url || '',
     updatedAt: product.updatedAt || product.updated_at || product.createdAt || product.created_at || null
+  };
+  return {
+    ...normalized,
+    catalogReadiness: productCatalogReadiness(normalized)
+  };
+}
+
+function productCatalogReadiness(product) {
+  const checks = [
+    { id: 'catalog', label: 'Meta catalog ID', ok: Boolean(product.metaCatalogId) },
+    { id: 'retailer', label: 'Retailer ID', ok: Boolean(product.metaProductRetailerId || product.sku) },
+    { id: 'image', label: 'Image', ok: Boolean(product.imageUrl) },
+    { id: 'checkout', label: 'Checkout link', ok: Boolean(product.paymentLinkUrl) }
+  ];
+  const missing = checks.filter((check) => !check.ok).map((check) => check.label);
+  return {
+    ready: missing.length === 0 && product.status === 'active',
+    missing,
+    score: checks.filter((check) => check.ok).length,
+    total: checks.length
   };
 }
 
@@ -3415,6 +3476,7 @@ module.exports = {
   createOrderPaymentLink,
   createCoupon,
   createProduct,
+  createProductFromOrderItem,
   createProductCollection,
   createProductVariant,
   createReturnRequest,

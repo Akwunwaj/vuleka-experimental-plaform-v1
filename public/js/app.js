@@ -1385,6 +1385,7 @@ if (productForm) {
         <div><h4>Link catalog item</h4><p>Choose the local product for retailer ID ${htmlEscape(retailerId || 'unknown')}.</p></div>
         <button class="link-button" data-product-picker-close type="button">Close</button>
       </header>
+      <div class="commerce-row-actions"><button class="button" data-product-picker-create type="button">Create draft product</button></div>
       <input type="search" placeholder="Search products by name, SKU, or retailer ID" data-product-picker-search>
       <div class="order-product-picker-list">${renderOrderProductPickerList(products, { orderId, itemId, retailerId })}</div>
     `;
@@ -1414,6 +1415,7 @@ if (productForm) {
 
   function bindOrderProductPicker(panel, products, context) {
     panel.querySelector('[data-product-picker-close]')?.addEventListener('click', () => panel.remove());
+    panel.querySelector('[data-product-picker-create]')?.addEventListener('click', () => createProductFromOrderItem(context));
     panel.querySelector('[data-product-picker-search]')?.addEventListener('input', (event) => {
       const term = event.target.value.trim().toLowerCase();
       panel.querySelectorAll('[data-product-picker-choice]').forEach((button) => {
@@ -1436,6 +1438,21 @@ if (productForm) {
     if (response.ok) {
       orderDetail.innerHTML = renderOrderDetail(result);
       bindOrderDetailActions(result);
+      loadCommerce();
+    }
+  }
+
+  async function createProductFromOrderItem({ orderId, itemId, retailerId }) {
+    const response = await fetch(`/api/commerce/orders/${encodeURIComponent(orderId)}/items/create-product`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ itemId: itemId || null, retailerId })
+    });
+    const result = await response.json().catch(() => ({}));
+    showToast(response.ok ? 'Draft product created and linked' : result.error || 'Draft product could not be created');
+    if (response.ok) {
+      orderDetail.innerHTML = renderOrderDetail(result.order || result);
+      bindOrderDetailActions(result.order || result);
       loadCommerce();
     }
   }

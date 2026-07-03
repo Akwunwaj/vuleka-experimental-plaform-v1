@@ -223,6 +223,7 @@ Backups are written to `backups/` by default and ignored by git. Use `DB_BACKUP_
 - `/api/commerce/orders/:id/payment-link`: create a PayFast/Yoco/Ozow/custom payment link for an order
 - `/api/commerce/orders/:id/coupon`: apply a coupon to an order before payment
 - `/api/commerce/orders/:id/items/link-product`: link an unmatched WhatsApp catalog order item to a local product
+- `/api/commerce/orders/:id/items/create-product`: create a draft product from an unmatched WhatsApp catalog order item and link it
 - `/api/commerce/orders/:id/fulfilment`: add courier/tracking details and optionally notify the customer
 - `/api/commerce/orders/:id/send-payment-link`: send/mock a WhatsApp order details payment message
 - `/api/commerce/orders/:id/recover-cart`: send/mock a WhatsApp recovery payment message for an unpaid cart

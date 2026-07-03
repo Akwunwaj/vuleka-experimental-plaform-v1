@@ -161,6 +161,7 @@ const {
   createOrderPaymentLink,
   createCoupon,
   createProduct,
+  createProductFromOrderItem,
   createProductCollection,
   createProductVariant,
   createReturnRequest,
@@ -545,6 +546,9 @@ test('Commerce page renders automation insight hydration targets', () => {
   assert.match(appSource, /order-item-unmatched/);
   assert.match(appSource, /data-order-item-link/);
   assert.match(appSource, /function openOrderItemProductPicker/);
+  assert.match(appSource, /Create draft product/);
+  assert.match(appSource, /function createProductFromOrderItem/);
+  assert.match(appSource, /items\/create-product/);
   assert.match(appSource, /function renderOrderProductPickerList/);
   assert.match(appSource, /data-product-picker-search/);
   assert.match(appSource, /data-product-picker-choice/);
@@ -610,6 +614,7 @@ test('critical campaign and contact write routes require owner or admin role', (
     /router\.patch\('\/commerce\/orders\/:id\/status', requireRole\(\['owner', 'admin', 'agent'\]\)/,
     /router\.patch\('\/commerce\/orders\/:id\/fulfilment', requireRole\(\['owner', 'admin', 'agent'\]\)/,
     /router\.patch\('\/commerce\/orders\/:id\/items\/link-product', requireRole\(\['owner', 'admin', 'agent'\]\)/,
+    /router\.post\('\/commerce\/orders\/:id\/items\/create-product', requireRole\(\['owner', 'admin', 'agent'\]\)/,
     /router\.post\('\/commerce\/orders\/:id\/coupon', requireRole\(\['owner', 'admin', 'agent'\]\)/,
     /router\.post\('\/commerce\/orders\/:id\/recover-cart', requireRole\(\['owner', 'admin', 'agent'\]\)/,
     /router\.post\('\/commerce\/orders\/:id\/reconcile-payment', requireRole\(\['owner', 'admin', 'agent'\]\)/,
@@ -3001,6 +3006,57 @@ test('Meta order webhooks flag unmatched catalog retailer IDs for merchant follo
   assert.equal(linked.catalogIssueCount, 0);
   assert.equal(analyticsAfterLink.summary.catalogIssues, 0);
   assert.equal(linked.events.some((event) => event.eventType === 'order.catalog_item_linked'), true);
+});
+
+test('unmatched Meta order items can create draft products and link immediately', async () => {
+  await saveMetaCredentials(988, {
+    wabaId: 'waba_commerce_create_product',
+    phoneNumberId: 'phone_commerce_create_product',
+    accessToken: 'EAA_SECRET_TOKEN',
+    verifyToken: 'verify_commerce_create_product'
+  });
+  const [event] = extractMetaEvents({
+    entry: [
+      {
+        changes: [
+          {
+            value: {
+              metadata: { phone_number_id: 'phone_commerce_create_product' },
+              contacts: [{ wa_id: '27825550001', profile: { name: 'Draft Buyer' } }],
+              messages: [
+                {
+                  from: '27825550001',
+                  id: 'wamid.order.create-product.1',
+                  type: 'order',
+                  order: {
+                    catalog_id: 'catalog_create_product',
+                    product_items: [
+                      { product_retailer_id: 'draft-retailer-id', quantity: 1, item_price: 219, currency: 'ZAR' }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  });
+  const processed = await processMetaEvent(event);
+  const created = await createProductFromOrderItem({
+    businessId: 988,
+    orderId: processed.commerceOrder.id,
+    retailerId: 'draft-retailer-id'
+  });
+  const analytics = await getCommerceAnalytics(988);
+
+  assert.equal(created.product.status, 'draft');
+  assert.equal(created.product.metaCatalogId, 'catalog_create_product');
+  assert.equal(created.product.metaProductRetailerId, 'draft-retailer-id');
+  assert.equal(created.order.items[0].productId, created.product.id);
+  assert.equal(created.order.catalogIssueCount, 0);
+  assert.equal(created.order.events.some((orderEvent) => orderEvent.eventType === 'order.catalog_product_created'), true);
+  assert.equal(analytics.summary.catalogIssues, 0);
 });
 
 test('published chatbot flows respond to matching inbound Meta messages', async () => {
