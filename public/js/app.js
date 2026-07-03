@@ -756,7 +756,12 @@ if (productForm) {
     const image = product.imageUrl
       ? `<img src="${htmlEscape(product.imageUrl)}" alt="">`
       : '<span>Product</span>';
-    return `<article class="product-card" data-product-id="${htmlEscape(product.id)}"><div class="product-thumb">${image}</div><div><small>#${htmlEscape(product.id)} · ${htmlEscape(product.sku || product.metaProductRetailerId || 'SKU')}</small><h4>${htmlEscape(product.name)}</h4><p>${htmlEscape(product.description || 'Ready to share in WhatsApp.')}</p><p class="muted-copy">Stock ${Number(product.inventoryCount || 0)} · Retailer ${htmlEscape(product.metaProductRetailerId || product.sku || 'not set')}</p><div class="commerce-row-actions"><button class="link-button" data-product-edit="${htmlEscape(product.id)}" type="button">Edit</button><button class="link-button" data-product-archive="${htmlEscape(product.id)}" type="button">Archive</button></div></div><strong>R ${htmlEscape(product.price)}</strong><span class="status">${htmlEscape(product.status)}</span></article>`;
+    const readiness = product.catalogReadiness || {};
+    const readinessClass = readiness.ready ? 'ready' : 'needs-attention';
+    const readinessText = readiness.ready ? 'Catalog ready' : `${Number(readiness.score || 0)}/${Number(readiness.total || 4)} ready`;
+    const missing = readiness.missing?.length ? `<p class="muted-copy">Missing ${htmlEscape(readiness.missing.join(', '))}</p>` : '';
+    const activateAction = product.status === 'draft' ? `<button class="link-button" data-product-activate="${htmlEscape(product.id)}" type="button">Activate</button>` : '';
+    return `<article class="product-card" data-product-id="${htmlEscape(product.id)}"><div class="product-thumb">${image}</div><div><small>#${htmlEscape(product.id)} · ${htmlEscape(product.sku || product.metaProductRetailerId || 'SKU')}</small><h4>${htmlEscape(product.name)}</h4><p>${htmlEscape(product.description || 'Ready to share in WhatsApp.')}</p><p class="muted-copy">Stock ${Number(product.inventoryCount || 0)} · Retailer ${htmlEscape(product.metaProductRetailerId || product.sku || 'not set')}</p><span class="product-readiness ${readinessClass}">${htmlEscape(readinessText)}</span>${missing}<div class="commerce-row-actions"><button class="link-button" data-product-edit="${htmlEscape(product.id)}" type="button">Edit</button>${activateAction}<button class="link-button" data-product-archive="${htmlEscape(product.id)}" type="button">Archive</button></div></div><strong>R ${htmlEscape(product.price)}</strong><span class="status">${htmlEscape(product.status)}</span></article>`;
   }
 
   function bindProductActions() {
@@ -765,6 +770,9 @@ if (productForm) {
     });
     document.querySelectorAll('[data-product-archive]').forEach((button) => {
       button.addEventListener('click', () => archiveProductFromCard(button.dataset.productArchive));
+    });
+    document.querySelectorAll('[data-product-activate]').forEach((button) => {
+      button.addEventListener('click', () => activateProductFromCard(button.dataset.productActivate));
     });
   }
 
@@ -798,6 +806,19 @@ if (productForm) {
     const response = await fetch(`/api/commerce/products/${encodeURIComponent(productId)}/archive`, { method: 'POST' });
     const result = await response.json().catch(() => ({}));
     showToast(response.ok ? 'Product archived' : result.error || 'Product could not be archived');
+    if (response.ok) loadCommerce();
+  }
+
+  async function activateProductFromCard(productId) {
+    const product = currentProducts.find((item) => String(item.id) === String(productId));
+    if (!product) return;
+    const response = await fetch(`/api/commerce/products/${encodeURIComponent(productId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...product, status: 'active' })
+    });
+    const result = await response.json().catch(() => ({}));
+    showToast(response.ok ? 'Product activated' : result.error || 'Product could not be activated');
     if (response.ok) loadCommerce();
   }
 

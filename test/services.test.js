@@ -540,6 +540,9 @@ test('Commerce page renders automation insight hydration targets', () => {
   assert.match(appSource, /Catalog issues/);
   assert.match(appSource, /order-issue-badge/);
   assert.match(appSource, /order-row-needs-attention/);
+  assert.match(appSource, /product-readiness/);
+  assert.match(appSource, /data-product-activate/);
+  assert.match(appSource, /function activateProductFromCard/);
   assert.match(appSource, /metadata\.catalogId/);
   assert.match(appSource, /metadata\.messageId/);
   assert.match(appSource, /metaProductRetailerId/);
@@ -578,6 +581,7 @@ test('Commerce page renders automation insight hydration targets', () => {
   assert.match(cssSource, /\.order-product-picker/);
   assert.match(cssSource, /\.order-issue-badge/);
   assert.match(cssSource, /\.order-row-needs-attention/);
+  assert.match(cssSource, /\.product-readiness/);
 });
 
 test('critical campaign and contact write routes require owner or admin role', () => {
@@ -1648,6 +1652,9 @@ test('commerce products can be updated and archived without deleting history', a
     metaProductRetailerId: 'manageable-product'
   });
 
+  assert.equal(product.catalogReadiness.ready, false);
+  assert.deepEqual(product.catalogReadiness.missing, ['Image', 'Checkout link']);
+
   const updated = await updateProduct(businessId, product.id, {
     name: 'Managed Product',
     sku: 'manageable-product',
@@ -1664,6 +1671,8 @@ test('commerce products can be updated and archived without deleting history', a
   assert.equal(updated.price, '135.00');
   assert.equal(updated.inventoryCount, 14);
   assert.equal(updated.metaProductRetailerId, 'manageable-product');
+  assert.equal(updated.catalogReadiness.ready, true);
+  assert.equal(updated.catalogReadiness.score, 4);
   assert.equal(archived.status, 'archived');
   assert.equal(products.some((item) => item.id === product.id && item.status === 'archived'), true);
 });
