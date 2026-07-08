@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+require('dotenv').config({ quiet: true });
+
 const DEFAULT_BASE_URL = 'http://localhost:3000';
 const DEFAULT_EMAIL = 'admin@chatclan.co.za';
 const DEFAULT_PASSWORD = process.env.DEMO_ADMIN_PASSWORD || 'ChangeMe123!';

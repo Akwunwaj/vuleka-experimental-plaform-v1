@@ -107,6 +107,7 @@ function sqlLiteral(value) {
   if (typeof value === 'number') return Number.isFinite(value) ? String(value) : 'null';
   if (typeof value === 'bigint') return String(value);
   if (typeof value === 'boolean') return value ? '1' : '0';
+  if (typeof value === 'object') return sqlLiteral(JSON.stringify(value));
   return `'${String(value)
     .replace(/\\/g, '\\\\')
     .replace(/\0/g, '\\0')
