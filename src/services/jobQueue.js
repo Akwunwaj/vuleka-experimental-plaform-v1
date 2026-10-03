@@ -114,12 +114,13 @@ async function completeJob(jobId, result = null) {
 
 async function failJob(job, err) {
   const errorMessage = String(err.message || err).slice(0, 500);
-  const shouldRetry = Number(job.attempts || 0) < Number(job.maxAttempts || 1);
+  const shouldRetry = err?.retryable !== false && Number(job.attempts || 0) < Number(job.maxAttempts || 1);
   const nextRun = new Date(Date.now() + retryDelayMs(job.attempts));
 
   if (!hasDatabaseConfig()) {
     const stored = demoJobs.find((item) => Number(item.id) === Number(job.id));
     if (stored) {
+      stored.attempts = Math.max(Number(stored.attempts || 0), Number(job.attempts || 0));
       stored.status = shouldRetry ? 'queued' : 'failed';
       stored.runAt = shouldRetry ? nextRun : stored.runAt;
       stored.lastError = errorMessage;
@@ -147,6 +148,23 @@ async function failJob(job, err) {
   return { retried: shouldRetry };
 }
 
+async function discardJob(jobId) {
+  if (!hasDatabaseConfig()) {
+    const job = demoJobs.find((item) => Number(item.id) === Number(jobId));
+    if (job) {
+      job.status = 'discarded';
+      job.updatedAt = new Date();
+    }
+    return Boolean(job);
+  }
+  const result = await query(
+    `update jobs set status = 'discarded', updated_at = current_timestamp
+     where id = :jobId and status = 'failed' and attempts >= max_attempts`,
+    { jobId }
+  );
+  return Boolean(result.affectedRows);
+}
+
 async function listJobs({ status = null, limit = 100 } = {}) {
   if (!hasDatabaseConfig()) {
     return demoJobs
@@ -165,6 +183,46 @@ async function listJobs({ status = null, limit = 100 } = {}) {
      limit ${normalizeLimit(limit)}`,
     { status }
   );
+}
+
+async function getJob(jobId) {
+  if (!hasDatabaseConfig()) {
+    const job = demoJobs.find((item) => Number(item.id) === Number(jobId));
+    return job ? { ...job } : null;
+  }
+
+  const rows = await query(
+    `select id, type, status, payload, attempts, max_attempts as maxAttempts,
+            result, run_at as runAt, last_error as lastError, created_at as createdAt,
+            updated_at as updatedAt, completed_at as completedAt, failed_at as failedAt
+     from jobs where id = :jobId limit 1`,
+    { jobId }
+  );
+  const job = rows?.[0];
+  if (!job) return null;
+  return { ...job, payload:parsePayload(job.payload), result:parsePayload(job.result) };
+}
+
+async function cancelJobsByDedupePrefix(prefix) {
+  const normalized = String(prefix || '').trim();
+  if (!normalized) return { cancelled:0 };
+  if (!hasDatabaseConfig()) {
+    let cancelled = 0;
+    for (const job of demoJobs) {
+      if (job.status === 'queued' && job.dedupeKey.startsWith(normalized)) {
+        job.status = 'cancelled';
+        job.updatedAt = new Date();
+        cancelled += 1;
+      }
+    }
+    return { cancelled };
+  }
+  const result = await query(
+    `update jobs set status='cancelled',updated_at=current_timestamp
+     where status='queued' and dedupe_key like :prefix`,
+    { prefix:`${normalized}%` }
+  );
+  return { cancelled:Number(result.affectedRows || 0) };
 }
 
 function buildDedupeKey(type, payload) {
@@ -192,9 +250,12 @@ function normalizeLimit(limit) {
 }
 
 module.exports = {
+  cancelJobsByDedupePrefix,
   claimNextJob,
   completeJob,
+  discardJob,
   enqueueJob,
   failJob,
+  getJob,
   listJobs
 };

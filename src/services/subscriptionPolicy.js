@@ -94,7 +94,7 @@ async function countResource(businessId, resource) {
   currentMonthStart.setUTCHours(0, 0, 0, 0);
 
   const queries = {
-    contacts: ['select count(*) as total from contacts where business_id = :businessId', {}],
+    contacts: ['select count(*) as total from contacts where business_id = :businessId and deleted_at is null', {}],
     campaigns: ['select count(*) as total from campaigns where business_id = :businessId and created_at >= :monthStart', { monthStart: currentMonthStart }],
     teamSeats: [
       `select count(*) as total

@@ -25,9 +25,9 @@ const providers = {
   },
   facebook: {
     name: 'Facebook',
-    authUrl: 'https://www.facebook.com/v19.0/dialog/oauth',
-    tokenUrl: 'https://graph.facebook.com/v19.0/oauth/access_token',
-    userInfoUrl: 'https://graph.facebook.com/me?fields=id,name,email',
+    authUrl: null,
+    tokenUrl: null,
+    userInfoUrl: null,
     scope: 'email,public_profile'
   },
   linkedin: {
@@ -63,7 +63,7 @@ async function createSocialAuthStart({ provider, purpose = 'signup', planCode = 
   const normalizedPurpose = purpose === 'signin' ? 'signin' : 'signup';
   const plan = getPlan(planCode || 'starter');
   const credentials = providerCredentials(providerConfig.id);
-  if (!credentials.clientId) {
+  if (!credentials.clientId || !credentials.clientSecret) {
     const error = new Error(`${providerConfig.name} sign in is not configured`);
     error.status = 503;
     error.code = 'SOCIAL_PROVIDER_NOT_CONFIGURED';
@@ -86,6 +86,7 @@ async function createSocialAuthStart({ provider, purpose = 'signup', planCode = 
     scope: providerConfig.scope,
     state
   });
+  if (providerConfig.id === 'google') params.set('prompt', 'select_account');
   if (providerConfig.id === 'apple') {
     params.set('response_mode', 'form_post');
   }
@@ -157,6 +158,68 @@ async function findSocialUser(profile) {
     }
   );
   return rows?.[0] || null;
+}
+
+async function deleteSocialIdentityAccountData({ provider, providerUserId }) {
+  const normalizedProvider = String(provider || '').trim().toLowerCase();
+  const normalizedProviderUserId = String(providerUserId || '').trim();
+  if (!normalizedProvider || !normalizedProviderUserId) return { found: false, userId: null };
+
+  if (!hasDatabaseConfig()) {
+    const key = identityKey(normalizedProvider, normalizedProviderUserId);
+    const identity = demoIdentities.get(key);
+    if (!identity) return { found: false, userId: null };
+    demoIdentities.delete(key);
+    const { findDemoUserById } = require('./auth');
+    const user = findDemoUserById(identity.userId);
+    if (user) {
+      saveDemoUser({
+        ...user,
+        name: 'Deleted user',
+        email: `deleted-${hashToken(normalizedProviderUserId).slice(0, 20)}@deleted.invalid`,
+        status: 'inactive',
+        passwordHash: `deleted:${crypto.randomBytes(24).toString('hex')}`
+      });
+    }
+    return { found: true, userId: identity.userId };
+  }
+
+  return transaction(async (db) => {
+    const identities = await db.query(
+      `select user_id as userId
+       from social_identities
+       where provider = :provider and provider_user_id = :providerUserId
+       limit 1`,
+      { provider: normalizedProvider, providerUserId: normalizedProviderUserId }
+    );
+    const userId = identities?.[0]?.userId || null;
+    await db.query(
+      `delete from social_signup_verifications
+       where provider = :provider and provider_user_id = :providerUserId`,
+      { provider: normalizedProvider, providerUserId: normalizedProviderUserId }
+    );
+    if (!userId) return { found: false, userId: null };
+
+    await db.query('delete from sessions where user_id = :userId', { userId });
+    await db.query(
+      'delete from social_identities where provider = :provider and provider_user_id = :providerUserId',
+      { provider: normalizedProvider, providerUserId: normalizedProviderUserId }
+    );
+    await db.query(
+      `update users
+       set name = 'Deleted user',
+           email = :email,
+           password_hash = :passwordHash,
+           status = 'inactive'
+       where id = :userId`,
+      {
+        userId,
+        email: `deleted-${hashToken(normalizedProviderUserId).slice(0, 20)}-${userId}@deleted.invalid`,
+        passwordHash: `deleted:${crypto.randomBytes(24).toString('hex')}`
+      }
+    );
+    return { found: true, userId };
+  });
 }
 
 async function getSocialSignupVerification(token) {
@@ -409,6 +472,11 @@ async function getStoredVerification(tokenHash) {
 }
 
 function normalizeProviderProfile(provider, profile = {}) {
+  if (provider === 'google' && profile.email_verified !== true) {
+    const error = new Error('Google did not return a verified email address');
+    error.status = 400;
+    throw error;
+  }
   return {
     provider,
     providerUserId: String(profile.sub || profile.id || ''),
@@ -434,7 +502,8 @@ function appUrl() {
 }
 
 function isProviderConfigured(provider) {
-  return Boolean(providerCredentials(provider).clientId);
+  const credentials = providerCredentials(provider);
+  return Boolean(credentials.clientId && credentials.clientSecret);
 }
 
 function getProvider(provider) {
@@ -445,7 +514,22 @@ function getProvider(provider) {
     error.status = 400;
     throw error;
   }
+  if (id === 'facebook') {
+    const version = facebookGraphVersion();
+    return {
+      id,
+      ...config,
+      authUrl: `https://www.facebook.com/${version}/dialog/oauth`,
+      tokenUrl: `https://graph.facebook.com/${version}/oauth/access_token`,
+      userInfoUrl: `https://graph.facebook.com/${version}/me?fields=id,name,email`
+    };
+  }
   return { id, ...config };
+}
+
+function facebookGraphVersion() {
+  const configured = String(process.env.SOCIAL_FACEBOOK_GRAPH_VERSION || process.env.META_GRAPH_VERSION || 'v21.0').trim();
+  return /^v\d+\.\d+$/.test(configured) ? configured : 'v21.0';
 }
 
 function decodeJwtPayload(token) {
@@ -509,6 +593,7 @@ module.exports = {
   completeSocialSignup,
   createSocialAuthStart,
   createSocialSignupVerification,
+  deleteSocialIdentityAccountData,
   getSocialSignupVerification,
   handleSocialCallback,
   listSocialProviders

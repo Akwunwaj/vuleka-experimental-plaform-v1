@@ -240,6 +240,7 @@ async function selectEligibleContacts(businessId, audience) {
      where business_id = :businessId
        and opted_in = 1
        and opted_out_at is null
+       and deleted_at is null
        ${audienceClause.sql}
      order by id asc`,
     { businessId, ...audienceClause.params }
@@ -252,6 +253,7 @@ async function countAudienceContacts(businessId, audience) {
     `select count(*) as total
      from contacts
      where business_id = :businessId
+       and deleted_at is null
        ${audienceClause.sql}`,
     { businessId, ...audienceClause.params }
   );
@@ -260,7 +262,7 @@ async function countAudienceContacts(businessId, audience) {
 
 function prepareDemoRecipients({ businessId, campaignId, audience, body }) {
   const audienceContacts = filterAudience(demo.contacts, audience);
-  const eligibleContacts = audienceContacts.filter((contact) => contact.optedIn !== false && !contact.optedOutAt);
+  const eligibleContacts = audienceContacts.filter((contact) => contact.optedIn !== false && !contact.optedOutAt && !contact.deletedAt);
   const recipients = eligibleContacts.map((contact, index) => ({
     id: index + 1,
     businessId,

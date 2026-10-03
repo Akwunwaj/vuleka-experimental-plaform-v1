@@ -237,7 +237,13 @@ async function getCurrentSubscription(businessId) {
             current_period_ends_at as currentPeriodEndsAt, created_at as createdAt, updated_at as updatedAt
      from business_subscriptions
      where business_id = :businessId
-     order by updated_at desc, id desc
+     order by case
+                when status in ('active', 'trialing') then 0
+                when status = 'pending' then 1
+                else 2
+              end,
+              updated_at desc,
+              id desc
      limit 1`,
     { businessId }
   );

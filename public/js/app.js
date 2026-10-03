@@ -2,6 +2,39 @@ const landing = document.getElementById('landing');
 const app = document.getElementById('app');
 const pageTitle = document.getElementById('pageTitle');
 const toast = document.getElementById('toast');
+const landingNavToggle = document.querySelector('[data-landing-nav-toggle]');
+const landingMobileNav = document.getElementById('landingMobileNav');
+const publicNavDropdowns = [...document.querySelectorAll('.nav-dropdown')];
+
+function setLandingMenu(open) {
+  if (!landingNavToggle || !landingMobileNav) return;
+  landingMobileNav.hidden = !open;
+  landingNavToggle.setAttribute('aria-expanded', String(open));
+  landingNavToggle.setAttribute('aria-label', open ? 'Close navigation menu' : 'Open navigation menu');
+  document.body.classList.toggle('landing-menu-open', open);
+}
+
+landingNavToggle?.addEventListener('click', () => {
+  setLandingMenu(landingNavToggle.getAttribute('aria-expanded') !== 'true');
+});
+landingMobileNav?.querySelectorAll('a').forEach((link) => link.addEventListener('click', () => setLandingMenu(false)));
+publicNavDropdowns.forEach((dropdown) => {
+  dropdown.addEventListener('toggle', () => {
+    if (!dropdown.open) return;
+    publicNavDropdowns.forEach((other) => {
+      if (other !== dropdown) other.open = false;
+    });
+  });
+  dropdown.querySelectorAll('a').forEach((link) => link.addEventListener('click', () => {
+    dropdown.open = false;
+  }));
+});
+document.addEventListener('click', (event) => {
+  if (event.target.closest('.nav-dropdown')) return;
+  publicNavDropdowns.forEach((dropdown) => {
+    dropdown.open = false;
+  });
+});
 
 function showToast(message) {
   if (!toast) return;
@@ -9,6 +42,100 @@ function showToast(message) {
   toast.classList.add('show');
   window.setTimeout(() => toast.classList.remove('show'), 2600);
 }
+
+const appModal = document.getElementById('appModal');
+const appModalBody = document.getElementById('appModalBody');
+const appModalTitle = document.getElementById('appModalTitle');
+const appModalKicker = document.getElementById('appModalKicker');
+
+function openAppModal(sourceId, { title, kicker = 'Workspace' } = {}) {
+  const source = document.getElementById(sourceId);
+  if (!appModal || !appModalBody || !source) return;
+  appModalTitle.textContent = title || source.querySelector('h3')?.textContent || 'Workspace action';
+  appModalKicker.textContent = kicker;
+  appModalBody.replaceChildren(source);
+  appModal.showModal();
+  window.setTimeout(() => source.querySelector('input, textarea, select')?.focus(), 0);
+}
+
+function closeAppModal() {
+  if (appModal?.open) appModal.close();
+}
+
+document.querySelectorAll('[data-open-modal]').forEach((button) => button.addEventListener('click', () => {
+  openAppModal(button.dataset.openModal, { title: button.textContent.trim(), kicker: 'Commerce' });
+}));
+document.getElementById('closeAppModalButton')?.addEventListener('click', closeAppModal);
+document.addEventListener('click', (event) => {
+  if (event.target.closest('[data-close-modal]')) closeAppModal();
+});
+
+const notificationsButton = document.getElementById('notificationsButton');
+const notificationCenter = document.getElementById('notificationCenter');
+const notificationCount = document.getElementById('notificationCount');
+const notificationList = document.getElementById('notificationList');
+
+function renderNotifications({ conversations = [], campaigns = [] } = {}) {
+  if (!notificationList) return;
+  const unread = conversations.reduce((total, conversation) => total + Number(conversation.unreadCount || 0), 0);
+  const activeCampaigns = campaigns.filter((campaign) => !['sent', 'completed'].includes(String(campaign.status || '').toLowerCase()));
+
+  if (notificationCount) {
+    notificationCount.textContent = String(unread);
+    notificationCount.hidden = unread === 0;
+  }
+
+  const items = [];
+  if (unread) {
+    items.push(`<article><span class="notification-icon inbox">☏</span><div><strong>${unread} unread ${unread === 1 ? 'conversation' : 'conversations'}</strong><small>Reply to customers waiting for your team.</small></div><button data-notification-page="inbox" type="button">Open inbox</button></article>`);
+  }
+  if (activeCampaigns.length) {
+    items.push(`<article><span class="notification-icon campaign">▣</span><div><strong>${activeCampaigns.length} ${activeCampaigns.length === 1 ? 'campaign' : 'campaigns'} in progress</strong><small>Review delivery and audience performance.</small></div><button data-notification-page="insights" type="button">View insights</button></article>`);
+  }
+
+  notificationList.innerHTML = items.length
+    ? items.join('')
+    : '<p class="muted-copy notification-empty">You’re all caught up. New customer messages will appear here.</p>';
+  notificationList.querySelectorAll('[data-notification-page]').forEach((button) => {
+    button.addEventListener('click', () => {
+      showPage(button.dataset.notificationPage);
+      setNotificationCenter(false);
+    });
+  });
+}
+
+async function loadNotifications() {
+  if (!notificationList) return;
+  notificationList.innerHTML = '<p class="muted-copy">Loading activity…</p>';
+  const [inboxResponse, overviewResponse] = await Promise.all([
+    fetch('/api/inbox/conversations').catch(() => null),
+    fetch('/api/analytics/overview').catch(() => null)
+  ]);
+  if (!inboxResponse && !overviewResponse) {
+    notificationList.innerHTML = '<p class="muted-copy notification-empty">Activity is temporarily unavailable. Please try again.</p>';
+    return;
+  }
+  const inbox = await inboxResponse?.json().catch(() => ({}));
+  const overview = await overviewResponse?.json().catch(() => ({}));
+  renderNotifications({
+    conversations: inboxResponse?.ok && Array.isArray(inbox.conversations) ? inbox.conversations : [],
+    campaigns: overviewResponse?.ok && Array.isArray(overview.campaigns) ? overview.campaigns : []
+  });
+}
+
+function setNotificationCenter(open) {
+  notificationCenter?.classList.toggle('open', open);
+  notificationCenter?.setAttribute('aria-hidden', open ? 'false' : 'true');
+  notificationsButton?.setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (open) loadNotifications();
+}
+notificationsButton?.addEventListener('click', () => setNotificationCenter(!notificationCenter?.classList.contains('open')));
+document.getElementById('closeNotificationsButton')?.addEventListener('click', () => setNotificationCenter(false));
+document.addEventListener('click', (event) => {
+  if (!notificationCenter?.classList.contains('open')) return;
+  if (notificationCenter.contains(event.target) || notificationsButton?.contains(event.target)) return;
+  setNotificationCenter(false);
+});
 
 function openApp() {
   if (!app) {
@@ -26,23 +153,63 @@ function showSite() {
   landing.classList.remove('hidden');
 }
 
-function showPage(id) {
+const dashboardPageIds = new Set([...document.querySelectorAll('.page')]
+  .map((page) => page.id.replace(/^page-/, '')));
+
+function pageFromLocationHash() {
+  const id = decodeURIComponent(window.location.hash.slice(1));
+  return dashboardPageIds.has(id) ? id : null;
+}
+
+function showPage(id, { updateUrl = true } = {}) {
+  if (!dashboardPageIds.has(id)) id = 'dashboard';
   document.querySelectorAll('.page').forEach((page) => page.classList.toggle('active', page.id === `page-${id}`));
   document.querySelectorAll('.nav-item').forEach((item) => item.classList.toggle('active', item.dataset.page === id));
   const activeNav = document.querySelector(`.nav-item[data-page="${id}"]`);
   if (pageTitle) {
     pageTitle.textContent = activeNav?.dataset.title || id.replace('-', ' ').replace(/\b\w/g, (char) => char.toUpperCase());
   }
+  document.querySelector('.app')?.classList.remove('mobile-nav-open');
+  if (updateUrl && window.location.hash !== `#${encodeURIComponent(id)}`) {
+    window.history.pushState({ page:id }, '', `#${encodeURIComponent(id)}`);
+  }
 }
 
+function restorePageFromLocation() {
+  showPage(pageFromLocationHash() || 'dashboard', { updateUrl:false });
+}
+
+window.addEventListener('hashchange', restorePageFromLocation);
+window.addEventListener('popstate', restorePageFromLocation);
+restorePageFromLocation();
+
 function htmlEscape(value) {
-  return String(value || '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[char]));
+  return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[char]));
 }
 
 document.querySelectorAll('[data-open-app]').forEach((button) => button.addEventListener('click', openApp));
 document.querySelectorAll('[data-show-site]').forEach((button) => button.addEventListener('click', showSite));
 document.querySelectorAll('[data-page]').forEach((button) => button.addEventListener('click', () => showPage(button.dataset.page)));
 document.querySelectorAll('[data-page-link]').forEach((button) => button.addEventListener('click', () => showPage(button.dataset.pageLink)));
+document.querySelectorAll('[data-mobile-nav-toggle]').forEach((button) => button.addEventListener('click', () => {
+  document.querySelector('.app')?.classList.toggle('mobile-nav-open');
+}));
+document.querySelectorAll('[data-mobile-nav-close]').forEach((button) => button.addEventListener('click', () => {
+  document.querySelector('.app')?.classList.remove('mobile-nav-open');
+}));
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') {
+    if (notificationCenter?.classList.contains('open')) {
+      setNotificationCenter(false);
+      notificationsButton?.focus();
+    }
+    document.querySelector('.app')?.classList.remove('mobile-nav-open');
+    setLandingMenu(false);
+    publicNavDropdowns.forEach((dropdown) => {
+      dropdown.open = false;
+    });
+  }
+});
 document.querySelectorAll('.social-button.disabled').forEach((button) => {
   button.addEventListener('click', (event) => {
     event.preventDefault();
@@ -57,6 +224,8 @@ document.querySelectorAll('.password-toggle').forEach((button) => {
     input.type = show ? 'text' : 'password';
     button.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
     button.setAttribute('title', show ? 'Hide password' : 'Show password');
+    const label = button.querySelector('span');
+    if (label) label.textContent = show ? 'Hide' : 'Show';
     button.classList.toggle('active', show);
   });
 });
@@ -94,7 +263,7 @@ function renderSetupStep(step) {
   const manual = !step.autoComplete && !step.completed
     ? `<button class="link-button" data-complete-step="${htmlEscape(step.id)}">Mark complete</button>`
     : '';
-  return `<article class="setup-step ${step.completed ? 'complete' : ''}"><span>${step.completed ? '✓' : '•'}</span><div><strong>${htmlEscape(step.title)}</strong><small>${htmlEscape(step.description)}</small></div><div>${action}${manual}</div></article>`;
+  return `<article class="setup-step ${step.completed ? 'complete' : ''}"><span>${step.completed ? '✓' : '•'}</span><div><strong>${htmlEscape(step.title)}</strong><small>${htmlEscape(step.description)}</small></div><div class="setup-step-actions">${action}${manual}</div></article>`;
 }
 
 async function completeSetupStep(stepId) {
@@ -148,18 +317,124 @@ if (campaignForm) {
 }
 
 const addContactBtn = document.getElementById('addContactBtn');
-if (addContactBtn) {
-  addContactBtn.addEventListener('click', async () => {
-    const name = window.prompt('Contact name');
-    const phone = name ? window.prompt('WhatsApp number, e.g. +27 82 123 4567') : null;
-    if (!name || !phone) return;
-    const response = await fetch('/api/contacts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, phone, segment: 'Manual' })
+const contactForm = document.getElementById('contactForm');
+if (addContactBtn && contactForm) {
+  const contactDeleteDialog = document.getElementById('contactDeleteDialog');
+  const contactDeleteMessage = document.getElementById('contactDeleteMessage');
+  const contactSubmitButton = contactForm.querySelector('[type="submit"]');
+  let pendingContactDeleteId = null;
+
+  function contactRow(contact) {
+    const optedIn = contact.optedIn !== false;
+    return `<tr data-contact-id="${htmlEscape(contact.id)}"><td>${htmlEscape(contact.name)}</td><td>${htmlEscape(contact.phone)}</td><td>${htmlEscape(contact.segment || 'Imported')}</td><td>${optedIn ? 'Yes' : 'No'}</td><td>${htmlEscape(contact.lastSeen || 'Just now')}</td><td><div class="table-actions"><button class="link-button" data-contact-edit="${htmlEscape(contact.id)}" data-contact-name="${htmlEscape(contact.name)}" data-contact-phone="${htmlEscape(contact.phone)}" data-contact-segment="${htmlEscape(contact.segment || 'Imported')}" data-contact-opted-in="${optedIn}" type="button">Edit</button><button class="link-button danger-link" data-contact-delete="${htmlEscape(contact.id)}" data-contact-name="${htmlEscape(contact.name)}" type="button">Delete</button></div></td></tr>`;
+  }
+
+  function resetContactForm() {
+    contactForm.reset();
+    contactForm.elements.contactId.value = '';
+    contactForm.elements.optedIn.checked = true;
+    if (contactSubmitButton) contactSubmitButton.textContent = 'Add contact';
+  }
+
+  function openContactModal() {
+    resetContactForm();
+    openAppModal('contactForm', { title: 'Add contact', kicker: 'Contacts' });
+  }
+
+  function bindContactActions(scope = document) {
+    scope.querySelectorAll('[data-contact-edit]').forEach((button) => {
+      if (button.dataset.boundContactAction) return;
+      button.dataset.boundContactAction = 'true';
+      button.addEventListener('click', () => {
+      contactForm.elements.contactId.value = button.dataset.contactEdit;
+      contactForm.elements.name.value = button.dataset.contactName || '';
+      contactForm.elements.phone.value = button.dataset.contactPhone || '';
+      contactForm.elements.segment.value = button.dataset.contactSegment || 'Imported';
+      contactForm.elements.optedIn.checked = button.dataset.contactOptedIn !== 'false';
+      if (contactSubmitButton) contactSubmitButton.textContent = 'Save changes';
+      openAppModal('contactForm', { title: 'Edit contact', kicker: 'Contacts' });
+      });
     });
-    showToast(response.ok ? 'Contact added' : 'Contact could not be added');
-    if (response.ok) loadSetupWizard();
+    scope.querySelectorAll('[data-contact-delete]').forEach((button) => {
+      if (button.dataset.boundContactAction) return;
+      button.dataset.boundContactAction = 'true';
+      button.addEventListener('click', () => {
+      pendingContactDeleteId = button.dataset.contactDelete;
+      contactDeleteMessage.textContent = `Delete ${button.dataset.contactName || 'this contact'} from active contacts?`;
+      contactDeleteDialog.showModal();
+      });
+    });
+  }
+
+  function closeContactDeleteDialog() {
+    pendingContactDeleteId = null;
+    if (contactDeleteDialog?.open) contactDeleteDialog.close();
+  }
+
+  addContactBtn.addEventListener('click', openContactModal);
+  document.getElementById('crmAddContactButton')?.addEventListener('click', openContactModal);
+  document.getElementById('closeContactDeleteDialog')?.addEventListener('click', closeContactDeleteDialog);
+  document.getElementById('cancelContactDelete')?.addEventListener('click', closeContactDeleteDialog);
+  document.getElementById('confirmContactDelete')?.addEventListener('click', async () => {
+    if (!pendingContactDeleteId) return;
+    const response = await fetch(`/api/contacts/${encodeURIComponent(pendingContactDeleteId)}`, { method: 'DELETE' });
+    const result = await response.json().catch(() => ({}));
+    showToast(response.ok ? 'Contact soft-deleted' : result.error || 'Contact could not be deleted');
+    if (!response.ok) return;
+    document.querySelector(`#contactTablePanel tr[data-contact-id="${pendingContactDeleteId}"]`)?.remove();
+    document.querySelector(`#crmContactList article[data-contact-id="${pendingContactDeleteId}"]`)?.remove();
+    const crmCount = document.getElementById('crmContactCount');
+    if (crmCount) crmCount.textContent = String(Math.max(0, Number(crmCount.textContent || 0) - 1));
+    closeContactDeleteDialog();
+  });
+  bindContactActions(document.getElementById('contactTablePanel'));
+
+  contactForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const payload = Object.fromEntries(new FormData(contactForm).entries());
+    payload.optedIn = contactForm.elements.optedIn.checked;
+    const contactId = payload.contactId;
+    delete payload.contactId;
+    const response = await fetch(contactId ? `/api/contacts/${encodeURIComponent(contactId)}` : '/api/contacts', {
+      method: contactId ? 'PATCH' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const result = await response.json().catch(() => ({}));
+    showToast(response.ok ? (contactId ? 'Contact updated' : 'Contact added') : result.error || 'Contact could not be saved');
+    if (!response.ok) return;
+    const saved = { ...payload, ...result, id: result.id || contactId, optedIn: result.optedIn ?? payload.optedIn, lastSeen: result.lastSeen || 'Just now' };
+    const tbody = document.querySelector('#contactTablePanel tbody');
+    const existingRow = contactId && tbody?.querySelector(`tr[data-contact-id="${contactId}"]`);
+    if (existingRow) {
+      existingRow.outerHTML = contactRow(saved);
+      bindContactActions(tbody);
+    } else {
+      tbody?.insertAdjacentHTML('afterbegin', contactRow(saved));
+      bindContactActions(tbody);
+      const crmCount = document.getElementById('crmContactCount');
+      if (crmCount) crmCount.textContent = String(Number(crmCount.textContent || 0) + 1);
+    }
+    resetContactForm();
+    closeAppModal();
+    loadSetupWizard();
+  });
+}
+
+const createTemplateButton = document.getElementById('createTemplateButton');
+const templateForm = document.getElementById('templateForm');
+if (createTemplateButton && templateForm) {
+  createTemplateButton.addEventListener('click', () => openAppModal('templateForm', { title: 'Create template', kicker: 'Templates' }));
+  templateForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const payload = Object.fromEntries(new FormData(templateForm).entries());
+    const response = await fetch('/api/templates', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const result = await response.json().catch(() => ({}));
+    showToast(response.ok ? 'Template created as a draft' : result.error || 'Template could not be created');
+    if (!response.ok) return;
+    document.getElementById('templateGrid')?.insertAdjacentHTML('afterbegin', `<article class="panel template"><small>${htmlEscape(payload.category)} · Draft</small><h3>${htmlEscape(result.name || payload.name)}</h3><p>${htmlEscape(payload.body)}</p><button class="button ghost" data-page-link="campaigns" type="button">Use template</button></article>`);
+    templateForm.reset();
+    closeAppModal();
   });
 }
 
@@ -170,8 +445,44 @@ if (replyForm) {
   const noteForm = document.getElementById('noteForm');
   const csatForm = document.getElementById('csatForm');
   const typingIndicator = document.getElementById('typingIndicator');
+  const generateAiDraftButton = document.getElementById('generateInboxAiDraftButton');
+  const aiDraftDrawer = document.getElementById('inboxAiDraftDrawer');
+  const aiDraftBody = document.getElementById('inboxAiDraftBody');
+  const aiDraftState = document.getElementById('inboxAiDraftState');
+  const aiDraftMeta = document.getElementById('inboxAiDraftMeta');
+  const useAiDraftButton = document.getElementById('useInboxAiDraftButton');
+  const discardAiDraftButton = document.getElementById('discardInboxAiDraftButton');
+  let assignmentForm = document.getElementById('assignmentForm');
+  if (!assignmentForm) {
+    assignmentForm = document.createElement('form');
+    assignmentForm.id = 'assignmentForm';
+    assignmentForm.className = 'assignment-form';
+    assignmentForm.innerHTML = '<label>Assign conversation<select id="inboxAssignee" name="assignedUserId"><option value="">Unassigned</option></select></label><button class="button" type="submit">Assign</button>';
+    inboxConversation.querySelector('.inbox-meta')?.after(assignmentForm);
+  }
+  const inboxAssignee = assignmentForm.querySelector('[name="assignedUserId"]');
+  const replyInput = replyForm.querySelector('[name="body"]');
+  if (replyInput?.tagName === 'INPUT') {
+    const textarea = document.createElement('textarea');
+    textarea.name = 'body'; textarea.rows = 1; textarea.placeholder = replyInput.placeholder;
+    replyInput.replaceWith(textarea);
+  }
   let activeConversationId = replyForm.dataset.conversationId;
   let typingTimer = null;
+  let activeAiDraft = null;
+
+  function setAiDraftDrawer(open) {
+    aiDraftDrawer?.classList.toggle('open', open);
+    aiDraftDrawer?.setAttribute('aria-hidden', open ? 'false' : 'true');
+  }
+
+  function resetAiDraft() {
+    activeAiDraft = null;
+    replyForm.dataset.aiDraftId = '';
+    if (aiDraftBody) aiDraftBody.value = '';
+    if (aiDraftState) aiDraftState.innerHTML = '<p class="muted-copy">Generate a draft from the active conversation.</p>';
+    if (useAiDraftButton) useAiDraftButton.disabled = true;
+  }
 
   async function loadInboxList() {
     const response = await fetch('/api/inbox/conversations');
@@ -179,6 +490,7 @@ if (replyForm) {
     const result = await response.json();
     inboxList.innerHTML = result.conversations.map(renderInboxItem).join('');
     bindInboxItems();
+    if (notificationCenter?.classList.contains('open')) loadNotifications();
   }
 
   async function loadConversation(conversationId) {
@@ -191,7 +503,15 @@ if (replyForm) {
     replyForm.dataset.conversationId = activeConversationId;
     noteForm.dataset.conversationId = activeConversationId;
     csatForm.dataset.conversationId = activeConversationId;
+    resetAiDraft();
     renderConversation(detail);
+  }
+
+  async function loadAssignees() {
+    const response = await fetch('/api/users');
+    const result = await response.json().catch(() => ({ users: [] }));
+    if (!response.ok || !inboxAssignee) return;
+    inboxAssignee.innerHTML = `<option value="">Unassigned</option>${(result.users || []).filter((user) => user.status !== 'disabled').map((user) => `<option value="${htmlEscape(user.id)}">${htmlEscape(user.name || user.email)}</option>`).join('')}`;
   }
 
   function bindInboxItems() {
@@ -211,6 +531,7 @@ if (replyForm) {
     document.getElementById('inboxCustomerMeta').textContent = conversation.customerPhone;
     document.getElementById('inboxSlaBadge').textContent = conversation.slaStatus;
     document.getElementById('inboxAssigned').textContent = conversation.assignedUserName ? `Assigned to ${conversation.assignedUserName}` : 'Unassigned';
+    if (inboxAssignee) inboxAssignee.value = conversation.assignedUserId || '';
     document.getElementById('inboxCsat').textContent = conversation.csatScore ? `CSAT ${conversation.csatScore}/5` : 'No CSAT yet';
     document.getElementById('inboxMessages').innerHTML = detail.messages.map((message) => `<p class="${message.direction === 'outbound' ? 'chat-right' : 'chat-left'}">${escapeHtml(message.body || '')}</p>`).join('');
     document.getElementById('inboxNotes').innerHTML = detail.notes.map((note) => `<article><strong>${escapeHtml(note.authorName || 'Team')}</strong><p>${escapeHtml(note.body)}</p></article>`).join('');
@@ -227,27 +548,82 @@ if (replyForm) {
   }
 
   bindInboxItems();
+  loadAssignees();
   if (activeConversationId) loadConversation(activeConversationId);
+
+  generateAiDraftButton?.addEventListener('click', async () => {
+    if (!activeConversationId) return showToast('Select a conversation first');
+    resetAiDraft();
+    setAiDraftDrawer(true);
+    generateAiDraftButton.disabled = true;
+    generateAiDraftButton.textContent = 'Drafting...';
+    aiDraftState.innerHTML = '<p class="muted-copy">Preparing a reviewable reply...</p>';
+    const response = await fetch(`/api/inbox/conversations/${encodeURIComponent(activeConversationId)}/ai-drafts`, {
+      method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'
+    });
+    const result = await response.json().catch(() => ({}));
+    generateAiDraftButton.disabled = false;
+    generateAiDraftButton.textContent = 'AI draft';
+    if (!response.ok) {
+      aiDraftState.innerHTML = `<p class="ai-draft-warning">${escapeHtml(result.error || 'AI draft could not be generated')}</p>`;
+      return;
+    }
+    activeAiDraft = result.draft;
+    aiDraftBody.value = activeAiDraft.body || '';
+    const flags = (activeAiDraft.safetyFlags || []).map((flag) => flag.replaceAll('_', ' ')).join(', ');
+    const sources = (activeAiDraft.knowledgeRefs || []).map((source) => `<span title="${escapeHtml(source.type || 'knowledge')}">${escapeHtml(source.title || source.ref)}</span>`).join('');
+    aiDraftMeta.textContent = `${activeAiDraft.providerKey} · ${activeAiDraft.confidenceLabel} confidence`;
+    aiDraftState.innerHTML = `${activeAiDraft.requiresHandoff ? '<p class="ai-draft-warning">Human handoff recommended.</p>' : ''}${flags ? `<p class="ai-draft-warning">Review: ${escapeHtml(flags)}</p>` : '<p class="ai-draft-ready">No automated safety flags.</p>'}${sources ? `<div class="ai-draft-sources"><strong>Grounded with</strong><div>${sources}</div></div>` : '<p class="muted-copy">No matching approved knowledge found.</p>'}`;
+    useAiDraftButton.disabled = !activeAiDraft.canUse;
+  });
+
+  useAiDraftButton?.addEventListener('click', () => {
+    if (!activeAiDraft?.canUse || !aiDraftBody.value.trim()) return;
+    const input = replyForm.querySelector('[name="body"]');
+    input.value = aiDraftBody.value.trim();
+    replyForm.dataset.aiDraftId = String(activeAiDraft.id);
+    setAiDraftDrawer(false);
+    input.focus();
+    showToast('Draft added for your review');
+  });
+
+  discardAiDraftButton?.addEventListener('click', async () => {
+    if (activeAiDraft?.id) {
+      await fetch(`/api/inbox/conversations/${encodeURIComponent(activeConversationId)}/ai-drafts/${encodeURIComponent(activeAiDraft.id)}/discard`, { method:'POST' }).catch(() => {});
+    }
+    resetAiDraft();
+    setAiDraftDrawer(false);
+  });
+
+  document.getElementById('closeInboxAiDraftButton')?.addEventListener('click', () => setAiDraftDrawer(false));
+  aiDraftDrawer?.addEventListener('click', (event) => { if (event.target === aiDraftDrawer) setAiDraftDrawer(false); });
 
   replyForm.addEventListener('submit', (event) => {
     event.preventDefault();
-    const input = replyForm.querySelector('input');
+    const input = replyForm.querySelector('[name="body"]');
     if (!input.value.trim()) return;
     fetch(`/api/inbox/conversations/${activeConversationId}/replies`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ body: input.value })
+      body: JSON.stringify({ body: input.value, aiDraftId: replyForm.dataset.aiDraftId || undefined })
     }).then(async (response) => {
       const result = await response.json().catch(() => ({}));
       showToast(response.ok ? 'Reply queued' : result.error || 'Reply failed');
       if (response.ok) {
         input.value = '';
+        resetAiDraft();
         loadConversation(activeConversationId);
       }
     });
   });
 
-  replyForm.querySelector('input')?.addEventListener('input', () => {
+  replyForm.querySelector('[name="body"]')?.addEventListener('input', (event) => {
+    const composer = event.currentTarget;
+    if (composer.tagName === 'TEXTAREA') {
+      composer.style.height = 'auto';
+      composer.style.height = `${Math.min(composer.scrollHeight, 160)}px`;
+      composer.style.overflowY = composer.scrollHeight > 160 ? 'auto' : 'hidden';
+    }
     if (!activeConversationId || typingTimer) return;
     fetch(`/api/inbox/conversations/${activeConversationId}/typing`, {
       method: 'POST',
@@ -257,6 +633,17 @@ if (replyForm) {
     typingTimer = window.setTimeout(() => {
       typingTimer = null;
     }, 2500);
+  });
+
+  assignmentForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!activeConversationId) return;
+    const response = await fetch(`/api/inbox/conversations/${encodeURIComponent(activeConversationId)}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ assignedUserId: inboxAssignee.value || null })
+    });
+    const result = await response.json().catch(() => ({}));
+    showToast(response.ok ? 'Conversation assignment updated' : result.error || 'Assignment could not be updated');
+    if (response.ok) refreshActiveConversation();
   });
 
   noteForm.addEventListener('submit', async (event) => {
@@ -305,6 +692,564 @@ if (replyForm) {
     });
   }
 }
+
+const knowledgeItemDrawer = document.getElementById('knowledgeItemDrawer');
+const knowledgeItemForm = document.getElementById('knowledgeItemForm');
+const knowledgeItemList = document.getElementById('knowledgeItemList');
+const knowledgeItemsById = new Map();
+const knowledgeSourcesById = new Map();
+
+function formatDateTime(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value || '');
+  return date.toLocaleString(undefined, { dateStyle:'medium', timeStyle:'short' });
+}
+
+function setKnowledgeDrawer(open) {
+  knowledgeItemDrawer?.classList.toggle('open', open);
+  knowledgeItemDrawer?.setAttribute('aria-hidden', open ? 'false' : 'true');
+}
+
+function setIntelligenceView(view) {
+  document.querySelectorAll('[data-intelligence-tab]').forEach((button) => button.classList.toggle('active', button.dataset.intelligenceTab === view));
+  document.getElementById('intelligenceKnowledgeView')?.classList.toggle('active', view === 'knowledge');
+  document.getElementById('intelligenceSourcesView')?.classList.toggle('active', view === 'sources');
+  document.getElementById('intelligenceConnectorsView')?.classList.toggle('active', view === 'connectors');
+  document.getElementById('intelligenceQualityView')?.classList.toggle('active', view === 'quality');
+}
+
+document.querySelectorAll('[data-intelligence-tab]').forEach((button) => button.addEventListener('click', () => setIntelligenceView(button.dataset.intelligenceTab)));
+
+async function loadKnowledgeWorkspace() {
+  if (!knowledgeItemList) return;
+  const [knowledgeResponse, qualityResponse, operationsResponse] = await Promise.all([fetch('/api/knowledge/overview'), fetch('/api/ai/quality'), fetch('/api/knowledge/operations')]);
+  const knowledge = await knowledgeResponse.json().catch(() => ({}));
+  const quality = await qualityResponse.json().catch(() => ({}));
+  const operations = await operationsResponse.json().catch(() => ({}));
+  if (knowledgeResponse.ok) renderKnowledgeWorkspace(knowledge);
+  else knowledgeItemList.innerHTML = `<p class="muted-copy">${htmlEscape(knowledge.error || 'Knowledge could not load')}</p>`;
+  if (qualityResponse.ok) renderAiQuality(quality);
+  if (operationsResponse.ok) renderKnowledgeOperations(operations);
+}
+
+function renderKnowledgeWorkspace(knowledge) {
+  const summary = knowledge.summary || {};
+  document.getElementById('knowledgeSummary').innerHTML = [
+    ['Approved', summary.approved || 0, 'Available to retrieval'],
+    ['Drafts', summary.drafts || 0, 'Awaiting approval'],
+    ['Archived', summary.archived || 0, 'Excluded from retrieval'],
+    ['Total', summary.total || 0, 'Tenant-owned sources']
+  ].map(([label,value,note]) => `<article class="metric"><small>${label}</small><strong>${Number(value)}</strong><span>${note}</span></article>`).join('');
+  document.getElementById('knowledgeStatus').textContent = `${Number(summary.approved || 0)} approved`;
+  knowledgeItemsById.clear();
+  (knowledge.items || []).forEach((item) => knowledgeItemsById.set(String(item.id), item));
+  knowledgeItemList.innerHTML = (knowledge.items || []).length ? knowledge.items.map((item) => `
+    <div class="knowledge-row">
+      <div><span class="status ${item.status === 'approved' ? '' : 'warn'}">${htmlEscape(item.status)}</span><strong>${htmlEscape(item.title)}</strong><small>${htmlEscape(item.itemType)} · version ${Number(item.version || 1)}</small></div>
+      <p>${htmlEscape(item.content)}</p>
+      <button class="button ghost" type="button" data-knowledge-edit="${htmlEscape(item.id)}">Edit</button>
+    </div>`).join('') : '<p class="muted-copy">Add an FAQ, policy, or agent instruction to begin.</p>';
+  knowledgeItemList.querySelectorAll('[data-knowledge-edit]').forEach((button) => button.addEventListener('click', () => openKnowledgeItem(knowledgeItemsById.get(button.dataset.knowledgeEdit))));
+}
+
+function renderAiQuality(quality) {
+  const summary = quality.summary || {};
+  const percent = (value) => `${Math.round(Number(value || 0) * 100)}%`;
+  document.getElementById('aiQualitySummary').innerHTML = [
+    ['Drafts', summary.totalDrafts || 0, 'Generated'],
+    ['Acceptance', percent(summary.acceptanceRate), `${Number(summary.usedDrafts || 0)} used`],
+    ['Edited', percent(summary.editRate), 'Used drafts changed'],
+    ['Grounded', percent(summary.groundedRate), 'With retrieved sources'],
+    ['Blocked', summary.blockedDrafts || 0, 'Safety intervention'],
+    ['Confidence', percent(summary.averageConfidence), 'Average score']
+  ].map(([label,value,note]) => `<article class="metric"><small>${label}</small><strong>${htmlEscape(value)}</strong><span>${htmlEscape(note)}</span></article>`).join('');
+  document.getElementById('aiProviderQuality').innerHTML = (quality.providerBreakdown || []).length ? quality.providerBreakdown.map((provider) => `<div class="quality-row"><div><strong>${htmlEscape(provider.providerKey)}</strong><span>${Number(provider.drafts || 0)} drafts</span></div><em>${percent(provider.acceptanceRate)} accepted · ${percent(provider.averageConfidence)} confidence</em></div>`).join('') : '<p class="muted-copy">No provider data yet.</p>';
+  document.getElementById('aiSafetySignals').innerHTML = (quality.safetyFlags || []).length ? quality.safetyFlags.map((item) => `<div class="quality-row"><strong>${htmlEscape(item.flag.replaceAll('_',' '))}</strong><em>${Number(item.count)}</em></div>`).join('') : '<p class="muted-copy">No safety flags recorded.</p>';
+  document.getElementById('aiDraftOutcomes').innerHTML = (quality.recent || []).length ? quality.recent.map((draft) => `<div class="quality-row"><div><strong>${htmlEscape(draft.providerKey || 'provider')} · ${htmlEscape(draft.status)}</strong><span>${Number(draft.knowledgeSourceCount || 0)} sources${draft.wasEdited === true ? ' · edited' : ''}</span></div><em>${percent(draft.confidence)}</em></div>`).join('') : '<p class="muted-copy">No AI drafts recorded.</p>';
+}
+
+function renderKnowledgeOperations(operations) {
+  const sources = operations.sources || [];
+  renderConnectorOperations(operations.connectorOperations || {}, operations.googleDriveOAuth || {}, operations.connectorAlertCenter || {});
+  knowledgeSourcesById.clear();
+  sources.forEach((source) => knowledgeSourcesById.set(String(source.id), source));
+  const cases = operations.evaluationCases || [];
+  const latest = (operations.evaluationRuns || [])[0] || null;
+  const percent = (value) => `${Math.round(Number(value || 0) * 100)}%`;
+  document.getElementById('knowledgeOpsSummary').innerHTML = [
+    ['Sources', sources.length, 'Uploads and connectors'],
+    ['Healthy', sources.filter((source) => source.status === 'ready').length, 'Ready for retrieval'],
+    ['Eval cases', cases.length, 'Active quality checks'],
+    ['Source recall', latest ? percent(latest.sourceRecall) : 'Not run', 'Latest evaluation']
+  ].map(([label,value,note]) => `<article class="metric"><small>${htmlEscape(label)}</small><strong>${htmlEscape(value)}</strong><span>${htmlEscape(note)}</span></article>`).join('');
+  document.getElementById('knowledgeSourceList').innerHTML = sources.length ? sources.map((source) => `<div class="quality-row knowledge-source-row"><div><strong>${htmlEscape(source.name)}</strong><span>${htmlEscape(source.sourceType.replaceAll('_',' '))} · ${htmlEscape(source.formatType)} · ${Number(source.itemCount || 0)} items${source.nextSyncAt ? ` · next ${htmlEscape(formatDateTime(source.nextSyncAt))}` : ''}</span></div><div class="source-row-actions"><em class="${source.status === 'error' ? 'quality-alert' : ''}">${htmlEscape(source.status)}${source.lastError ? ` · ${htmlEscape(source.lastError)}` : ''}</em><button class="button ghost" type="button" data-knowledge-source="${htmlEscape(source.id)}">Manage</button></div></div>`).join('') : '<p class="muted-copy">No file imports or API connectors yet.</p>';
+  document.querySelectorAll('[data-knowledge-source]').forEach((button) => button.addEventListener('click', () => openKnowledgeSource(knowledgeSourcesById.get(button.dataset.knowledgeSource))));
+  document.getElementById('knowledgeEvalCaseList').innerHTML = cases.length ? cases.map((item) => `<div class="quality-row"><div><strong>${htmlEscape(item.name)}</strong><span>${htmlEscape(item.queryText)}</span></div><em>${(item.expectedSourceRefs || []).length} expected · ${(item.forbiddenSourceRefs || []).length} forbidden</em></div>`).join('') : '<p class="muted-copy">Add a case to establish a repeatable quality baseline.</p>';
+  const result = document.getElementById('knowledgeEvalResults');
+  const status = document.getElementById('knowledgeEvalStatus');
+  if (!latest) {
+    status.textContent = 'Not run';
+    result.innerHTML = '<p class="muted-copy">Run the suite after adding at least one evaluation case.</p>';
+    return;
+  }
+  status.textContent = `${Number(latest.caseCount || 0)} cases`;
+  result.innerHTML = [
+    ['Citation precision', percent(latest.citationPrecision)],
+    ['Source recall', percent(latest.sourceRecall)],
+    ['Completeness', percent(latest.completeness)],
+    ['Isolation', percent(latest.isolationPassRate)],
+    ['Unsupported risk', percent(latest.unsupportedClaimRisk)]
+  ].map(([label,value]) => `<div><span>${label}</span><strong>${value}</strong></div>`).join('');
+}
+
+let connectorAlertPolicyState = null;
+function renderConnectorOperations(connectorOperations, googleOAuth, alertCenter) {
+  const summary = connectorOperations.summary || {};
+  const duration = (value) => value === null || value === undefined
+    ? 'No data'
+    : `${(Number(value) / 1000).toFixed(Number(value) >= 10000 ? 0 : 1)}s`;
+  document.getElementById('connectorOpsSummary').innerHTML = [
+    ['Active', summary.active || 0, `${Number(summary.total || 0)} configured`],
+    ['Healthy', summary.healthy || 0, 'Within freshness SLA'],
+    ['Attention', summary.attention || 0, 'Stale or degraded'],
+    ['Failed 24h', summary.failed24h || 0, 'Worker attempts'],
+    ['Avg duration', duration(summary.averageDurationMs), 'Completed attempts']
+  ].map(([label,value,note]) => `<article class="metric"><small>${htmlEscape(label)}</small><strong>${htmlEscape(value)}</strong><span>${htmlEscape(note)}</span></article>`).join('');
+  connectorAlertPolicyState = alertCenter.policy || null;
+  const storedAlerts = (alertCenter.alerts || []).filter((alert) => alert.status !== 'resolved');
+  const alerts = storedAlerts.length ? storedAlerts : (connectorOperations.alerts || []);
+  document.getElementById('connectorAlertStatus').textContent = alerts.length ? `${alerts.length} open` : 'Clear';
+  document.getElementById('connectorAlertList').innerHTML = alerts.length ? alerts.map((alert) => `<div class="quality-row connector-alert ${htmlEscape(alert.severity)}"><div><strong>${htmlEscape(alert.title)}</strong><span>${htmlEscape(alert.detail)}</span>${alert.status ? `<small>${htmlEscape(alert.status)}${alert.escalatedAt ? ' · escalated' : ''}</small>` : ''}</div><div class="connector-alert-actions">${alert.id && alert.status === 'open' ? `<button class="button ghost" type="button" data-connector-alert-ack="${htmlEscape(alert.id)}">Acknowledge</button>` : ''}<button class="button ghost" type="button" data-connector-health-source="${htmlEscape(alert.sourceId)}">Manage</button></div></div>`).join('') : '<p class="muted-copy">All configured connectors are within their operating thresholds.</p>';
+  const oauthStatus = document.getElementById('googleDriveOAuthStatus');
+  oauthStatus.textContent = googleOAuth.configured ? 'Configured' : 'Setup required';
+  document.getElementById('googleDriveOAuthReadiness').innerHTML = googleOAuth.configured
+    ? `<div><strong>${googleOAuth.sandboxReady ? 'Sandbox ready' : 'Sandbox incomplete'}</strong><span>${Number(googleOAuth.testUserCount || 0)} test user(s) · ${htmlEscape(googleOAuth.redirectUri || '')}</span></div><div><strong>${googleOAuth.productionReady ? 'Production approved' : 'Production gated'}</strong><span>Verification ${htmlEscape(googleOAuth.verificationStatus || 'not_started')} · assessment ${htmlEscape(googleOAuth.securityAssessmentStatus || 'not_started')}</span></div><div><strong>${googleOAuth.restrictedScope ? 'Restricted scope' : 'Limited scope'}</strong><span>${htmlEscape((googleOAuth.scopes || []).join(', '))}</span></div>${googleOAuth.verificationRequired && !googleOAuth.productionReady ? '<p class="oauth-warning">Public connection remains gated until Google verification and the applicable security assessment are approved.</p>' : ''}`
+    : '<p class="muted-copy">Set the Google Drive OAuth client ID, client secret, and registered callback URL on the platform.</p>';
+  const sources = connectorOperations.sources || [];
+  document.getElementById('connectorHealthList').innerHTML = sources.length ? sources.map((source) => `<div class="connector-health-row"><div><strong>${htmlEscape(source.name)}</strong><span>${htmlEscape(source.sourceType.replaceAll('_',' '))} · every ${Number(source.syncIntervalMinutes || 0)} min</span></div><span class="health-state ${htmlEscape(source.healthState)}">${htmlEscape(source.healthState.replaceAll('_',' '))}</span><div><small>Last success</small><strong>${htmlEscape(source.lastSuccessAt ? formatDateTime(source.lastSuccessAt) : 'Never')}</strong></div><div><small>Next run</small><strong>${htmlEscape(source.nextSyncAt ? formatDateTime(source.nextSyncAt) : 'Paused')}</strong></div><div><small>Success rate</small><strong>${source.successRate === null ? 'No data' : `${Math.round(source.successRate * 100)}%`}</strong></div><button class="button ghost" type="button" data-connector-health-source="${htmlEscape(source.id)}">Manage</button></div>`).join('') : '<p class="muted-copy">Add Shopify, WooCommerce, or Google Drive to begin monitoring.</p>';
+  const runs = connectorOperations.recentRuns || [];
+  document.getElementById('connectorRunList').innerHTML = runs.length ? runs.map((run) => `<div class="connector-run-row"><span class="health-state ${htmlEscape(run.status)}">${htmlEscape(run.status)}</span><div><strong>${htmlEscape(run.provider.replaceAll('_',' '))}</strong><span>${htmlEscape(run.triggerType)} · attempt ${Number(run.attempt || 1)}/${Number(run.maxAttempts || 1)}</span></div><div><small>Records</small><strong>${Number(run.fetchedCount || 0)} fetched · ${Number(run.createdCount || 0)} new · ${Number(run.updatedCount || 0)} updated</strong></div><div><small>Duration</small><strong>${htmlEscape(duration(run.durationMs))}</strong></div><div><small>Started</small><strong>${htmlEscape(formatDateTime(run.startedAt))}</strong></div>${run.errorMessage ? `<p>${htmlEscape(run.errorMessage)}</p>` : ''}</div>`).join('') : '<p class="muted-copy">Sync attempts will appear after the worker processes a connector job.</p>';
+  const history = alertCenter.alerts || [];
+  document.getElementById('connectorAlertHistory').innerHTML = history.length ? history.slice(0, 20).map((alert) => `<div class="connector-alert-history-row"><span class="health-state ${htmlEscape(alert.status)}">${htmlEscape(alert.status)}</span><div><strong>${htmlEscape(alert.title)}</strong><span>${htmlEscape(alert.severity)} · detected ${htmlEscape(formatDateTime(alert.firstDetectedAt))}</span></div><div><small>Notifications</small><strong>${Number(alert.notificationCount || 0)}</strong></div><div><small>Latest event</small><strong>${htmlEscape(alert.events?.[0] ? alert.events[0].eventType.replaceAll('_',' ') : 'opened')}</strong></div></div>`).join('') : '<p class="muted-copy">No connector alerts recorded.</p>';
+  document.querySelectorAll('[data-connector-health-source]').forEach((button) => button.addEventListener('click', () => openKnowledgeSource(knowledgeSourcesById.get(button.dataset.connectorHealthSource))));
+  document.querySelectorAll('[data-connector-alert-ack]').forEach((button) => button.addEventListener('click', async () => {
+    const response = await fetch(`/api/knowledge/connectors/alerts/${encodeURIComponent(button.dataset.connectorAlertAck)}/acknowledge`, { method:'POST' });
+    const result = await response.json().catch(() => ({}));
+    showToast(response.ok ? 'Alert acknowledged' : result.error || 'Alert could not be acknowledged');
+    if (response.ok) await loadKnowledgeWorkspace();
+  }));
+}
+
+function openKnowledgeItem(item = null) {
+  knowledgeItemForm.reset();
+  knowledgeItemForm.itemId.value = item?.id || '';
+  knowledgeItemForm.itemType.value = item?.itemType || 'faq';
+  knowledgeItemForm.title.value = item?.title || '';
+  knowledgeItemForm.content.value = item?.content || '';
+  knowledgeItemForm.keywords.value = (item?.keywords || []).join(', ');
+  knowledgeItemForm.status.value = item?.status || 'draft';
+  document.getElementById('knowledgeItemDrawerTitle').textContent = item ? 'Edit knowledge' : 'Add knowledge';
+  setKnowledgeDrawer(true);
+}
+
+document.getElementById('addKnowledgeItemButton')?.addEventListener('click', () => openKnowledgeItem());
+document.getElementById('closeKnowledgeItemDrawerButton')?.addEventListener('click', () => setKnowledgeDrawer(false));
+knowledgeItemDrawer?.addEventListener('click', (event) => { if (event.target === knowledgeItemDrawer) setKnowledgeDrawer(false); });
+knowledgeItemForm?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const payload = Object.fromEntries(new FormData(knowledgeItemForm).entries());
+  const itemId = payload.itemId;
+  delete payload.itemId;
+  const response = await fetch(itemId ? `/api/knowledge/items/${encodeURIComponent(itemId)}` : '/api/knowledge/items', {
+    method:itemId ? 'PATCH' : 'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
+  });
+  const result = await response.json().catch(() => ({}));
+  showToast(response.ok ? 'Knowledge saved' : result.error || 'Knowledge could not be saved');
+  if (response.ok) { setKnowledgeDrawer(false); await loadKnowledgeWorkspace(); }
+});
+
+const knowledgeImportDrawer = document.getElementById('knowledgeImportDrawer');
+const knowledgeConnectorDrawer = document.getElementById('knowledgeConnectorDrawer');
+const knowledgeEvalDrawer = document.getElementById('knowledgeEvalDrawer');
+const knowledgeSourceDrawer = document.getElementById('knowledgeSourceDrawer');
+const connectorAlertSettingsDrawer = document.getElementById('connectorAlertSettingsDrawer');
+const knowledgeOpsDrawers = [knowledgeImportDrawer, knowledgeConnectorDrawer, knowledgeEvalDrawer, knowledgeSourceDrawer, connectorAlertSettingsDrawer].filter(Boolean);
+function setKnowledgeOpsDrawer(drawer) {
+  knowledgeOpsDrawers.forEach((item) => {
+    const open = item === drawer;
+    item.classList.toggle('open', open);
+    item.setAttribute('aria-hidden', open ? 'false' : 'true');
+  });
+}
+document.getElementById('importKnowledgeButton')?.addEventListener('click', () => setKnowledgeOpsDrawer(knowledgeImportDrawer));
+document.getElementById('addKnowledgeConnectorButton')?.addEventListener('click', () => { document.getElementById('knowledgeConnectorForm')?.reset(); updateConnectorFields(); setKnowledgeOpsDrawer(knowledgeConnectorDrawer); });
+document.getElementById('addKnowledgeEvalButton')?.addEventListener('click', () => setKnowledgeOpsDrawer(knowledgeEvalDrawer));
+document.getElementById('connectorAlertSettingsButton')?.addEventListener('click', () => {
+  const form = document.getElementById('connectorAlertPolicyForm');
+  const policy = connectorAlertPolicyState || {};
+  form.reset();
+  form.elements.emailEnabled.checked = policy.emailEnabled !== false;
+  form.elements.minimumEmailSeverity.value = policy.minimumEmailSeverity || 'warning';
+  form.querySelectorAll('input[name="notifyRoles"]').forEach((input) => { input.checked = (policy.notifyRoles || ['owner','admin']).includes(input.value); });
+  form.elements.additionalEmails.value = (policy.additionalEmails || []).join(', ');
+  form.elements.escalationMinutes.value = String(policy.escalationMinutes || 60);
+  setKnowledgeOpsDrawer(connectorAlertSettingsDrawer);
+});
+document.querySelectorAll('[data-close-knowledge-ops]').forEach((button) => button.addEventListener('click', () => setKnowledgeOpsDrawer(null)));
+knowledgeOpsDrawers.forEach((drawer) => drawer.addEventListener('click', (event) => { if (event.target === drawer) setKnowledgeOpsDrawer(null); }));
+
+document.getElementById('connectorAlertPolicyForm')?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const response = await fetch('/api/knowledge/connectors/alert-policy', {
+    method:'PATCH', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      emailEnabled:form.elements.emailEnabled.checked,
+      minimumEmailSeverity:form.elements.minimumEmailSeverity.value,
+      notifyRoles:new FormData(form).getAll('notifyRoles'),
+      additionalEmails:form.elements.additionalEmails.value,
+      escalationMinutes:form.elements.escalationMinutes.value
+    })
+  });
+  const result = await response.json().catch(() => ({}));
+  showToast(response.ok ? 'Alert settings saved' : result.error || 'Alert settings could not be saved');
+  if (response.ok) { setKnowledgeOpsDrawer(null); await loadKnowledgeWorkspace(); }
+});
+
+document.getElementById('knowledgeImportForm')?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const file = form.elements.file.files[0];
+  if (!file) return;
+  const isDocument = /\.(pdf|docx)$/i.test(file.name);
+  if (file.size > (isDocument ? 5 : 1) * 1024 * 1024) return showToast(isDocument ? 'PDF and DOCX imports are limited to 5 MB' : 'Text imports are limited to 1 MB');
+  const submit = form.querySelector('button[type="submit"]');
+  submit.disabled = true;
+  submit.textContent = 'Importing...';
+  const payload = { filename:file.name, mimeType:file.type, defaultStatus:form.elements.defaultStatus.value };
+  if (isDocument) payload.contentBase64 = await fileToBase64(file);
+  else payload.content = await file.text();
+  const response = await fetch('/api/knowledge/imports', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+  const result = await response.json().catch(() => ({}));
+  submit.disabled = false;
+  submit.textContent = 'Import knowledge';
+  showToast(response.ok ? `${Number(result.created || 0)} created, ${Number(result.updated || 0)} updated` : result.error || 'Import failed');
+  if (response.ok) { form.reset(); setKnowledgeOpsDrawer(null); await loadKnowledgeWorkspace(); }
+});
+
+document.getElementById('knowledgeConnectorForm')?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const payload = Object.fromEntries(new FormData(form).entries());
+  const oauth = payload.provider === 'google_drive';
+  const response = await fetch(oauth ? '/api/knowledge/connectors/google-drive/oauth/start' : '/api/knowledge/connectors', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+  const result = await response.json().catch(() => ({}));
+  if (response.ok && oauth) { window.location.assign(result.authorizationUrl); return; }
+  showToast(response.ok ? `Connector ${result.source.id} created` : result.error || 'Connector could not be created');
+  if (response.ok) { form.reset(); setKnowledgeOpsDrawer(null); await loadKnowledgeWorkspace(); }
+});
+
+const knowledgeConnectorProvider = document.getElementById('knowledgeConnectorProvider');
+knowledgeConnectorProvider?.addEventListener('change', updateConnectorFields);
+function updateConnectorFields() {
+  const provider = knowledgeConnectorProvider?.value || 'shopify';
+  document.querySelectorAll('[data-connector-fields]').forEach((group) => {
+    const active = group.dataset.connectorFields === provider;
+    group.hidden = !active;
+    group.querySelectorAll('input').forEach((input) => { input.disabled = !active; input.required = active && !['folderId', 'refreshToken', 'clientId', 'clientSecret'].includes(input.name); });
+  });
+  const live = provider !== 'api_push';
+  document.querySelector('[data-live-connector-field]')?.toggleAttribute('hidden', !live);
+  const note = document.getElementById('knowledgeConnectorNote');
+  if (note) note.innerHTML = provider === 'google_drive' ? '<strong>Restricted scope notice</strong><span>Automatic folder sync uses Google Drive read-only access. Public production use requires Google verification and the applicable security assessment.</span>' : live ? '<strong>Initial sync</strong><span>The connector is queued immediately. Repeated provider references update existing knowledge records.</span>' : '<strong>Normalized contract</strong><span>Push records with an external reference, type, title, content, and keywords.</span>';
+  const submit = document.querySelector('#knowledgeConnectorForm button[type="submit"]');
+  if (submit) submit.textContent = provider === 'google_drive' ? 'Continue with Google' : 'Create connector';
+}
+updateConnectorFields();
+
+function openKnowledgeSource(source) {
+  if (!source || !knowledgeSourceDrawer) return;
+  const form = document.getElementById('knowledgeSourceForm');
+  form.reset();
+  form.elements.sourceId.value = source.id;
+  document.getElementById('knowledgeSourceDrawerTitle').textContent = source.name;
+  document.getElementById('knowledgeSourceDrawerMeta').textContent = `${source.sourceType.replaceAll('_', ' ')} · ${Number(source.itemCount || 0)} items`;
+  document.getElementById('knowledgeSourceHealth').innerHTML = `<div><span>Status</span><strong>${htmlEscape(source.status)}</strong></div><div><span>Last sync</span><strong>${htmlEscape(source.lastSyncedAt ? formatDateTime(source.lastSyncedAt) : 'Not yet')}</strong></div><div><span>Failures</span><strong>${Number(source.consecutiveFailures || 0)}</strong></div>`;
+  const live = ['shopify', 'woocommerce', 'google_drive'].includes(source.sourceType);
+  document.getElementById('knowledgeSourceLiveControls').hidden = !live;
+  if (live) {
+    form.elements.status.value = source.status === 'paused' ? 'paused' : 'ready';
+    form.elements.syncIntervalMinutes.value = String(source.syncIntervalMinutes || 360);
+    document.getElementById('knowledgeSourceCredentialFields').innerHTML = sourceCredentialFields(source);
+  }
+  setKnowledgeOpsDrawer(knowledgeSourceDrawer);
+}
+
+function sourceCredentialFields(source) {
+  const masked = source.credentialsMasked || {};
+  if (source.sourceType === 'shopify') return `<label>Rotate access token<input name="accessToken" type="password" placeholder="${htmlEscape(masked.accessToken || 'Leave blank to keep current')}"></label>`;
+  if (source.sourceType === 'woocommerce') return `<label>Rotate consumer key<input name="consumerKey" placeholder="${htmlEscape(masked.consumerKey || 'Leave blank to keep current')}"></label><label>Rotate consumer secret<input name="consumerSecret" type="password" placeholder="${htmlEscape(masked.consumerSecret || 'Leave blank to keep current')}"></label>`;
+  return '<div class="import-format-note"><strong>Managed Google authorization</strong><span>OAuth credentials are encrypted and managed by the platform. If Google access is revoked, delete this source and reconnect it through the Google consent flow.</span></div>';
+}
+
+document.getElementById('knowledgeSourceForm')?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const data = Object.fromEntries(new FormData(form).entries());
+  const sourceId = data.sourceId;
+  const credentials = Object.fromEntries(['accessToken','consumerKey','consumerSecret','refreshToken','clientId','clientSecret'].filter((key) => data[key]).map((key) => [key, data[key]]));
+  const response = await fetch(`/api/knowledge/sources/${encodeURIComponent(sourceId)}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ status:data.status, syncIntervalMinutes:data.syncIntervalMinutes, credentials }) });
+  const result = await response.json().catch(() => ({}));
+  showToast(response.ok ? 'Source settings saved' : result.error || 'Source settings could not be saved');
+  if (response.ok) { setKnowledgeOpsDrawer(null); await loadKnowledgeWorkspace(); }
+});
+
+document.getElementById('syncKnowledgeSourceButton')?.addEventListener('click', async () => {
+  const sourceId = document.getElementById('knowledgeSourceForm').elements.sourceId.value;
+  const response = await fetch(`/api/knowledge/sources/${encodeURIComponent(sourceId)}/sync`, { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
+  const result = await response.json().catch(() => ({}));
+  showToast(response.ok ? 'Source sync queued' : result.error || 'Source sync could not be queued');
+  if (response.ok) { setKnowledgeOpsDrawer(null); await loadKnowledgeWorkspace(); }
+});
+
+document.getElementById('deleteKnowledgeSourceButton')?.addEventListener('click', async () => {
+  const sourceId = document.getElementById('knowledgeSourceForm').elements.sourceId.value;
+  const source = knowledgeSourcesById.get(String(sourceId));
+  if (!window.confirm(`Delete ${source?.name || 'this source'} and archive its knowledge records?`)) return;
+  const response = await fetch(`/api/knowledge/sources/${encodeURIComponent(sourceId)}`, { method:'DELETE' });
+  const result = await response.json().catch(() => ({}));
+  showToast(response.ok ? 'Source deleted and records archived' : result.error || 'Source could not be deleted');
+  if (response.ok) { setKnowledgeOpsDrawer(null); await loadKnowledgeWorkspace(); }
+});
+
+async function fileToBase64(file) {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  let binary = '';
+  for (let index=0; index<bytes.length; index+=0x8000) binary += String.fromCharCode(...bytes.subarray(index, index + 0x8000));
+  return btoa(binary);
+}
+
+document.getElementById('knowledgeEvalForm')?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const response = await fetch('/api/knowledge/evaluations/cases', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(Object.fromEntries(new FormData(form).entries())) });
+  const result = await response.json().catch(() => ({}));
+  showToast(response.ok ? 'Evaluation saved' : result.error || 'Evaluation could not be saved');
+  if (response.ok) { form.reset(); setKnowledgeOpsDrawer(null); await loadKnowledgeWorkspace(); }
+});
+
+document.getElementById('runKnowledgeEvalsButton')?.addEventListener('click', async (event) => {
+  const button = event.currentTarget;
+  button.disabled = true;
+  button.textContent = 'Running...';
+  const response = await fetch('/api/knowledge/evaluations/run', { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
+  const result = await response.json().catch(() => ({}));
+  button.disabled = false;
+  button.textContent = 'Run suite';
+  showToast(response.ok ? `Evaluated ${Number(result.run?.caseCount || 0)} cases` : result.error || 'Evaluation run failed');
+  if (response.ok) await loadKnowledgeWorkspace();
+});
+
+document.getElementById('refreshConnectorOpsButton')?.addEventListener('click', loadKnowledgeWorkspace);
+
+const googleDriveResult = new URLSearchParams(window.location.search).get('googleDrive');
+if (googleDriveResult) {
+  setIntelligenceView('connectors');
+  const message = new URLSearchParams(window.location.search).get('message');
+  showToast(googleDriveResult === 'connected' ? 'Google Drive connected and initial sync queued' : message || 'Google Drive connection failed');
+  window.history.replaceState({}, '', `${window.location.pathname}#intelligence`);
+}
+
+loadKnowledgeWorkspace();
+
+const tenantCrmConnectDrawer = document.getElementById('tenantCrmConnectDrawer');
+const tenantCrmManageDrawer = document.getElementById('tenantCrmManageDrawer');
+const tenantCrmConnectForm = document.getElementById('tenantCrmConnectForm');
+const tenantCrmManageForm = document.getElementById('tenantCrmManageForm');
+let tenantCrmState = { providers:[], connections:[], runs:[], summary:{} };
+let tenantCrmJobPoller = null;
+let tenantCrmActiveJob = null;
+let tenantCrmLatestJob = null;
+
+function setTenantCrmDrawer(drawer) {
+  [tenantCrmConnectDrawer, tenantCrmManageDrawer].filter(Boolean).forEach((item) => {
+    const open = item === drawer;
+    item.classList.toggle('open', open);
+    item.setAttribute('aria-hidden', open ? 'false' : 'true');
+  });
+}
+
+function stopTenantCrmJobPolling() {
+  if (tenantCrmJobPoller) window.clearInterval(tenantCrmJobPoller);
+  tenantCrmJobPoller = null;
+}
+
+function updateTenantCrmJobLifecycle(job) {
+  const status = job.status || 'queued';
+  const lifecycle = tenantCrmLatestJob?.id === job.id ? tenantCrmLatestJob.lifecycle : [];
+  if (status === 'processing' && !lifecycle.includes('queued')) lifecycle.push('queued');
+  if (['succeeded','failed'].includes(status)) {
+    if (!lifecycle.includes('queued')) lifecycle.push('queued');
+    if (!lifecycle.includes('processing')) lifecycle.push('processing');
+  }
+  if (!lifecycle.includes(status)) lifecycle.push(status);
+  tenantCrmLatestJob = { ...job, lifecycle };
+}
+
+function renderTenantCrmRuns(runs) {
+  const lifecycleRun = tenantCrmLatestJob ? `<article><div><strong>Latest sync · ${htmlEscape(tenantCrmLatestJob.label || tenantCrmLatestJob.status)}</strong><span>${tenantCrmLatestJob.lifecycle.map((status) => htmlEscape(status.replace(/^./, (letter) => letter.toUpperCase()))).join(' → ')}</span></div><div><span>Sync lifecycle</span><small>${htmlEscape(tenantCrmLatestJob.lastError || 'Live status recorded')}</small></div></article>` : '';
+  const activeRun = tenantCrmActiveJob ? `<article><div><strong>Current sync · ${htmlEscape(tenantCrmActiveJob.label || tenantCrmActiveJob.status)}</strong><span>${htmlEscape(tenantCrmActiveJob.status === 'queued' ? 'Waiting for worker' : 'Worker is processing')}</span></div><div><span>Attempt ${Number(tenantCrmActiveJob.attempts || 0)} of ${Number(tenantCrmActiveJob.maxAttempts || 0)}</span><small>${htmlEscape(tenantCrmActiveJob.lastError || 'Live status updates every 2 seconds')}</small></div></article>` : '';
+  return lifecycleRun + activeRun + (runs.length ? runs.map((run) => `<article><div><strong>${htmlEscape(run.provider)} · ${htmlEscape(run.status)}</strong><span> · ${htmlEscape(run.triggerType)} · ${htmlEscape(formatDateTime(run.startedAt))}</span></div><div><span>${Number(run.succeededCount || 0)} synced</span><small> · ${Number(run.failedCount || 0)} failed · ${Number(run.durationMs || 0)} ms</small></div>${run.errorMessage ? `<p>${htmlEscape(run.errorMessage)}</p>` : ''}</article>`).join('') : (lifecycleRun || activeRun ? '' : '<p class="muted-copy">No CRM synchronisation attempts yet.</p>'));
+}
+
+function pollTenantCrmJob(jobId) {
+  if (!jobId) return;
+  stopTenantCrmJobPolling();
+  const refresh = async () => {
+    const response = await fetch(`/api/crm/jobs/${encodeURIComponent(jobId)}`);
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) return stopTenantCrmJobPolling();
+    const job = result.job || {};
+    updateTenantCrmJobLifecycle(job);
+    tenantCrmActiveJob = ['succeeded','failed'].includes(job.status) ? null : job;
+    await loadTenantCrm();
+    if (['succeeded','failed'].includes(job.status)) {
+      showToast(`CRM synchronisation ${job.label || job.status}`);
+      stopTenantCrmJobPolling();
+    }
+  };
+  refresh();
+  tenantCrmJobPoller = window.setInterval(refresh, 2000);
+}
+
+async function loadTenantCrm() {
+  if (!document.getElementById('tenantCrmConnectionList')) return;
+  const response = await fetch('/api/crm/operations');
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) return showToast(result.error || 'CRM integrations could not load');
+  tenantCrmState = result;
+  const summary = result.summary || {};
+  document.getElementById('tenantCrmSummary').innerHTML = [
+    ['Connected', summary.connected || 0, 'OAuth connections'],
+    ['Needs attention', summary.attention || 0, 'Connection errors'],
+    ['Successful 24h', summary.synced24h || 0, 'Worker runs'],
+    ['Failed 24h', summary.failed24h || 0, 'Recovery queue']
+  ].map(([label,value,note]) => `<article class="metric"><small>${htmlEscape(label)}</small><strong>${Number(value)}</strong><span>${htmlEscape(note)}</span></article>`).join('');
+  document.getElementById('tenantCrmProviderStrip').innerHTML = result.providers.map((provider) => `<article><span class="provider-initial">${htmlEscape(provider.name.slice(0,1))}</span><div><strong>${htmlEscape(provider.name)}</strong><small>${provider.configured ? 'Ready to connect' : 'Platform setup required'}</small></div><span class="status ${provider.configured ? 'ready' : ''}">${provider.configured ? 'Ready' : 'Setup'}</span></article>`).join('');
+  document.getElementById('tenantCrmConnectionList').innerHTML = result.connections.length ? result.connections.map((connection) => `<article class="tenant-crm-row"><div><strong>${htmlEscape(connection.provider.replace(/^./, (c) => c.toUpperCase()))}</strong><span>${htmlEscape(connection.accountName || connection.accountExternalId || 'Connected account')}</span></div><div><span class="status">${htmlEscape(connection.status)}</span><small>${htmlEscape(connection.lastHealthStatus || 'not checked')}</small></div><div><strong>${htmlEscape(connection.lastSyncedAt ? formatDateTime(connection.lastSyncedAt) : 'Not synced')}</strong><small>${Number(connection.consecutiveFailures || 0)} consecutive failures</small></div><button class="button ghost" data-tenant-crm-manage="${htmlEscape(connection.id)}" type="button">Manage</button></article>`).join('') : '<p class="muted-copy">No CRM connected yet. Choose Connect CRM to begin a secure OAuth flow.</p>';
+  document.getElementById('tenantCrmRunList').innerHTML = renderTenantCrmRuns(result.runs);
+  document.querySelectorAll('[data-tenant-crm-manage]').forEach((button) => button.addEventListener('click', () => openTenantCrmConnection(button.dataset.tenantCrmManage)));
+}
+
+function crmMappingFromForm(form) {
+  return { name:form.elements.mapName.value.trim(), email:form.elements.mapEmail.value.trim(), phone:form.elements.mapPhone.value.trim(), segment:form.elements.mapSegment.value.trim(), optedIn:form.elements.mapOptedIn.value.trim() };
+}
+
+function crmMappingWithProviderDefaults(form, provider) {
+  const defaults = tenantCrmState.providers.find((item) => item.provider === provider)?.defaultMapping || {};
+  const mapping = crmMappingFromForm(form);
+  for (const field of ['name','email','phone']) if (!mapping[field]) mapping[field] = defaults[field] || '';
+  return mapping;
+}
+
+function applyTenantCrmDefaults(form, provider) {
+  const mapping = tenantCrmState.providers.find((item) => item.provider === provider)?.defaultMapping || {};
+  const pipedriveCoreFields = provider === 'pipedrive';
+  form.elements.mapName.value = mapping.name || '';
+  form.elements.mapEmail.value = mapping.email || '';
+  form.elements.mapPhone.value = mapping.phone || '';
+  form.elements.mapSegment.value = mapping.segment || '';
+  form.elements.mapOptedIn.value = mapping.optedIn || '';
+  for (const field of ['mapName','mapEmail','mapPhone']) form.elements[field].readOnly = pipedriveCoreFields;
+}
+
+function openTenantCrmConnection(id) {
+  const connection = tenantCrmState.connections.find((item) => Number(item.id) === Number(id));
+  if (!connection || !tenantCrmManageForm) return;
+  tenantCrmManageForm.reset();
+  tenantCrmManageForm.elements.connectionId.value = connection.id;
+  tenantCrmManageForm.elements.status.value = connection.status === 'paused' ? 'paused' : 'connected';
+  tenantCrmManageForm.elements.syncIntervalMinutes.value = String(connection.syncIntervalMinutes || 360);
+  const mapping = connection.fieldMapping || {};
+  tenantCrmManageForm.elements.mapName.value = mapping.name || '';
+  tenantCrmManageForm.elements.mapEmail.value = mapping.email || '';
+  tenantCrmManageForm.elements.mapPhone.value = mapping.phone || '';
+  tenantCrmManageForm.elements.mapSegment.value = mapping.segment || '';
+  tenantCrmManageForm.elements.mapOptedIn.value = mapping.optedIn || '';
+  document.getElementById('tenantCrmManageTitle').textContent = connection.provider.replace(/^./, (c) => c.toUpperCase());
+  document.getElementById('tenantCrmManageMeta').textContent = connection.accountName || connection.apiBaseUrl || 'Connected CRM account';
+  document.getElementById('tenantCrmHealth').innerHTML = `<div><span>Status</span><strong>${htmlEscape(connection.status)}</strong></div><div><span>Health</span><strong>${htmlEscape(connection.lastHealthStatus || 'not checked')}</strong></div><div><span>Last sync</span><strong>${htmlEscape(connection.lastSyncedAt ? formatDateTime(connection.lastSyncedAt) : 'Not yet')}</strong></div>`;
+  setTenantCrmDrawer(tenantCrmManageDrawer);
+}
+
+document.getElementById('connectTenantCrmButton')?.addEventListener('click', () => { tenantCrmConnectForm?.reset(); if (tenantCrmConnectForm) applyTenantCrmDefaults(tenantCrmConnectForm, tenantCrmConnectForm.elements.provider.value); setTenantCrmDrawer(tenantCrmConnectDrawer); });
+document.getElementById('tenantCrmProvider')?.addEventListener('change', (event) => applyTenantCrmDefaults(tenantCrmConnectForm, event.target.value));
+document.getElementById('refreshTenantCrmButton')?.addEventListener('click', loadTenantCrm);
+document.querySelectorAll('[data-close-tenant-crm]').forEach((button) => button.addEventListener('click', () => setTenantCrmDrawer(null)));
+[tenantCrmConnectDrawer, tenantCrmManageDrawer].filter(Boolean).forEach((drawer) => drawer.addEventListener('click', (event) => { if (event.target === drawer) setTenantCrmDrawer(null); }));
+
+tenantCrmConnectForm?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const provider = form.elements.provider.value;
+  const readiness = tenantCrmState.providers.find((item) => item.provider === provider);
+  if (!readiness?.configured) return showToast(`${readiness?.name || provider} OAuth needs platform configuration first`);
+  const response = await fetch(`/api/crm/oauth/${encodeURIComponent(provider)}/start`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ syncIntervalMinutes:form.elements.syncIntervalMinutes.value, fieldMapping:crmMappingWithProviderDefaults(form, provider) }) });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) return showToast(result.error || 'CRM authorization could not start');
+  window.location.assign(result.authorizationUrl);
+});
+
+tenantCrmManageForm?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const id = form.elements.connectionId.value;
+  const response = await fetch(`/api/crm/connections/${encodeURIComponent(id)}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ status:form.elements.status.value, syncIntervalMinutes:form.elements.syncIntervalMinutes.value, fieldMapping:crmMappingFromForm(form) }) });
+  const result = await response.json().catch(() => ({}));
+  showToast(response.ok ? 'CRM settings saved' : result.error || 'CRM settings could not be saved');
+  if (response.ok) { setTenantCrmDrawer(null); await loadTenantCrm(); }
+});
+
+document.getElementById('testTenantCrmButton')?.addEventListener('click', async () => {
+  const id = tenantCrmManageForm.elements.connectionId.value;
+  const response = await fetch(`/api/crm/connections/${encodeURIComponent(id)}/test`, { method:'POST' });
+  const result = await response.json().catch(() => ({}));
+  showToast(result.health ? `${result.health.status}: ${result.health.message}` : result.error || 'Connection test failed');
+  await loadTenantCrm(); if (response.ok) openTenantCrmConnection(id);
+});
+
+document.getElementById('syncTenantCrmButton')?.addEventListener('click', async () => {
+  const id = tenantCrmManageForm.elements.connectionId.value;
+  const response = await fetch(`/api/crm/connections/${encodeURIComponent(id)}/sync`, { method:'POST' });
+  const result = await response.json().catch(() => ({}));
+  showToast(response.ok ? 'CRM synchronisation queued' : result.error || 'CRM sync could not be queued');
+  if (response.ok) {
+    updateTenantCrmJobLifecycle({ id:result.job?.jobId, status:'queued', label:'Queued' });
+    tenantCrmActiveJob = tenantCrmLatestJob;
+    setTenantCrmDrawer(null);
+    await loadTenantCrm();
+    pollTenantCrmJob(result.job?.jobId);
+  }
+});
+
+document.getElementById('disconnectTenantCrmButton')?.addEventListener('click', async () => {
+  if (!window.confirm('Disconnect this CRM and remove its stored OAuth credentials?')) return;
+  const id = tenantCrmManageForm.elements.connectionId.value;
+  const response = await fetch(`/api/crm/connections/${encodeURIComponent(id)}`, { method:'DELETE' });
+  const result = await response.json().catch(() => ({}));
+  showToast(response.ok ? 'CRM disconnected' : result.error || 'CRM could not be disconnected');
+  if (response.ok) { setTenantCrmDrawer(null); await loadTenantCrm(); }
+});
+
+const tenantCrmResult = new URLSearchParams(window.location.search).get('result');
+if (tenantCrmResult) {
+  showPage('integrations');
+  const provider = new URLSearchParams(window.location.search).get('crm') || 'CRM';
+  const message = new URLSearchParams(window.location.search).get('message');
+  showToast(tenantCrmResult === 'connected' ? `${provider} connected and initial sync queued` : message || `${provider} connection failed`);
+  window.history.replaceState({}, '', `${window.location.pathname}#integrations`);
+}
+loadTenantCrm();
 
 const testMessageForm = document.getElementById('testMessageForm');
 if (testMessageForm) {
@@ -423,6 +1368,45 @@ function renderMetaCheck(check) {
   return `<article class="setup-step ${check.ok ? 'complete' : ''}"><span>${check.ok ? '✓' : '•'}</span><div><strong>${htmlEscape(check.id.replaceAll('_', ' '))}</strong><small>${htmlEscape(check.message)}</small></div></article>`;
 }
 
+function loadFacebookSdk(appId, graphVersion) {
+  if (window.FB) return Promise.resolve(window.FB);
+  return new Promise((resolve, reject) => {
+    const existing = document.getElementById('facebook-jssdk');
+    if (existing) {
+      existing.addEventListener('load', () => resolve(window.FB), { once:true });
+      existing.addEventListener('error', () => reject(new Error('Meta SDK could not load')), { once:true });
+      return;
+    }
+    window.fbAsyncInit = () => {
+      window.FB.init({ appId, cookie:true, xfbml:false, version:graphVersion });
+      resolve(window.FB);
+    };
+    const script = document.createElement('script');
+    script.id = 'facebook-jssdk';
+    script.async = true;
+    script.defer = true;
+    script.src = 'https://connect.facebook.net/en_US/sdk.js';
+    script.addEventListener('error', () => reject(new Error('Meta SDK could not load')), { once:true });
+    document.head.appendChild(script);
+  });
+}
+
+function captureEmbeddedSignupAssets(payload) {
+  const data = payload?.data || payload || {};
+  if (!metaEmbeddedSignupForm) return;
+  if (data.waba_id) metaEmbeddedSignupForm.elements.wabaId.value = data.waba_id;
+  if (data.phone_number_id) metaEmbeddedSignupForm.elements.phoneNumberId.value = data.phone_number_id;
+}
+
+window.addEventListener('message', (event) => {
+  if (!['https://www.facebook.com', 'https://web.facebook.com'].includes(event.origin)) return;
+  let payload = event.data;
+  if (typeof payload === 'string') {
+    try { payload = JSON.parse(payload); } catch { return; }
+  }
+  if (payload?.type === 'WA_EMBEDDED_SIGNUP') captureEmbeddedSignupAssets(payload);
+});
+
 if (subscribeMetaWebhooksBtn) {
   subscribeMetaWebhooksBtn.addEventListener('click', async () => {
     const response = await fetch('/api/integrations/meta/webhooks/subscribe', {
@@ -451,15 +1435,22 @@ if (launchMetaSignupBtn) {
       showToast('Embedded Signup needs Meta app configuration first');
       return;
     }
-    const params = new URLSearchParams({
-      client_id: config.appId,
-      redirect_uri: config.redirectUri,
-      config_id: config.configId,
-      response_type: config.launchParams.response_type,
-      override_default_response_type: String(config.launchParams.override_default_response_type),
-      extras: JSON.stringify(config.launchParams.extras)
-    });
-    window.open(`https://www.facebook.com/${config.graphVersion}/dialog/oauth?${params.toString()}`, '_blank', 'noopener,noreferrer');
+    try {
+      const facebook = await loadFacebookSdk(config.appId, config.graphVersion);
+      facebook.login((response) => {
+        const code = response?.authResponse?.code;
+        if (!code) return showToast('Embedded Signup was cancelled or did not return an authorization code');
+        if (metaEmbeddedSignupForm) metaEmbeddedSignupForm.elements.code.value = code;
+        showToast('Embedded Signup returned an authorization code. Complete the saved asset details below.');
+      }, {
+        config_id:config.configId,
+        response_type:config.launchParams.response_type,
+        override_default_response_type:config.launchParams.override_default_response_type,
+        extras:config.launchParams.extras
+      });
+    } catch (error) {
+      showToast(error.message || 'Embedded Signup could not start');
+    }
   });
 }
 
@@ -791,7 +1782,7 @@ if (productForm) {
     productForm.status.value = product.status || 'active';
     productForm.description.value = product.description || '';
     if (productSubmitBtn) productSubmitBtn.textContent = `Update #${product.id}`;
-    productForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    openAppModal('productForm', { title: `Edit product #${product.id}`, kicker: 'Commerce' });
   }
 
   function resetProductForm() {
@@ -1516,7 +2507,10 @@ if (productForm) {
     }
     renderProductImportStatus(result);
     showToast(commit ? `Imported ${result.imported} product(s)` : `${result.validRows} product(s) ready to import`);
-    if (commit) loadCommerce();
+    if (commit) {
+      closeAppModal();
+      loadCommerce();
+    }
   }
 
   function renderProductImportStatus(result) {
@@ -1737,6 +2731,7 @@ if (productForm) {
     showToast(response.ok ? (productId ? 'Product updated' : 'Product saved') : result.error || 'Product could not be saved');
     if (response.ok) {
       resetProductForm();
+      closeAppModal();
       loadCommerce();
     }
   });
@@ -1753,6 +2748,7 @@ if (productForm) {
     });
     const result = await response.json().catch(() => ({}));
     showToast(response.ok ? `Catalogue queued (${result.mode})` : result.error || 'Catalogue could not be sent');
+    if (response.ok) closeAppModal();
   });
 
   variantForm?.addEventListener('submit', async (event) => {
@@ -1767,7 +2763,10 @@ if (productForm) {
     });
     const result = await response.json().catch(() => ({}));
     showToast(response.ok ? 'Variant saved' : result.error || 'Variant could not be saved');
-    if (response.ok) variantForm.reset();
+    if (response.ok) {
+      variantForm.reset();
+      closeAppModal();
+    }
   });
 
   previewCatalogSyncBtn?.addEventListener('click', loadCatalogSyncPreview);
@@ -1810,6 +2809,7 @@ if (productForm) {
     showToast(response.ok ? 'Collection saved' : result.error || 'Collection could not be saved');
     if (response.ok) {
       collectionForm.reset();
+      closeAppModal();
       loadCommerce();
     }
   });
@@ -1826,6 +2826,7 @@ if (productForm) {
     showToast(response.ok ? 'Coupon saved' : result.error || 'Coupon could not be saved');
     if (response.ok) {
       couponForm.reset();
+      closeAppModal();
       loadCommerce();
     }
   });
@@ -1884,14 +2885,19 @@ if (insightSummary) {
       insightChart.innerHTML = '<p class="muted-copy">No campaign delivery data yet.</p>';
       return;
     }
-    const maxDelivered = Math.max(...campaigns.map((campaign) => Number(campaign.delivered || 0)), 1);
-    insightChart.innerHTML = campaigns
-      .slice(0, 8)
-      .map((campaign) => {
-        const height = Math.max(8, Math.round((Number(campaign.delivered || 0) / maxDelivered) * 100));
-        return `<span title="${htmlEscape(campaign.name)}: ${Number(campaign.delivered || 0)} delivered" style="height:${height}%"><small>${htmlEscape(String(campaign.name || '').slice(0, 8))}</small></span>`;
-      })
-      .join('');
+    const totals = campaigns.reduce((acc, campaign) => {
+      acc.sent += Number(campaign.sent || 0); acc.delivered += Number(campaign.delivered || 0); acc.read += Number(campaign.read || 0); acc.replies += Number(campaign.replies || 0);
+      return acc;
+    }, { sent: 0, delivered: 0, read: 0, replies: 0 });
+    const deliveryRate = totals.sent ? Math.round((totals.delivered / totals.sent) * 100) : 0;
+    const readRate = totals.delivered ? Math.round((totals.read / totals.delivered) * 100) : 0;
+    const replyRate = totals.read ? Math.round((totals.replies / totals.read) * 100) : 0;
+    const maxSent = Math.max(...campaigns.map((campaign) => Number(campaign.sent || 0)), 1);
+    const rows = campaigns.slice(0, 6).map((campaign) => {
+      const sent = Number(campaign.sent || 0); const delivered = Number(campaign.delivered || 0); const read = Number(campaign.read || 0); const replies = Number(campaign.replies || 0);
+      return `<div class="insight-series" title="${htmlEscape(campaign.name)}"><div><strong>${htmlEscape(String(campaign.name || 'Campaign').slice(0, 18))}</strong><small>${sent.toLocaleString()} sent</small></div><span class="insight-series-track"><i style="width:${Math.max(3, Math.round((sent / maxSent) * 100))}%"></i><b style="width:${Math.max(0, Math.round((delivered / Math.max(sent, 1)) * 100))}%"></b><em style="width:${Math.max(0, Math.round((read / Math.max(sent, 1)) * 100))}%"></em></span><small>${replies} replies</small></div>`;
+    }).join('');
+    insightChart.innerHTML = `<div class="insight-donut" style="--delivery:${deliveryRate}%;--read:${Math.min(deliveryRate, Math.round((totals.read / Math.max(totals.sent, 1)) * 100))}%;"><strong>${deliveryRate}%</strong><small>delivery</small></div><div class="insight-funnel"><div class="insight-rate-row"><span>Delivered</span><strong>${deliveryRate}%</strong></div><div class="insight-rate-row"><span>Read</span><strong>${readRate}%</strong></div><div class="insight-rate-row"><span>Replied</span><strong>${replyRate}%</strong></div><div class="insight-series-list">${rows}</div><div class="insight-legend"><span><i></i> Sent</span><span><i></i> Delivered</span><span><i></i> Read</span></div></div>`;
   }
 
   function renderInsightCampaigns(campaigns) {
@@ -1945,11 +2951,303 @@ if (insightSummary) {
   loadInsights();
 }
 
+async function executeRecaptcha(action) {
+  const siteKey = document.querySelector('meta[name="recaptcha-site-key"]')?.content;
+  if (!siteKey) return null;
+  if (!window.grecaptcha?.execute) throw new Error('Security verification is still loading. Please try again.');
+  await new Promise((resolve) => window.grecaptcha.ready(resolve));
+  const token = await window.grecaptcha.execute(siteKey, { action });
+  if (!token) throw new Error('Security verification could not complete. Please try again.');
+  return token;
+}
+
+async function protectedFormPayload(form, action = form.dataset.recaptchaAction) {
+  const payload = Object.fromEntries(new FormData(form).entries());
+  const recaptchaToken = await executeRecaptcha(action);
+  if (recaptchaToken) payload.recaptchaToken = recaptchaToken;
+  return payload;
+}
+
+const publicLeadForm = document.getElementById('publicLeadForm');
+if (publicLeadForm) {
+  const statusEl = document.getElementById('publicLeadStatus');
+  const submitButton = publicLeadForm.querySelector('button[type="submit"]');
+  publicLeadForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    submitButton.disabled = true;
+    submitButton.setAttribute('aria-busy', 'true');
+    statusEl.textContent = 'Sending your enquiry...';
+    try {
+      const payload = await protectedFormPayload(publicLeadForm);
+      const params = new URLSearchParams(window.location.search);
+      payload.sourcePath = `${window.location.pathname}${window.location.search}`.slice(0, 300);
+      payload.referrer = document.referrer;
+      ['source', 'medium', 'campaign', 'content', 'term'].forEach((key) => {
+        const value = params.get(`utm_${key}`);
+        if (value) payload[`utm${key.charAt(0).toUpperCase()}${key.slice(1)}`] = value;
+      });
+      const response = await fetch('/api/public/leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Your enquiry could not be sent.');
+      publicLeadForm.reset();
+      statusEl.innerHTML = `Enquiry received. Your reference is <strong>${htmlEscape(result.reference || '')}</strong>.`;
+      submitButton.textContent = 'Enquiry sent';
+      window.chatClanAnalytics?.track('public_lead_submitted', { type: payload.leadType, source: window.location.pathname });
+    } catch (error) {
+      statusEl.textContent = error.message || 'Your enquiry could not be sent.';
+      submitButton.disabled = false;
+      submitButton.removeAttribute('aria-busy');
+    }
+  });
+}
+
+const publicConsentBanner = document.getElementById('publicConsentBanner');
+if (publicConsentBanner) {
+  const consentKey = 'chatclan_public_consent_v1';
+  let consent = '';
+  try { consent = window.localStorage.getItem(consentKey) || ''; } catch { consent = ''; }
+  publicConsentBanner.hidden = Boolean(consent);
+  window.chatClanAnalytics = {
+    track(eventName, properties = {}) {
+      let choice = '';
+      try { choice = window.localStorage.getItem(consentKey) || ''; } catch { choice = ''; }
+      if (choice !== 'analytics') return false;
+      window.dispatchEvent(new CustomEvent('chatclan:analytics', { detail: { event: eventName, properties, occurredAt: new Date().toISOString() } }));
+      return true;
+    }
+  };
+  publicConsentBanner.querySelectorAll('[data-consent-choice]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const choice = button.dataset.consentChoice === 'analytics' ? 'analytics' : 'essential';
+      try { window.localStorage.setItem(consentKey, choice); } catch { /* Preferences remain session-only when storage is unavailable. */ }
+      publicConsentBanner.hidden = true;
+      window.dispatchEvent(new CustomEvent('chatclan:consent', { detail: { analytics: choice === 'analytics' } }));
+    });
+  });
+  document.querySelectorAll('[data-analytics-event]').forEach((element) => {
+    element.addEventListener('click', () => window.chatClanAnalytics.track(element.dataset.analyticsEvent, { path: window.location.pathname }));
+  });
+}
+
+const platformLeadDrawer = document.getElementById('platformLeadDrawer');
+const platformLeadUpdateForm = document.getElementById('platformLeadUpdateForm');
+const platformLeadNoteForm = document.getElementById('platformLeadNoteForm');
+const platformLeadCrmRetry = document.getElementById('platformLeadCrmRetry');
+
+function setPlatformLeadDrawer(open) {
+  platformLeadDrawer?.classList.toggle('open', open);
+  platformLeadDrawer?.setAttribute('aria-hidden', open ? 'false' : 'true');
+}
+
+function localDateTimeInput(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const offset = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+}
+
+function renderPlatformLeadRowsClient(leads) {
+  if (!leads.length) return '<tr><td colspan="6"><p class="muted-copy">No public enquiries yet.</p></td></tr>';
+  return leads.map((lead) => `<tr data-platform-lead-row="${htmlEscape(lead.id)}">
+    <td><strong>${htmlEscape(lead.name)}</strong><small>${htmlEscape(lead.company)} · ${htmlEscape(lead.email)}</small></td>
+    <td><span class="status ${lead.priority === 'high' ? 'warn' : ''}">${htmlEscape(lead.leadType)}</span><small>${htmlEscape(lead.useCase || 'General')} · ${htmlEscape(lead.teamSize || 'Team not supplied')}</small></td>
+    <td>${htmlEscape(lead.routeKey)}<small>${htmlEscape(lead.reference)}</small></td>
+    <td><span class="status ${['breached','at_risk'].includes(lead.slaStatus) ? 'warn' : ''}">${htmlEscape(lead.slaStatus.replaceAll('_', ' '))}</span><small>${lead.followUpStatus === 'overdue' ? 'Follow-up overdue' : htmlEscape(lead.followUpStatus)}</small></td>
+    <td><span class="status" data-lead-status>${htmlEscape(lead.status)}</span><small>${htmlEscape(lead.ownerName || 'Unassigned')}</small></td>
+    <td><button class="button ghost platform-lead-manage" type="button" data-lead-id="${htmlEscape(lead.id)}">Manage</button></td>
+  </tr>`).join('');
+}
+
+function bindPlatformLeadManageButtons() {
+  document.querySelectorAll('.platform-lead-manage').forEach((button) => button.addEventListener('click', () => openPlatformLead(button.dataset.leadId)));
+}
+
+async function refreshPlatformLeadQueue() {
+  const response = await fetch('/api/platform/leads?limit=250');
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) return showToast(result.error || 'Lead queue could not be refreshed');
+  const rows = document.getElementById('platformLeadRows');
+  if (rows) {
+    rows.innerHTML = renderPlatformLeadRowsClient(result.leads || []);
+    bindPlatformLeadManageButtons();
+  }
+  const summary = result.summary || {};
+  document.querySelectorAll('[data-lead-summary]').forEach((element) => {
+    const key = element.dataset.leadSummary;
+    const value = summary[key];
+    element.textContent = key === 'conversionRate' ? `${value || 0}%` : key === 'averageResponseMinutes' ? (value === null || value === undefined ? '-' : `${value}m`) : value || 0;
+  });
+  const badge = document.getElementById('platformLeadNewBadge');
+  if (badge) badge.textContent = `${summary.new || 0} new`;
+}
+
+async function openPlatformLead(leadId) {
+  const response = await fetch(`/api/platform/leads/${encodeURIComponent(leadId)}`);
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) return showToast(result.error || 'Lead details could not be loaded');
+  const { lead, events = [], crm = {} } = result;
+  platformLeadUpdateForm.reset();
+  platformLeadUpdateForm.elements.leadId.value = lead.id;
+  platformLeadUpdateForm.elements.status.value = lead.status;
+  platformLeadUpdateForm.elements.ownerPlatformUserId.value = lead.ownerPlatformUserId || '';
+  platformLeadUpdateForm.elements.nextFollowUpAt.value = localDateTimeInput(lead.nextFollowUpAt);
+  platformLeadUpdateForm.elements.disqualificationReason.value = lead.disqualificationReason || '';
+  platformLeadNoteForm.reset();
+  platformLeadNoteForm.elements.leadId.value = lead.id;
+  platformLeadCrmRetry.dataset.leadId = lead.id;
+  platformLeadCrmRetry.disabled = !crm.configured;
+  document.getElementById('platformLeadDrawerReference').textContent = lead.reference;
+  document.getElementById('platformLeadDrawerTitle').textContent = `${lead.name} · ${lead.company}`;
+  document.getElementById('platformLeadDrawerMeta').textContent = `${lead.leadType} · ${lead.priority} priority · ${lead.routeKey}`;
+  document.getElementById('platformLeadDrawerSla').textContent = lead.slaStatus.replaceAll('_', ' ');
+  document.getElementById('platformLeadDrawerDue').textContent = lead.responseDueAt ? formatDateTime(lead.responseDueAt) : 'not set';
+  document.getElementById('platformLeadDrawerCrm').textContent = crm.configured ? `${crm.destination} · ${lead.crmDeliveryStatus.replaceAll('_', ' ')}` : `${crm.provider || 'CRM'} · not configured`;
+  document.getElementById('platformLeadContactCard').innerHTML = `<h3>Enquiry</h3><p>${htmlEscape(lead.message)}</p><dl><dt>Email</dt><dd>${htmlEscape(lead.email)}</dd><dt>Phone</dt><dd>${htmlEscape(lead.phone || 'Not supplied')}</dd><dt>Preference</dt><dd>${htmlEscape(lead.preferredContact)}</dd><dt>Use case</dt><dd>${htmlEscape(lead.useCase || 'General')}</dd><dt>Consent</dt><dd>Response allowed · marketing ${lead.marketingOptIn ? 'allowed' : 'not allowed'}</dd></dl>`;
+  document.getElementById('platformLeadTimeline').innerHTML = events.length
+    ? events.map((event) => `<article><span></span><div><strong>${htmlEscape(event.eventType.replaceAll('_', ' '))}</strong><p>${htmlEscape(event.note)}</p><small>${htmlEscape(event.platformUserName || event.platformUserEmail || 'ChatClan system')} · ${htmlEscape(formatDateTime(event.createdAt))}</small></div></article>`).join('')
+    : '<p class="muted-copy">No activity recorded yet.</p>';
+  setPlatformLeadDrawer(true);
+}
+
+bindPlatformLeadManageButtons();
+document.querySelector('[data-close-lead-drawer]')?.addEventListener('click', () => setPlatformLeadDrawer(false));
+platformLeadDrawer?.addEventListener('click', (event) => { if (event.target === platformLeadDrawer) setPlatformLeadDrawer(false); });
+
+platformLeadUpdateForm?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const leadId = form.elements.leadId.value;
+  const response = await fetch(`/api/platform/leads/${encodeURIComponent(leadId)}`, {
+    method:'PATCH', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({ status:form.elements.status.value, ownerPlatformUserId:form.elements.ownerPlatformUserId.value, nextFollowUpAt:form.elements.nextFollowUpAt.value || null, disqualificationReason:form.elements.disqualificationReason.value })
+  });
+  const result = await response.json().catch(() => ({}));
+  showToast(response.ok ? 'Lead updated' : result.error || 'Lead could not be updated');
+  if (response.ok) {
+    await Promise.all([openPlatformLead(leadId), refreshPlatformLeadQueue()]);
+  }
+});
+
+platformLeadNoteForm?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const leadId = form.elements.leadId.value;
+  const response = await fetch(`/api/platform/leads/${encodeURIComponent(leadId)}/notes`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ note:form.elements.note.value }) });
+  const result = await response.json().catch(() => ({}));
+  showToast(response.ok ? 'Activity added' : result.error || 'Activity could not be added');
+  if (response.ok) await openPlatformLead(leadId);
+});
+
+platformLeadCrmRetry?.addEventListener('click', async () => {
+  const leadId = platformLeadCrmRetry.dataset.leadId;
+  platformLeadCrmRetry.disabled = true;
+  const response = await fetch(`/api/platform/leads/${encodeURIComponent(leadId)}/crm-deliver`, { method:'POST' });
+  const result = await response.json().catch(() => ({}));
+  showToast(response.ok ? 'CRM delivery queued' : result.error || result.reason || 'CRM delivery could not be queued');
+  await openPlatformLead(leadId);
+});
+
+const crmConfigurationDrawer = document.getElementById('crmConfigurationDrawer');
+const crmConfigurationForm = document.getElementById('crmConfigurationForm');
+const crmProviderSelect = crmConfigurationForm?.elements.providerKey;
+const crmHealthStatus = document.getElementById('crmHealthStatus');
+const testCrmConnection = document.getElementById('testCrmConnection');
+
+function setCrmConfigurationDrawer(open) {
+  crmConfigurationDrawer?.classList.toggle('open', open);
+  crmConfigurationDrawer?.setAttribute('aria-hidden', open ? 'false' : 'true');
+}
+
+function showCrmProviderFields() {
+  document.querySelectorAll('[data-crm-provider]').forEach((section) => { section.hidden = section.dataset.crmProvider !== crmProviderSelect?.value; });
+  if (testCrmConnection) testCrmConnection.disabled = crmProviderSelect?.value !== 'hubspot';
+}
+
+document.getElementById('openCrmConfiguration')?.addEventListener('click', async () => {
+  const response = await fetch('/api/platform/crm/configuration');
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) return showToast(result.error || 'CRM configuration could not load');
+  const config = result.configuration;
+  crmConfigurationForm.reset();
+  crmConfigurationForm.elements.enabled.checked = config.enabled;
+  crmConfigurationForm.elements.providerKey.value = config.providerKey;
+  crmConfigurationForm.elements.hubspotDeliveryMode.value = config.hubspotDeliveryMode || 'contacts_only';
+  crmConfigurationForm.elements.webhookUrl.value = config.webhookUrl || '';
+  crmConfigurationForm.elements.timeoutMs.value = config.timeoutMs || 10000;
+  document.getElementById('crmTokenStatus').textContent = config.accessTokenMasked ? `Saved key ${config.accessTokenMasked}` : 'No key saved';
+  crmHealthStatus.textContent = config.lastCheckedAt ? `${config.lastHealthStatus} · ${config.lastHealthMessage || ''} · ${formatDateTime(config.lastCheckedAt)}` : 'Save and enable HubSpot before testing.';
+  showCrmProviderFields();
+  setCrmConfigurationDrawer(true);
+});
+
+crmProviderSelect?.addEventListener('change', showCrmProviderFields);
+document.querySelector('[data-close-crm-drawer]')?.addEventListener('click', () => setCrmConfigurationDrawer(false));
+crmConfigurationDrawer?.addEventListener('click', (event) => { if (event.target === crmConfigurationDrawer) setCrmConfigurationDrawer(false); });
+
+crmConfigurationForm?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const payload = Object.fromEntries(new FormData(crmConfigurationForm).entries());
+  payload.enabled = crmConfigurationForm.elements.enabled.checked;
+  const response = await fetch('/api/platform/crm/configuration', { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+  const result = await response.json().catch(() => ({}));
+  showToast(response.ok ? 'CRM configuration saved' : result.error || 'CRM configuration could not be saved');
+  if (response.ok) {
+    document.getElementById('crmTokenStatus').textContent = result.configuration.accessTokenMasked ? `Saved key ${result.configuration.accessTokenMasked}` : 'No key saved';
+    crmHealthStatus.textContent = 'Configuration changed. Run a connection test.';
+  }
+});
+
+testCrmConnection?.addEventListener('click', async () => {
+  testCrmConnection.disabled = true;
+  crmHealthStatus.textContent = 'Contacting HubSpot...';
+  const response = await fetch('/api/platform/crm/configuration/test', { method:'POST' });
+  const result = await response.json().catch(() => ({}));
+  crmHealthStatus.textContent = result.health ? `${result.health.status} · ${result.health.message} · ${result.health.latencyMs} ms` : result.error || 'Connection test failed';
+  showToast(response.ok ? 'HubSpot connection verified' : 'HubSpot connection failed');
+  testCrmConnection.disabled = false;
+});
+
+document.querySelectorAll('[data-social-start]').forEach((button) => {
+  button.addEventListener('click', async () => {
+    const originalTitle = button.title;
+    button.disabled = true;
+    button.setAttribute('aria-busy', 'true');
+    try {
+      const purpose = button.dataset.purpose === 'signin' ? 'signin' : 'signup';
+      const recaptchaToken = await executeRecaptcha(purpose === 'signin' ? 'social_signin' : 'social_signup');
+      const response = await fetch(`/api/auth/social/${encodeURIComponent(button.dataset.provider)}/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ purpose, plan: button.dataset.plan, recaptchaToken })
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.authorizationUrl) throw new Error(result.error || 'Social sign in could not start.');
+      window.location.assign(result.authorizationUrl);
+    } catch (error) {
+      showToast(error.message || 'Social sign in could not start.');
+      button.disabled = false;
+      button.removeAttribute('aria-busy');
+      button.title = originalTitle;
+    }
+  });
+});
+
 const loginForm = document.getElementById('loginForm');
 if (loginForm) {
   loginForm.addEventListener('submit', async (event) => {
     event.preventDefault();
-    const payload = Object.fromEntries(new FormData(loginForm).entries());
+    let payload;
+    try {
+      payload = await protectedFormPayload(loginForm);
+    } catch (error) {
+      showToast(error.message);
+      return;
+    }
     const response = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1967,21 +3265,77 @@ if (loginForm) {
   });
 }
 
+const platformLoginForm = document.getElementById('platformLoginForm');
+if (platformLoginForm) {
+  const statusEl = document.getElementById('platformLoginStatus');
+  platformLoginForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    let payload;
+    try {
+      payload = await protectedFormPayload(platformLoginForm);
+    } catch (error) {
+      statusEl.textContent = error.message;
+      showToast(error.message);
+      return;
+    }
+    statusEl.textContent = 'Signing in...';
+    const response = await fetch('/api/platform/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      statusEl.textContent = result.error || 'Platform sign in failed';
+      showToast(result.error || 'Platform sign in failed');
+      return;
+    }
+    statusEl.textContent = `Signed in as ${result.user?.email || 'platform user'}.`;
+    showToast('Platform signed in');
+    window.setTimeout(() => {
+      window.location.href = '/platform';
+    }, 450);
+  });
+}
+
 const signupForm = document.getElementById('signupForm');
 if (signupForm) {
   const statusEl = document.getElementById('signupStatus');
   const planSelect = signupForm.querySelector('select[name="planCode"]');
+  const planOptions = [...signupForm.querySelectorAll('.signup-plan-option[data-plan-code]')];
 
-  planSelect?.addEventListener('change', () => {
-    document.querySelectorAll('.signup-plan-grid article').forEach((card) => {
-      const title = card.querySelector('strong')?.textContent || '';
-      card.classList.toggle('selected', title.toLowerCase() === planSelect.value);
+  function syncSignupPlan() {
+    if (!planSelect) return;
+    planOptions.forEach((option) => {
+      const selected = option.dataset.planCode === planSelect.value;
+      option.classList.toggle('selected', selected);
+      option.setAttribute('aria-pressed', String(selected));
+    });
+    signupForm.querySelectorAll('.social-auth-button[data-plan]').forEach((button) => {
+      button.dataset.plan = planSelect.value;
+    });
+  }
+
+  planSelect?.addEventListener('change', syncSignupPlan);
+  planOptions.forEach((option) => {
+    option.addEventListener('click', () => {
+      if (!planSelect || !option.dataset.planCode) return;
+      planSelect.value = option.dataset.planCode;
+      planSelect.dispatchEvent(new Event('change', { bubbles: true }));
     });
   });
+  syncSignupPlan();
 
   signupForm.addEventListener('submit', async (event) => {
     event.preventDefault();
-    const payload = Object.fromEntries(new FormData(signupForm).entries());
+    let payload;
+    try {
+      payload = await protectedFormPayload(signupForm);
+    } catch (error) {
+      statusEl.textContent = error.message;
+      showToast(error.message);
+      return;
+    }
     statusEl.textContent = 'Creating workspace...';
     const response = await fetch('/api/auth/register', {
       method: 'POST',
@@ -2007,7 +3361,14 @@ if (socialSignupCompletionForm) {
   const statusEl = document.getElementById('socialSignupStatus');
   socialSignupCompletionForm.addEventListener('submit', async (event) => {
     event.preventDefault();
-    const payload = Object.fromEntries(new FormData(socialSignupCompletionForm).entries());
+    let payload;
+    try {
+      payload = await protectedFormPayload(socialSignupCompletionForm);
+    } catch (error) {
+      statusEl.textContent = error.message;
+      showToast(error.message);
+      return;
+    }
     statusEl.textContent = 'Creating workspace...';
     const response = await fetch('/api/auth/social/complete', {
       method: 'POST',
@@ -2036,13 +3397,487 @@ if (logoutBtn) {
   });
 }
 
+const platformLogoutBtn = document.getElementById('platformLogoutBtn');
+if (platformLogoutBtn) {
+  platformLogoutBtn.addEventListener('click', async () => {
+    await fetch('/api/platform/auth/logout', { method: 'POST' }).catch(() => null);
+    window.location.href = '/platform/login';
+  });
+}
+
+document.querySelectorAll('.platform-tenant-action').forEach((form) => {
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const formData = new FormData(form);
+    const tenantId = form.dataset.tenantId || formData.get('tenantId');
+    const payload = Object.fromEntries(formData.entries());
+    delete payload.tenantId;
+    if (!tenantId) return showToast('Select a tenant first');
+    const response = await fetch(`/api/platform/tenants/${encodeURIComponent(tenantId)}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const result = await response.json().catch(() => ({}));
+    showToast(response.ok ? 'Tenant status updated' : result.error || 'Tenant status could not be updated');
+    if (response.ok) window.setTimeout(() => window.location.reload(), 450);
+  });
+});
+
+document.querySelectorAll('.platform-tenant-note').forEach((form) => {
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const formData = new FormData(form);
+    const tenantId = form.dataset.tenantId || formData.get('tenantId');
+    const payload = Object.fromEntries(formData.entries());
+    delete payload.tenantId;
+    if (!tenantId) return showToast('Select a tenant first');
+    const response = await fetch(`/api/platform/tenants/${encodeURIComponent(tenantId)}/notes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const result = await response.json().catch(() => ({}));
+    showToast(response.ok ? 'Tenant note saved' : result.error || 'Tenant note could not be saved');
+    if (response.ok) form.querySelector('[name="note"]').value = '';
+  });
+});
+
+const platformTenantDrawer = document.getElementById('platformTenantDrawer');
+const platformTenantStatusForm = document.getElementById('platformTenantStatusForm');
+const platformTenantNoteForm = document.getElementById('platformTenantNoteForm');
+if (platformTenantDrawer && platformTenantStatusForm && platformTenantNoteForm) {
+  function setDrawerOpen(open) {
+    platformTenantDrawer.classList.toggle('open', open);
+    platformTenantDrawer.setAttribute('aria-hidden', open ? 'false' : 'true');
+  }
+
+  document.querySelectorAll('.platform-tenant-manage').forEach((button) => {
+    button.addEventListener('click', () => {
+      const tenant = JSON.parse(button.dataset.tenant || '{}');
+      platformTenantStatusForm.tenantId.value = tenant.id || '';
+      platformTenantStatusForm.status.value = tenant.platformStatus || 'active';
+      platformTenantStatusForm.reason.value = tenant.platformReason || tenant.health || '';
+      platformTenantNoteForm.tenantId.value = tenant.id || '';
+      const aiPolicyButton = document.getElementById('platformTenantAiPolicyButton');
+      if (aiPolicyButton) {
+        aiPolicyButton.dataset.businessId = tenant.id || '';
+        aiPolicyButton.dataset.businessName = tenant.name || 'Tenant';
+      }
+      platformTenantNoteForm.note.value = '';
+      document.getElementById('platformTenantDrawerTitle').textContent = tenant.name || 'Tenant details';
+      document.getElementById('platformTenantDrawerMeta').textContent = `${tenant.owner || 'Owner unavailable'} · ${tenant.plan || 'Plan unavailable'}`;
+      document.getElementById('platformTenantBilling').textContent = `${tenant.billingStatus || '-'} · ${tenant.billingAmount || '-'}`;
+      document.getElementById('platformTenantMeta').textContent = tenant.metaStatus || '-';
+      document.getElementById('platformTenantHealth').textContent = tenant.health || '-';
+      setDrawerOpen(true);
+    });
+  });
+
+  document.querySelectorAll('[data-close-platform-drawer]').forEach((button) => {
+    button.addEventListener('click', () => setDrawerOpen(false));
+  });
+  platformTenantDrawer.addEventListener('click', (event) => {
+    if (event.target === platformTenantDrawer) setDrawerOpen(false);
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') setDrawerOpen(false);
+  });
+}
+
+document.querySelectorAll('.guardrail-card').forEach((form) => {
+  const checkbox = form.querySelector('input[name="enabled"]');
+  const label = form.querySelector('.toggle-row span');
+  checkbox?.addEventListener('change', () => {
+    if (label) label.textContent = checkbox.checked ? 'Paused' : 'Available';
+    form.classList.toggle('active', checkbox.checked);
+  });
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const key = form.dataset.guardrailKey;
+    const formData = new FormData(form);
+    const payload = {
+      enabled: checkbox?.checked || false,
+      reason: formData.get('reason') || ''
+    };
+    const response = await fetch(`/api/platform/guardrails/${encodeURIComponent(key)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const result = await response.json().catch(() => ({}));
+    showToast(response.ok ? 'Guardrail updated' : result.error || 'Guardrail could not be updated');
+    if (response.ok) window.setTimeout(() => window.location.reload(), 450);
+  });
+});
+
+const incidentCreateDrawer = document.getElementById('platformIncidentCreateDrawer');
+const incidentDetailDrawer = document.getElementById('platformIncidentDetailDrawer');
+const incidentCreateForm = document.getElementById('platformIncidentCreateForm');
+const incidentUpdateForm = document.getElementById('platformIncidentUpdateForm');
+const incidentEventForm = document.getElementById('platformIncidentEventForm');
+
+function setIncidentDrawer(drawer, open) {
+  if (!drawer) return;
+  drawer.classList.toggle('open', open);
+  drawer.setAttribute('aria-hidden', open ? 'false' : 'true');
+}
+
+document.querySelectorAll('[data-open-incident-create]').forEach((button) => {
+  button.addEventListener('click', () => setIncidentDrawer(incidentCreateDrawer, true));
+});
+document.querySelectorAll('[data-close-incident-drawer]').forEach((button) => {
+  button.addEventListener('click', () => setIncidentDrawer(button.closest('.drawer-backdrop'), false));
+});
+[incidentCreateDrawer, incidentDetailDrawer].filter(Boolean).forEach((drawer) => {
+  drawer.addEventListener('click', (event) => {
+    if (event.target === drawer) setIncidentDrawer(drawer, false);
+  });
+});
+
+incidentCreateForm?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const payload = Object.fromEntries(new FormData(incidentCreateForm).entries());
+  const response = await fetch('/api/platform/incidents', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+  });
+  const result = await response.json().catch(() => ({}));
+  showToast(response.ok ? 'Incident opened' : result.error || 'Incident could not be opened');
+  if (response.ok) window.setTimeout(() => window.location.reload(), 450);
+});
+
+async function openPlatformIncident(incidentId) {
+    const response = await fetch(`/api/platform/incidents/${encodeURIComponent(incidentId)}`);
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) return showToast(result.error || 'Incident could not load');
+    const incident = result.incident;
+    incidentUpdateForm.incidentId.value = incident.id;
+    incidentUpdateForm.status.value = incident.status;
+    incidentUpdateForm.severity.value = incident.severity;
+    incidentUpdateForm.linkedGuardrailKey.value = incident.linkedGuardrailKey || '';
+    incidentUpdateForm.providerKey.value = incident.providerKey || '';
+    incidentUpdateForm.resolutionNote.value = incident.resolutionNote || '';
+    incidentEventForm.incidentId.value = incident.id;
+    document.getElementById('incidentDetailTitle').textContent = incident.title;
+    document.getElementById('incidentDetailSeverity').textContent = `${incident.severity.toUpperCase()} · ${incident.status}`;
+    document.getElementById('incidentDetailImpact').textContent = incident.customerImpact;
+    const timeline = document.getElementById('incidentTimeline');
+    timeline.innerHTML = incident.events.length
+      ? incident.events.map((item) => `<article><span></span><div><strong>${escapeHtml(item.eventType.replaceAll('_', ' '))}</strong><p>${escapeHtml(item.note)}</p><small>${escapeHtml(item.platformUserEmail || 'system')} · ${escapeHtml(item.createdAt || '')}</small></div></article>`).join('')
+      : '<p class="muted-copy">No timeline updates yet.</p>';
+    setIncidentDrawer(incidentDetailDrawer, true);
+}
+
+document.addEventListener('click', (event) => {
+  const button = event.target.closest('.platform-incident-manage');
+  if (button) openPlatformIncident(button.dataset.incidentId);
+});
+
+incidentUpdateForm?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const payload = Object.fromEntries(new FormData(incidentUpdateForm).entries());
+  const incidentId = payload.incidentId;
+  delete payload.incidentId;
+  const response = await fetch(`/api/platform/incidents/${encodeURIComponent(incidentId)}`, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+  });
+  const result = await response.json().catch(() => ({}));
+  showToast(response.ok ? 'Incident updated' : result.error || 'Incident could not be updated');
+  if (response.ok) window.setTimeout(() => window.location.reload(), 450);
+});
+
+incidentEventForm?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const payload = Object.fromEntries(new FormData(incidentEventForm).entries());
+  const incidentId = payload.incidentId;
+  delete payload.incidentId;
+  const response = await fetch(`/api/platform/incidents/${encodeURIComponent(incidentId)}/events`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+  });
+  const result = await response.json().catch(() => ({}));
+  showToast(response.ok ? 'Timeline updated' : result.error || 'Update could not be added');
+  if (response.ok) window.setTimeout(() => window.location.reload(), 450);
+});
+
+const reliabilityRefresh = document.getElementById('platformReliabilityRefresh');
+const retryDrawer = document.getElementById('deadLetterRetryDrawer');
+const retryForm = document.getElementById('deadLetterRetryForm');
+const platformAlertPolicyDrawer = document.getElementById('platformAlertPolicyDrawer');
+const platformAlertDetailDrawer = document.getElementById('platformAlertDetailDrawer');
+const platformAlertPolicyForm = document.getElementById('platformAlertPolicyForm');
+const platformAlertActionForm = document.getElementById('platformAlertActionForm');
+const platformAlertIncidentForm = document.getElementById('platformAlertIncidentForm');
+
+document.querySelectorAll('[data-reliability-view]').forEach((button) => {
+  button.addEventListener('click', () => {
+    document.querySelectorAll('[data-reliability-view]').forEach((item) => item.classList.toggle('active', item === button));
+    document.querySelectorAll('[data-reliability-panel]').forEach((panel) => panel.classList.toggle('active', panel.dataset.reliabilityPanel === button.dataset.reliabilityView));
+  });
+});
+
+document.addEventListener('click', (event) => {
+  const providerButton = event.target.closest('.provider-incident-declare');
+  if (providerButton && incidentCreateForm) {
+    incidentCreateForm.reset();
+    incidentCreateForm.providerKey.value = providerButton.dataset.provider || '';
+    incidentCreateForm.severity.value = 'sev2';
+    incidentCreateForm.title.value = `${providerButton.dataset.providerLabel} connector degradation`;
+    incidentCreateForm.summary.value = `${providerButton.dataset.failedRuns || 0} failed sync runs were correlated across ${providerButton.dataset.affectedTenants || 0} tenants in the last 24 hours.`;
+    incidentCreateForm.customerImpact.value = `${providerButton.dataset.affectedTenants || 0} tenant workspaces may have stale or unavailable knowledge data.`;
+    setIncidentDrawer(incidentCreateDrawer, true);
+  }
+
+  const retryButton = event.target.closest('.dead-letter-retry');
+  if (retryButton && retryForm && retryDrawer) {
+    retryForm.reset();
+    retryForm.jobId.value = retryButton.dataset.jobId;
+    document.getElementById('deadLetterRetryTitle').textContent = `Resolve job #${retryButton.dataset.jobId}`;
+    document.getElementById('deadLetterRetryMeta').textContent = `${retryButton.dataset.jobType}. Retry valid work or discard an invalid payload while preserving the failure evidence.`;
+    document.getElementById('deadLetterPayload').textContent = JSON.stringify(JSON.parse(retryButton.dataset.jobPayload || '{}'), null, 2);
+    setIncidentDrawer(retryDrawer, true);
+  }
+
+  const alertButton = event.target.closest('.platform-alert-manage');
+  if (alertButton && platformAlertDetailDrawer) {
+    const alert = JSON.parse(alertButton.dataset.alert || '{}');
+    platformAlertActionForm.alertId.value = alert.id || '';
+    platformAlertActionForm.ownerPlatformUserId.value = alert.ownerPlatformUserId || platformAlertActionForm.ownerPlatformUserId.value;
+    platformAlertIncidentForm.alertId.value = alert.id || '';
+    platformAlertIncidentForm.incidentId.value = alert.incidentId || '';
+    document.getElementById('platformAlertDetailTitle').textContent = alert.title || 'Alert details';
+    document.getElementById('platformAlertDetailSeverity').textContent = `${String(alert.severity||'warning').toUpperCase()} · ${String(alert.signalType||'signal').replaceAll('_',' ')}`;
+    document.getElementById('platformAlertDetailText').textContent = alert.detail || '';
+    document.getElementById('platformAlertDetailStatus').textContent = alert.status || '-';
+    document.getElementById('platformAlertDetailOwner').textContent = alert.ownerEmail || alert.ownerName || 'Unassigned';
+    document.getElementById('platformAlertDetailNotifications').textContent = alert.notificationCount || 0;
+    document.getElementById('platformAlertTimeline').innerHTML = (alert.events||[]).length ? alert.events.map((item)=>`<article><span></span><div><strong>${htmlEscape(String(item.eventType||'event').replaceAll('_',' '))}</strong><p>${htmlEscape(item.detail||'')}</p><small>${htmlEscape(item.recipient||'platform')} · ${htmlEscape(item.createdAt||'')}</small></div></article>`).join('') : '<p class="muted-copy">No alert events yet.</p>';
+    setIncidentDrawer(platformAlertDetailDrawer,true);
+  }
+});
+
+document.querySelectorAll('[data-close-retry-drawer]').forEach((button) => button.addEventListener('click', () => setIncidentDrawer(retryDrawer, false)));
+retryDrawer?.addEventListener('click', (event) => { if (event.target === retryDrawer) setIncidentDrawer(retryDrawer, false); });
+document.getElementById('platformAlertPolicyButton')?.addEventListener('click',()=>{
+  if (platformAlertPolicyForm) platformAlertPolicyForm.minimumEmailSeverity.value = platformAlertPolicyForm.dataset.minimumSeverity || platformAlertPolicyForm.minimumEmailSeverity.value || 'warning';
+  setIncidentDrawer(platformAlertPolicyDrawer,true);
+});
+document.querySelectorAll('[data-close-platform-alert-drawer]').forEach((button)=>button.addEventListener('click',()=>setIncidentDrawer(button.closest('.drawer-backdrop'),false)));
+[platformAlertPolicyDrawer,platformAlertDetailDrawer].filter(Boolean).forEach((drawer)=>drawer.addEventListener('click',(event)=>{if(event.target===drawer)setIncidentDrawer(drawer,false);}));
+
+document.getElementById('evaluatePlatformAlerts')?.addEventListener('click',async()=>{
+  const response=await fetch('/api/platform/reliability/evaluate',{method:'POST'});const result=await response.json().catch(()=>({}));
+  showToast(response.ok?`Evaluated ${result.signals||0} reliability signals`:result.error||'Alert evaluation failed');
+  if(response.ok)await refreshPlatformReliability();
+});
+
+platformAlertPolicyForm?.addEventListener('submit',async(event)=>{
+  event.preventDefault();const payload=Object.fromEntries(new FormData(platformAlertPolicyForm).entries());
+  payload.emailEnabled=platformAlertPolicyForm.emailEnabled.checked;payload.inAppEnabled=platformAlertPolicyForm.inAppEnabled.checked;
+  const response=await fetch('/api/platform/reliability/alert-policy',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const result=await response.json().catch(()=>({}));
+  showToast(response.ok?'Alert settings saved':result.error||'Alert settings could not be saved');if(response.ok){setIncidentDrawer(platformAlertPolicyDrawer,false);await refreshPlatformReliability();}
+});
+
+platformAlertActionForm?.addEventListener('submit',async(event)=>{
+  event.preventDefault();const submitter=event.submitter;const payload=Object.fromEntries(new FormData(platformAlertActionForm).entries());const alertId=payload.alertId;delete payload.alertId;
+  const assigning=submitter?.value==='assign';const response=await fetch(`/api/platform/reliability/alerts/${encodeURIComponent(alertId)}/${assigning?'assignment':'acknowledge'}`,{method:assigning?'PATCH':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const result=await response.json().catch(()=>({}));
+  showToast(response.ok?(assigning?'Alert assignment updated':'Alert acknowledged'):result.error||'Alert action failed');if(response.ok){setIncidentDrawer(platformAlertDetailDrawer,false);await refreshPlatformReliability();}
+});
+
+platformAlertIncidentForm?.addEventListener('submit',async(event)=>{
+  event.preventDefault();const payload=Object.fromEntries(new FormData(platformAlertIncidentForm).entries());const alertId=payload.alertId;delete payload.alertId;
+  if(!payload.incidentId)return showToast('Select an active incident');
+  const response=await fetch(`/api/platform/reliability/alerts/${encodeURIComponent(alertId)}/incident`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const result=await response.json().catch(()=>({}));
+  showToast(response.ok?'Alert linked to incident':result.error||'Incident link failed');if(response.ok){setIncidentDrawer(platformAlertDetailDrawer,false);await refreshPlatformReliability();}
+});
+
+retryForm?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const payload = Object.fromEntries(new FormData(retryForm).entries());
+  const jobId = payload.jobId;
+  delete payload.jobId;
+  delete payload.action;
+  const action = event.submitter?.value === 'discard' ? 'discard' : 'retry';
+  const response = await fetch(`/api/platform/reliability/jobs/${encodeURIComponent(jobId)}/${action}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) return showToast(result.error || `Job could not be ${action === 'discard' ? 'discarded' : 'retried'}`);
+  setIncidentDrawer(retryDrawer, false);
+  showToast(action === 'discard' ? `Job #${jobId} discarded with audit evidence` : `Linked retry #${result.recovery.recoveryJobId} queued`);
+  await refreshPlatformReliability();
+});
+
+reliabilityRefresh?.addEventListener('click', refreshPlatformReliability);
+
+async function refreshPlatformReliability() {
+  if (!reliabilityRefresh) return;
+  reliabilityRefresh.disabled = true;
+  reliabilityRefresh.textContent = 'Refreshing...';
+  try {
+    const response = await fetch('/api/platform/reliability');
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) return showToast(data.error || 'Reliability data could not load');
+    renderPlatformReliability(data);
+    showToast('Reliability refreshed');
+  } finally {
+    reliabilityRefresh.disabled = false;
+    reliabilityRefresh.textContent = 'Refresh';
+  }
+}
+
+function renderPlatformReliability(data) {
+  const summary = data.summary || {};
+  document.getElementById('reliabilitySummary').innerHTML = [
+    ['Workers healthy', `${summary.healthyWorkers || 0}/${summary.workers || 0}`],
+    ['Queue exceptions', Number(summary.stuckJobs || 0) + Number(summary.deadLetters || 0)],
+    ['Connector alerts', summary.openConnectorAlerts || 0],
+    ['Incident signals', summary.correlatedProviders || 0]
+  ].map(([label, value]) => `<article><small>${htmlEscape(label)}</small><strong>${htmlEscape(value)}</strong></article>`).join('');
+  document.getElementById('reliabilityProviderList').innerHTML = data.providers.map(renderReliabilityProviderCardClient).join('');
+  document.getElementById('reliabilityProviderRows').innerHTML = data.providers.map(renderReliabilityProviderRowClient).join('');
+  document.getElementById('reliabilityWorkerRows').innerHTML = data.workers.length ? data.workers.map((worker) => `<tr><td><strong>${htmlEscape(worker.workerId)}</strong><small>${htmlEscape(worker.role)} · ${htmlEscape(worker.version)}</small></td><td><span class="status ${worker.health === 'healthy' ? '' : 'warn'}">${htmlEscape(worker.health)}</span><small>${htmlEscape(worker.status)}</small></td><td>${htmlEscape(worker.secondsSinceSeen)}s ago</td><td>${htmlEscape(worker.jobsProcessed)}</td><td>${worker.currentJobId ? `#${htmlEscape(worker.currentJobId)}` : 'Idle'}</td></tr>`).join('') : '<tr><td colspan="5"><p class="muted-copy">No worker heartbeat has been recorded. Start the background worker to establish liveness.</p></td></tr>';
+  document.getElementById('reliabilityDeadLetterRows').innerHTML = data.deadLetters.length ? data.deadLetters.map((job) => `<tr><td><strong>#${htmlEscape(job.id)} · ${htmlEscape(job.type)}</strong><small>${htmlEscape(job.failedAt || job.updatedAt || '')}</small></td><td>${htmlEscape(job.attempts)}/${htmlEscape(job.maxAttempts)}</td><td><small class="reliability-error">${htmlEscape(job.lastError || 'No failure detail')}</small></td><td><button class="button ghost dead-letter-retry" type="button" data-job-id="${htmlEscape(job.id)}" data-job-type="${htmlEscape(job.type)}" data-job-payload="${htmlEscape(JSON.stringify(job.payload||{}))}">Resolve</button></td></tr>`).join('') : '<tr><td colspan="4"><p class="muted-copy">No dead-letter jobs. Automatic processing has no exhausted failures.</p></td></tr>';
+  const queueActions=[...(data.recoveryEvents||[]).map((item)=>({...item,kind:'retry'})),...(data.resolutionEvents||[]).map((item)=>({...item,kind:'discard'}))].sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
+  document.getElementById('reliabilityRecoveryEvents').innerHTML = queueActions.length ? queueActions.map((item) => `<article class="request-item"><strong>${item.kind==='retry'?`#${htmlEscape(item.originalJobId)} → #${htmlEscape(item.recoveryJobId)}`:`#${htmlEscape(item.jobId)} discarded`}</strong><span>${htmlEscape(item.reason)}</span><small>${htmlEscape(item.platformUserEmail || 'system')} · ${htmlEscape(item.createdAt || '')}</small></article>`).join('') : '<p class="muted-copy">No manual queue actions recorded.</p>';
+  const alertCenter=data.alertCenter||{summary:{},alerts:[]};
+  document.getElementById('platformAlertSummary').innerHTML=[['Open',alertCenter.summary.open||0],['Acknowledged',alertCenter.summary.acknowledged||0],['Critical',alertCenter.summary.critical||0],['Escalated',alertCenter.summary.escalated||0]].map(([label,value])=>`<article><small>${label}</small><strong>${htmlEscape(value)}</strong></article>`).join('');
+  document.getElementById('platformAlertList').innerHTML=renderPlatformAlertListClient(alertCenter.alerts||[]);
+  const alertsTab=document.getElementById('reliabilityAlertsTab');
+  if(alertsTab)alertsTab.textContent=`Alerts${alertCenter.summary.open?` (${alertCenter.summary.open})`:''}`;
+  const reliabilityCount=Number(summary.stuckJobs||0)+Number(summary.deadLetters||0)+Number(alertCenter.summary.open||0);
+  const reliabilityNav=document.getElementById('platformReliabilityNav');
+  if(reliabilityNav){const badge=reliabilityNav.querySelector('em');if(reliabilityCount){if(badge)badge.textContent=reliabilityCount;else reliabilityNav.insertAdjacentHTML('beforeend',`<em>${htmlEscape(reliabilityCount)}</em>`);}else badge?.remove();}
+}
+
+function renderPlatformAlertListClient(alerts){return alerts.length?alerts.map((alert)=>`<article class="platform-alert-row ${htmlEscape(alert.severity)}"><div><span class="status ${alert.severity==='critical'?'warn':''}">${htmlEscape(alert.severity)}</span><strong>${htmlEscape(alert.title)}</strong><p>${htmlEscape(alert.detail)}</p><small>${htmlEscape(alert.ownerEmail||alert.ownerName||'Unassigned')} · ${htmlEscape(alert.lastDetectedAt||'')}</small></div><div><span class="status">${htmlEscape(alert.status)}</span><button class="button ghost platform-alert-manage" type="button" data-alert="${htmlEscape(JSON.stringify(alert))}">Manage</button></div></article>`).join(''):'<p class="muted-copy">No reliability alerts. Worker, queue, and provider signals are within their configured thresholds.</p>';}
+
+function renderReliabilityProviderCardClient(provider) {
+  const action = provider.activeIncident ? `<small>Incident #${htmlEscape(provider.activeIncident.id)} active</small>` : provider.incidentCandidate ? providerIncidentButton(provider, 'link-button', 'Declare incident') : '<small>No correlated incident signal</small>';
+  return `<article class="reliability-provider-card"><div><span class="status ${provider.health === 'healthy' ? '' : 'warn'}">${htmlEscape(provider.health)}</span><h4>${htmlEscape(provider.label)}</h4><small>${htmlEscape(provider.sources)} sources · ${htmlEscape(provider.affectedTenants)} affected tenants</small></div><strong>${provider.successRate === null ? 'No runs' : `${htmlEscape(provider.successRate)}% success`}</strong>${action}</article>`;
+}
+
+function renderReliabilityProviderRowClient(provider) {
+  const action = provider.activeIncident ? `<button class="button ghost platform-incident-manage" data-incident-id="${htmlEscape(provider.activeIncident.id)}" type="button">Incident #${htmlEscape(provider.activeIncident.id)}</button>` : provider.incidentCandidate ? providerIncidentButton(provider, 'button ghost', 'Declare') : '';
+  return `<tr><td><strong>${htmlEscape(provider.label)}</strong><small><span class="status ${provider.health === 'healthy' ? '' : 'warn'}">${htmlEscape(provider.health)}</span></small></td><td>${htmlEscape(provider.activeSources)}/${htmlEscape(provider.sources)}</td><td>${provider.successRate === null ? 'No runs' : `${htmlEscape(provider.successRate)}%`}<small>${htmlEscape(provider.failedRuns)} failed</small></td><td>${htmlEscape(provider.affectedTenants)}</td><td>${htmlEscape(provider.openAlerts)}<small>${htmlEscape(provider.criticalAlerts)} critical</small></td><td>${action}</td></tr>`;
+}
+
+function providerIncidentButton(provider, className, label) {
+  return `<button class="${className} provider-incident-declare" type="button" data-provider="${htmlEscape(provider.key)}" data-provider-label="${htmlEscape(provider.label)}" data-affected-tenants="${htmlEscape(provider.affectedTenants)}" data-failed-runs="${htmlEscape(provider.failedRuns)}">${label}</button>`;
+}
+
+const aiProviderDrawer = document.getElementById('aiProviderDrawer');
+const aiProviderForm = document.getElementById('aiProviderForm');
+const tenantAiPolicyDrawer = document.getElementById('tenantAiPolicyDrawer');
+const tenantAiPolicyForm = document.getElementById('tenantAiPolicyForm');
+const aiProviderHealthButton = document.getElementById('aiProviderHealthButton');
+const aiProviderHealthStatus = document.getElementById('aiProviderHealthStatus');
+
+function setAiDrawer(drawer, open) {
+  if (!drawer) return;
+  drawer.classList.toggle('open', open);
+  drawer.setAttribute('aria-hidden', open ? 'false' : 'true');
+}
+
+document.querySelectorAll('.ai-provider-manage').forEach((button) => {
+  button.addEventListener('click', () => {
+    const provider = JSON.parse(button.dataset.provider || '{}');
+    aiProviderForm.providerKey.value = provider.key || '';
+    aiProviderForm.enabled.checked = Boolean(provider.enabled);
+    aiProviderForm.apiKey.value = '';
+    aiProviderForm.baseUrl.value = provider.baseUrl || '';
+    aiProviderForm.defaultModel.value = provider.defaultModel || '';
+    aiProviderForm.timeoutMs.value = provider.timeoutMs || 30000;
+    aiProviderHealthButton.disabled = !provider.enabled;
+    aiProviderHealthStatus.textContent = provider.lastCheckedAt
+      ? `${provider.lastHealthStatus || 'unknown'} · ${provider.lastHealthMessage || ''} · ${formatDateTime(provider.lastCheckedAt)}`
+      : 'Save and enable the provider before testing.';
+    document.getElementById('aiProviderDrawerTitle').textContent = provider.label || 'Provider configuration';
+    document.getElementById('aiProviderDrawerMeta').textContent = `${provider.protocol || ''} · ${provider.apiKeyMasked || 'No key saved'}`;
+    setAiDrawer(aiProviderDrawer, true);
+  });
+});
+
+aiProviderHealthButton?.addEventListener('click', async () => {
+  const providerKey = aiProviderForm.providerKey.value;
+  if (!providerKey) return;
+  const originalText = aiProviderHealthButton.textContent;
+  aiProviderHealthButton.disabled = true;
+  aiProviderHealthButton.textContent = 'Testing...';
+  aiProviderHealthStatus.textContent = 'Contacting provider...';
+  const response = await fetch(`/api/platform/ai/providers/${encodeURIComponent(providerKey)}/health`, { method:'POST' });
+  const result = await response.json().catch(() => ({}));
+  const health = result.health;
+  aiProviderHealthStatus.textContent = response.ok
+    ? `${health.status} · ${health.message} · ${Number(health.latencyMs || 0)} ms`
+    : result.error || 'Provider connection check failed';
+  showToast(response.ok ? 'Provider connection verified' : result.error || 'Provider connection check failed');
+  aiProviderHealthButton.disabled = false;
+  aiProviderHealthButton.textContent = originalText;
+});
+
+aiProviderForm?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const payload = Object.fromEntries(new FormData(aiProviderForm).entries());
+  const providerKey = payload.providerKey;
+  delete payload.providerKey;
+  payload.enabled = aiProviderForm.enabled.checked;
+  const response = await fetch(`/api/platform/ai/providers/${encodeURIComponent(providerKey)}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+  const result = await response.json().catch(() => ({}));
+  showToast(response.ok ? 'AI provider saved' : result.error || 'Provider could not be saved');
+  if (response.ok) window.setTimeout(() => window.location.reload(), 450);
+});
+
+document.getElementById('platformTenantAiPolicyButton')?.addEventListener('click', async (event) => {
+  const businessId = event.currentTarget.dataset.businessId;
+  if (!businessId) return showToast('Select a tenant first');
+  const response = await fetch(`/api/platform/tenants/${encodeURIComponent(businessId)}/ai-policy`);
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) return showToast(result.error || 'AI policy could not load');
+  const policy = result.policy;
+  tenantAiPolicyForm.businessId.value = businessId;
+  tenantAiPolicyForm.enabled.checked = policy.enabled;
+  tenantAiPolicyForm.autonomyMode.value = policy.autonomyMode;
+  tenantAiPolicyForm.providerChain.value = policy.providerChain.join(', ');
+  tenantAiPolicyForm.monthlyBudgetCents.value = policy.monthlyBudgetCents;
+  tenantAiPolicyForm.monthlyTokenLimit.value = policy.monthlyTokenLimit;
+  tenantAiPolicyForm.maxResponseTokens.value = policy.maxResponseTokens;
+  tenantAiPolicyForm.humanHandoffEnabled.checked = policy.humanHandoffEnabled;
+  document.getElementById('tenantAiPolicyTitle').textContent = `${event.currentTarget.dataset.businessName} AI policy`;
+  platformTenantDrawer?.classList.remove('open');
+  platformTenantDrawer?.setAttribute('aria-hidden', 'true');
+  setAiDrawer(tenantAiPolicyDrawer, true);
+});
+
+tenantAiPolicyForm?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const payload = Object.fromEntries(new FormData(tenantAiPolicyForm).entries());
+  const businessId = payload.businessId;
+  delete payload.businessId;
+  payload.enabled = tenantAiPolicyForm.enabled.checked;
+  payload.humanHandoffEnabled = tenantAiPolicyForm.humanHandoffEnabled.checked;
+  const response = await fetch(`/api/platform/tenants/${encodeURIComponent(businessId)}/ai-policy`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+  const result = await response.json().catch(() => ({}));
+  showToast(response.ok ? 'Tenant AI policy saved' : result.error || 'AI policy could not be saved');
+  if (response.ok) window.setTimeout(() => window.location.reload(), 450);
+});
+
+document.querySelectorAll('[data-close-ai-drawer]').forEach((button) => button.addEventListener('click', () => setAiDrawer(button.closest('.drawer-backdrop'), false)));
+[aiProviderDrawer, tenantAiPolicyDrawer].filter(Boolean).forEach((drawer) => drawer.addEventListener('click', (event) => { if (event.target === drawer) setAiDrawer(drawer, false); }));
+
 const passwordResetRequestForm = document.getElementById('passwordResetRequestForm');
 if (passwordResetRequestForm) {
   const statusEl = document.getElementById('passwordResetStatus');
 
   passwordResetRequestForm.addEventListener('submit', async (event) => {
     event.preventDefault();
-    const payload = Object.fromEntries(new FormData(passwordResetRequestForm).entries());
+    let payload;
+    try {
+      payload = await protectedFormPayload(passwordResetRequestForm);
+    } catch (error) {
+      statusEl.textContent = error.message;
+      showToast(error.message);
+      return;
+    }
     const response = await fetch('/api/auth/password-reset/request', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

@@ -35,7 +35,7 @@ async function main() {
   const connection = await mysql.createConnection(config);
   try {
     for (const [index, statement] of statements.entries()) {
-      await connection.query(statement);
+      await applyStatement(connection, config.database, statement);
       console.log(`[pass] ${index + 1}/${statements.length}`);
     }
   } finally {
@@ -43,6 +43,25 @@ async function main() {
   }
 
   console.log(`${target} applied successfully.`);
+}
+
+async function applyStatement(connection, database, statement) {
+  const addColumn = statement.match(/^alter\s+table\s+`?([a-zA-Z0-9_]+)`?\s+add\s+column\s+if\s+not\s+exists\s+`?([a-zA-Z0-9_]+)`?\s+(.+);?$/is);
+  if (!addColumn) {
+    await connection.query(statement);
+    return;
+  }
+
+  const [, tableName, columnName, definition] = addColumn;
+  const [rows] = await connection.query(
+    `select count(*) as total
+     from information_schema.columns
+     where table_schema = ? and table_name = ? and column_name = ?`,
+    [database, tableName, columnName]
+  );
+  if (Number(rows?.[0]?.total || 0) > 0) return;
+
+  await connection.query(`alter table ${quoteIdentifier(tableName)} add column ${quoteIdentifier(columnName)} ${definition.replace(/;$/, '')}`);
 }
 
 function readDbConfig() {

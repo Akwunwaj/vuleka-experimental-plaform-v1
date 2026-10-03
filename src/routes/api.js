@@ -1,10 +1,11 @@
 const express = require('express');
-const { getDashboardData, createCampaign, createContact } = require('../services/repository');
+const { getDashboardData, createCampaign, createContact, updateContact, softDeleteContact } = require('../services/repository');
 const { importContacts } = require('../services/contactImport');
 const { exportConsentEventsCsv, listConsentEvents, maskPhone } = require('../services/consent');
 const { listCampaignRecipients, prepareCampaignRecipients } = require('../services/campaignRecipients');
 const { hasDatabaseConfig } = require('../db/pool');
 const { enqueueJob } = require('../services/jobQueue');
+const { normalizeCampaignDispatchPayload } = require('../services/broadcastDispatch');
 const { runOnce } = require('../worker');
 const { sendTextMessage } = require('../services/metaClient');
 const { getBusinessProfile, updateBusinessProfile } = require('../services/metaBusinessProfile');
@@ -54,6 +55,8 @@ const {
   handleSocialCallback,
   listSocialProviders
 } = require('../services/socialAuth');
+const { processFacebookDataDeletion } = require('../services/socialDataDeletion');
+const { verifyRecaptcha } = require('../services/recaptcha');
 const { createDataDeletionRequest, listDataDeletionRequests } = require('../services/dataDeletion');
 const {
   applyCouponToOrder,
@@ -112,8 +115,23 @@ const {
   recordTypingIndicator,
   updateConversation
 } = require('../services/inbox');
+const { generateInboxAiDraft, getInboxAiDraftMetrics, markInboxAiDraftOutcome, validateInboxAiDraftForUse } = require('../services/inboxAiDrafts');
+const { createKnowledgeItem, getKnowledgeOverview, updateKnowledgeItem } = require('../services/tenantKnowledge');
+const { createApiPushConnector, importKnowledgeContent, ingestApiConnectorRecords, listKnowledgeSources } = require('../services/knowledgeIngestion');
+const { createKnowledgeConnector, deleteKnowledgeConnector, requestKnowledgeConnectorSync, updateKnowledgeConnector } = require('../services/knowledgeConnectors');
+const { beginGoogleDriveOAuth, getGoogleDriveOAuthStatus } = require('../services/googleDriveOAuth');
+const { getKnowledgeConnectorOperations } = require('../services/knowledgeConnectorOperations');
+const { acknowledgeConnectorAlert, getConnectorAlertCenter, updateConnectorAlertPolicy } = require('../services/connectorAlerts');
+const { createKnowledgeEvaluationCase, listKnowledgeEvaluationCases, listKnowledgeEvaluationRuns, runKnowledgeEvaluations } = require('../services/knowledgeEvaluations');
 const { subscribeInboxEvents } = require('../services/inboxEvents');
 const { verifyMailer } = require('../services/mailer');
+const { sendPublicLeadEmails } = require('../services/mailer');
+const { addPublicLeadEvent, createPublicLead, exportPublicLeadsCsv, getPublicLead, getPublicLeadSummary, listPublicLeadEvents, listPublicLeads, updatePublicLead } = require('../services/publicLeads');
+const { getResolvedCrmStatus, queuePublicLeadCrmDelivery } = require('../services/publicLeadCrm');
+const { getCrmConfiguration, saveCrmConfiguration, testCrmConfiguration } = require('../services/crmConfiguration');
+const { beginTenantCrmOAuth, disconnectTenantCrm, getTenantCrmJobStatus, getTenantCrmOperations, requestTenantCrmSync, testTenantCrmConnection, updateTenantCrmConnection } = require('../services/tenantCrm');
+const { queuePublicLeadSlaChecks } = require('../services/publicLeadSla');
+const { listPlatformUsers } = require('../services/platformAuth');
 const { getSetupWizardProgress, markSetupStep } = require('../services/setupWizard');
 const {
   authenticateUser,
@@ -124,8 +142,476 @@ const {
   signSessionId
 } = require('../services/auth');
 const { requireAuth, requireRole } = require('../middleware/auth');
+const { publicFormRateLimit } = require('../middleware/security');
+const {
+  authenticatePlatformUser,
+  createPlatformSession,
+  destroyPlatformSession,
+  serializeClearPlatformSessionCookie,
+  serializePlatformSessionCookie,
+  signPlatformSessionId
+} = require('../services/platformAuth');
+const { requirePlatformAuth, requirePlatformRole } = require('../middleware/platformAuth');
+const {
+  createPlatformTenantNote,
+  getPlatformOverview,
+  getPlatformTenant,
+  listPlatformAuditEvents,
+  listPlatformTenants,
+  recordPlatformAuditEvent,
+  updatePlatformTenantStatus
+} = require('../services/platform');
+const {
+  listPlatformGuardrails,
+  updatePlatformGuardrail
+} = require('../services/platformGuardrails');
+const {
+  createPlatformIncident,
+  createPlatformIncidentEvent,
+  getPlatformIncident,
+  listPlatformIncidents,
+  updatePlatformIncident
+} = require('../services/platformIncidents');
+const {
+  discardDeadLetterJob,
+  getPlatformReliabilityOverview,
+  retryDeadLetterJob
+} = require('../services/platformReliability');
+const {
+  acknowledgePlatformReliabilityAlert,
+  assignPlatformReliabilityAlert,
+  evaluatePlatformReliabilityAlerts,
+  getPlatformReliabilityAlertCenter,
+  linkPlatformReliabilityAlertIncident,
+  updatePlatformReliabilityAlertPolicy
+} = require('../services/platformReliabilityAlerts');
+const {
+  checkAiProviderHealth,
+  getAiOperationsOverview,
+  getBusinessAiPolicy,
+  listAiProviders,
+  listAiUsage,
+  orchestrateAiText,
+  saveAiProviderConfig,
+  saveBusinessAiPolicy
+} = require('../services/aiControlPlane');
 
 const router = express.Router();
+
+function verifyAuthChallenge(req, expectedAction) {
+  return verifyRecaptcha({
+    token: req.body?.recaptchaToken,
+    expectedAction,
+    remoteIp: req.ip
+  });
+}
+
+router.post('/public/leads', publicFormRateLimit, async (req, res, next) => {
+  try {
+    await verifyAuthChallenge(req, 'public_lead');
+    const lead = await createPublicLead(req.body, {
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent')
+    });
+    if (!lead.filtered && !lead.duplicate) {
+      try {
+        await sendPublicLeadEmails({ lead });
+      } catch (error) {
+        console.error({ requestId: req.id, error: error.message, code: 'PUBLIC_LEAD_NOTIFICATION_FAILED', leadReference: lead.reference });
+      }
+      try {
+        await queuePublicLeadCrmDelivery(lead.id);
+      } catch (error) {
+        console.error({ requestId:req.id, error:error.message, code:'PUBLIC_LEAD_CRM_QUEUE_FAILED', leadReference:lead.reference });
+      }
+      try {
+        await queuePublicLeadSlaChecks(lead);
+      } catch (error) {
+        console.error({ requestId:req.id, error:error.message, code:'PUBLIC_LEAD_SLA_QUEUE_FAILED', leadReference:lead.reference });
+      }
+    }
+    res.status(lead.duplicate ? 200 : 201).json({
+      accepted: true,
+      duplicate: Boolean(lead.duplicate),
+      reference: lead.reference
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/platform/leads', requirePlatformAuth, async (req, res, next) => {
+  try {
+    const [leads, summary] = await Promise.all([
+      listPublicLeads({ status: req.query.status, limit: req.query.limit }),
+      getPublicLeadSummary()
+    ]);
+    res.json({ leads, summary });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/platform/leads/export.csv', requirePlatformAuth, async (req, res, next) => {
+  try {
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="chatclan-public-leads.csv"');
+    res.send(await exportPublicLeadsCsv());
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/platform/leads/:id', requirePlatformAuth, async (req, res, next) => {
+  try {
+    const [lead, events, platformUsers] = await Promise.all([
+      getPublicLead(req.params.id),
+      listPublicLeadEvents(req.params.id),
+      listPlatformUsers()
+    ]);
+    res.json({ lead, events, platformUsers, crm: await getResolvedCrmStatus() });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch('/platform/leads/:id', requirePlatformAuth, async (req, res, next) => {
+  try {
+    const lead = await updatePublicLead({
+      leadId: req.params.id,
+      status: req.body.status,
+      ownerPlatformUserId: req.body.ownerPlatformUserId,
+      nextFollowUpAt: req.body.nextFollowUpAt,
+      disqualificationReason: req.body.disqualificationReason,
+      platformUser:req.platformUser
+    });
+    await recordPlatformAuditEvent({
+      platformUser: req.platformUser,
+      action: 'platform.lead.update',
+      targetType: 'public_lead',
+      targetId: lead.id,
+      reason: `Lead status changed to ${lead.status}`,
+      metadata: { reference: lead.reference, company: lead.company },
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent')
+    });
+    res.json({ lead });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/platform/leads/:id/notes', requirePlatformAuth, async (req, res, next) => {
+  try {
+    const event = await addPublicLeadEvent({ leadId:req.params.id, platformUser:req.platformUser, eventType:'note', note:req.body.note });
+    await recordPlatformAuditEvent({ platformUser:req.platformUser, action:'platform.lead.note.create', targetType:'public_lead', targetId:req.params.id, reason:'Lead activity note added', metadata:{ eventId:event.id }, ipAddress:req.ip, userAgent:req.get('user-agent') });
+    res.status(201).json({ event });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/platform/leads/:id/crm-deliver', requirePlatformAuth, async (req, res, next) => {
+  try {
+    const result = await queuePublicLeadCrmDelivery(req.params.id, { force:true });
+    await recordPlatformAuditEvent({ platformUser:req.platformUser, action:'platform.lead.crm.retry', targetType:'public_lead', targetId:req.params.id, reason:'Manual CRM delivery requested', metadata:result, ipAddress:req.ip, userAgent:req.get('user-agent') });
+    res.status(result.queued === false ? 409 : 202).json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/platform/crm/configuration', requirePlatformAuth, async (req, res, next) => {
+  try { res.json({ configuration:await getCrmConfiguration() }); } catch (err) { next(err); }
+});
+
+router.patch('/platform/crm/configuration', requirePlatformRole(['owner']), async (req, res, next) => {
+  try {
+    const configuration = await saveCrmConfiguration({ ...req.body, platformUser:req.platformUser });
+    await recordPlatformAuditEvent({ platformUser:req.platformUser, action:'platform.crm.configuration.update', targetType:'crm_provider', targetId:configuration.providerKey, reason:configuration.enabled ? 'CRM provider enabled' : 'CRM provider disabled', metadata:{ providerKey:configuration.providerKey, tokenRotated:Boolean(req.body.accessToken), webhookSecretRotated:Boolean(req.body.webhookSecret) }, ipAddress:req.ip, userAgent:req.get('user-agent') });
+    res.json({ configuration });
+  } catch (err) { next(err); }
+});
+
+router.post('/platform/crm/configuration/test', requirePlatformRole(['owner']), async (req, res, next) => {
+  try {
+    const health = await testCrmConfiguration();
+    await recordPlatformAuditEvent({ platformUser:req.platformUser, action:'platform.crm.configuration.test', targetType:'crm_provider', targetId:'hubspot', reason:health.status, metadata:{ latencyMs:health.latencyMs }, ipAddress:req.ip, userAgent:req.get('user-agent') });
+    res.status(health.status === 'healthy' ? 200 : 502).json({ health });
+  } catch (err) { next(err); }
+});
+
+router.get('/platform/overview', requirePlatformAuth, async (req, res, next) => {
+  try {
+    res.json(await getPlatformOverview());
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/platform/reliability', requirePlatformAuth, async (req, res, next) => {
+  try {
+    const [reliability, alertCenter] = await Promise.all([getPlatformReliabilityOverview(),getPlatformReliabilityAlertCenter()]);
+    res.json({ ...reliability, alertCenter });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/platform/reliability/evaluate', requirePlatformRole(['owner']), async (req, res, next) => {
+  try { res.json(await evaluatePlatformReliabilityAlerts({}, { skipSchedule:true })); } catch (err) { next(err); }
+});
+
+router.patch('/platform/reliability/alert-policy', requirePlatformRole(['owner']), async (req, res, next) => {
+  try { res.json({ policy:await updatePlatformReliabilityAlertPolicy({ ...req.body,platformUser:req.platformUser,ipAddress:req.ip,userAgent:req.get('user-agent') }) }); } catch (err) { next(err); }
+});
+
+router.post('/platform/reliability/alerts/:id/acknowledge', requirePlatformAuth, async (req, res, next) => {
+  try { res.json({ alert:await acknowledgePlatformReliabilityAlert({ alertId:req.params.id,ownerPlatformUserId:req.body.ownerPlatformUserId,platformUser:req.platformUser,ipAddress:req.ip,userAgent:req.get('user-agent') }) }); } catch (err) { next(err); }
+});
+
+router.patch('/platform/reliability/alerts/:id/assignment', requirePlatformRole(['owner']), async (req, res, next) => {
+  try { res.json({ alert:await assignPlatformReliabilityAlert({ alertId:req.params.id,ownerPlatformUserId:req.body.ownerPlatformUserId,platformUser:req.platformUser,ipAddress:req.ip,userAgent:req.get('user-agent') }) }); } catch (err) { next(err); }
+});
+
+router.post('/platform/reliability/alerts/:id/incident', requirePlatformRole(['owner']), async (req, res, next) => {
+  try { res.json({ alert:await linkPlatformReliabilityAlertIncident({ alertId:req.params.id,incidentId:req.body.incidentId,platformUser:req.platformUser,ipAddress:req.ip,userAgent:req.get('user-agent') }) }); } catch (err) { next(err); }
+});
+
+router.post('/platform/reliability/jobs/:id/retry', requirePlatformRole(['owner']), async (req, res, next) => {
+  try {
+    const recovery = await retryDeadLetterJob({
+      jobId: req.params.id,
+      reason: req.body.reason,
+      platformUser: req.platformUser,
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent')
+    });
+    res.status(201).json({ recovery });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/platform/reliability/jobs/:id/discard', requirePlatformRole(['owner']), async (req, res, next) => {
+  try {
+    const resolution = await discardDeadLetterJob({
+      jobId:req.params.id,
+      reason:req.body.reason,
+      platformUser:req.platformUser,
+      ipAddress:req.ip,
+      userAgent:req.get('user-agent')
+    });
+    res.status(201).json({resolution});
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/platform/tenants', requirePlatformAuth, async (req, res, next) => {
+  try {
+    res.json({ tenants: await listPlatformTenants({ search: req.query.search, limit: req.query.limit }) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/platform/tenants/:id', requirePlatformAuth, async (req, res, next) => {
+  try {
+    const tenant = await getPlatformTenant(req.params.id);
+    await recordPlatformAuditEvent({
+      platformUser: req.platformUser,
+      action: 'platform.tenant.view',
+      targetType: 'tenant',
+      targetId: req.params.id,
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent')
+    });
+    res.json({ tenant });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch('/platform/tenants/:id/status', requirePlatformRole(['owner']), async (req, res, next) => {
+  try {
+    const tenant = await updatePlatformTenantStatus({
+      tenantId: req.params.id,
+      status: req.body.status,
+      reason: req.body.reason,
+      platformUser: req.platformUser,
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent')
+    });
+    res.json({ tenant });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/platform/tenants/:id/notes', requirePlatformAuth, async (req, res, next) => {
+  try {
+    const note = await createPlatformTenantNote({
+      tenantId: req.params.id,
+      note: req.body.note,
+      category: req.body.category,
+      platformUser: req.platformUser,
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent')
+    });
+    res.status(201).json({ note });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/platform/audit-events', requirePlatformAuth, async (req, res, next) => {
+  try {
+    res.json({ events: await listPlatformAuditEvents({ limit: req.query.limit }) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/platform/guardrails', requirePlatformAuth, async (req, res, next) => {
+  try {
+    res.json({ guardrails: await listPlatformGuardrails() });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch('/platform/guardrails/:key', requirePlatformRole(['owner']), async (req, res, next) => {
+  try {
+    const guardrail = await updatePlatformGuardrail({
+      key: req.params.key,
+      enabled: req.body.enabled,
+      reason: req.body.reason,
+      platformUser: req.platformUser,
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent')
+    });
+    res.json({ guardrail });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/platform/incidents', requirePlatformAuth, async (req, res, next) => {
+  try {
+    res.json({ incidents: await listPlatformIncidents({ status: req.query.status, limit: req.query.limit }) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/platform/incidents/:id', requirePlatformAuth, async (req, res, next) => {
+  try {
+    res.json({ incident: await getPlatformIncident(req.params.id) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/platform/incidents', requirePlatformRole(['owner']), async (req, res, next) => {
+  try {
+    const incident = await createPlatformIncident({
+      ...req.body, platformUser: req.platformUser, ipAddress: req.ip, userAgent: req.get('user-agent')
+    });
+    res.status(201).json({ incident });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch('/platform/incidents/:id', requirePlatformRole(['owner']), async (req, res, next) => {
+  try {
+    const incident = await updatePlatformIncident({
+      ...req.body, incidentId: req.params.id, platformUser: req.platformUser, ipAddress: req.ip, userAgent: req.get('user-agent')
+    });
+    res.json({ incident });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/platform/incidents/:id/events', requirePlatformAuth, async (req, res, next) => {
+  try {
+    const event = await createPlatformIncidentEvent({
+      incidentId: req.params.id, eventType: req.body.eventType, note: req.body.note,
+      platformUser: req.platformUser, ipAddress: req.ip, userAgent: req.get('user-agent')
+    });
+    res.status(201).json({ event });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/platform/ai/providers', requirePlatformAuth, async (req, res, next) => {
+  try { res.json({ providers: await listAiProviders() }); } catch (err) { next(err); }
+});
+
+router.patch('/platform/ai/providers/:key', requirePlatformRole(['owner']), async (req, res, next) => {
+  try {
+    res.json({ provider: await saveAiProviderConfig({ ...req.body, providerKey:req.params.key, platformUser:req.platformUser, ipAddress:req.ip, userAgent:req.get('user-agent') }) });
+  } catch (err) { next(err); }
+});
+
+router.post('/platform/ai/providers/:key/health', requirePlatformRole(['owner']), async (req, res, next) => {
+  try {
+    res.json({ health: await checkAiProviderHealth({ providerKey:req.params.key, platformUser:req.platformUser, ipAddress:req.ip, userAgent:req.get('user-agent') }) });
+  } catch (err) { next(err); }
+});
+
+router.get('/platform/ai/usage', requirePlatformAuth, async (req, res, next) => {
+  try { res.json({ usage:await listAiUsage({ businessId:req.query.businessId, limit:req.query.limit }) }); } catch (err) { next(err); }
+});
+
+router.get('/platform/tenants/:id/ai-policy', requirePlatformAuth, async (req, res, next) => {
+  try { res.json({ policy:await getBusinessAiPolicy(req.params.id) }); } catch (err) { next(err); }
+});
+
+router.patch('/platform/tenants/:id/ai-policy', requirePlatformRole(['owner']), async (req, res, next) => {
+  try {
+    res.json({ policy:await saveBusinessAiPolicy({ ...req.body, businessId:req.params.id, platformUser:req.platformUser, ipAddress:req.ip, userAgent:req.get('user-agent') }) });
+  } catch (err) { next(err); }
+});
+
+router.post('/ai/orchestrate', requireRole(['owner','admin']), async (req, res, next) => {
+  try { res.json(await orchestrateAiText({ businessId:req.business.id, prompt:req.body.prompt, workflowKey:req.body.workflowKey })); } catch (err) { next(err); }
+});
+
+router.get('/platform/auth/me', (req, res) => {
+  res.json({ user: req.platformUser || null });
+});
+
+router.post('/platform/auth/login', async (req, res, next) => {
+  try {
+    await verifyAuthChallenge(req, 'platform_login');
+    const user = await authenticatePlatformUser(req.body.email, req.body.password);
+    if (!user) return res.status(401).json({ error: 'Invalid platform email or password' });
+
+    const session = await createPlatformSession(user, req.get('user-agent'), req.ip);
+    res.setHeader('Set-Cookie', serializePlatformSessionCookie(signPlatformSessionId(session.id), session.expiresAt));
+    await recordPlatformAuditEvent({
+      platformUser: user,
+      action: 'platform.auth.login',
+      targetType: 'platform_user',
+      targetId: user.id,
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent')
+    });
+    res.json({ user });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/platform/auth/logout', async (req, res) => {
+  await destroyPlatformSession(req.platformSession?.id);
+  res.setHeader('Set-Cookie', serializeClearPlatformSessionCookie());
+  res.json({ ok: true });
+});
 
 router.get('/dashboard', requireAuth, async (req, res, next) => {
   try {
@@ -309,17 +795,155 @@ router.patch('/inbox/conversations/:id', requireRole(['owner', 'admin', 'agent']
 
 router.post('/inbox/conversations/:id/replies', requireRole(['owner', 'admin', 'agent']), async (req, res, next) => {
   try {
-    res.status(201).json(
-      await recordOutboundReply({
-        businessId: req.businessId,
-        conversationId: req.params.id,
-        body: req.body.body,
-        actorUser: req.user
-      })
-    );
+    if (req.body.aiDraftId) await validateInboxAiDraftForUse({ businessId:req.businessId, conversationId:req.params.id, draftId:req.body.aiDraftId });
+    const reply = await recordOutboundReply({
+      businessId: req.businessId,
+      conversationId: req.params.id,
+      body: req.body.body,
+      actorUser: req.user
+    });
+    if (req.body.aiDraftId) {
+      try {
+        reply.aiDraft = await markInboxAiDraftOutcome({
+          businessId:req.businessId, conversationId:req.params.id, draftId:req.body.aiDraftId,
+          outcome:'used', finalBody:req.body.body, actorUser:req.user
+        });
+      } catch {
+        reply.aiDraft = { id:Number(req.body.aiDraftId), status:'tracking_failed' };
+      }
+    }
+    res.status(201).json(reply);
   } catch (err) {
     next(err);
   }
+});
+
+router.post('/inbox/conversations/:id/ai-drafts', requireRole(['owner', 'admin', 'agent']), async (req, res, next) => {
+  try {
+    res.status(201).json({ draft:await generateInboxAiDraft({
+      businessId:req.businessId, conversationId:req.params.id, guidance:req.body.guidance,
+      actorUser:req.user
+    }) });
+  } catch (err) { next(err); }
+});
+
+router.post('/inbox/conversations/:id/ai-drafts/:draftId/discard', requireRole(['owner', 'admin', 'agent']), async (req, res, next) => {
+  try {
+    res.json({ draft:await markInboxAiDraftOutcome({
+      businessId:req.businessId, conversationId:req.params.id, draftId:req.params.draftId,
+      outcome:'discarded', actorUser:req.user
+    }) });
+  } catch (err) { next(err); }
+});
+
+router.get('/knowledge/overview', requireAuth, async (req, res, next) => {
+  try { res.json(await getKnowledgeOverview(req.businessId)); } catch (err) { next(err); }
+});
+
+router.get('/crm/operations', requireAuth, async (req, res, next) => {
+  try { res.json(await getTenantCrmOperations(req.businessId)); } catch (err) { next(err); }
+});
+
+router.get('/crm/jobs/:id', requireAuth, async (req, res, next) => {
+  try { res.json({ job:await getTenantCrmJobStatus(req.businessId, req.params.id) }); } catch (err) { next(err); }
+});
+
+router.post('/crm/oauth/:provider/start', requireRole(['owner', 'admin']), async (req, res, next) => {
+  try { res.json(await beginTenantCrmOAuth({ ...req.body, provider:req.params.provider, businessId:req.businessId, actorUser:req.user })); } catch (err) { next(err); }
+});
+
+router.patch('/crm/connections/:id', requireRole(['owner', 'admin']), async (req, res, next) => {
+  try { res.json({ connection:await updateTenantCrmConnection({ ...req.body, connectionId:req.params.id, businessId:req.businessId, actorUser:req.user }) }); } catch (err) { next(err); }
+});
+
+router.post('/crm/connections/:id/test', requireRole(['owner', 'admin']), async (req, res, next) => {
+  try { res.json({ health:await testTenantCrmConnection({ connectionId:req.params.id, businessId:req.businessId, actorUser:req.user }) }); } catch (err) { next(err); }
+});
+
+router.post('/crm/connections/:id/sync', requireRole(['owner', 'admin']), async (req, res, next) => {
+  try { res.status(202).json({ job:await requestTenantCrmSync({ connectionId:req.params.id, businessId:req.businessId, triggerType:'manual' }) }); } catch (err) { next(err); }
+});
+
+router.delete('/crm/connections/:id', requireRole(['owner', 'admin']), async (req, res, next) => {
+  try { res.json(await disconnectTenantCrm({ connectionId:req.params.id, businessId:req.businessId, actorUser:req.user })); } catch (err) { next(err); }
+});
+
+router.get('/knowledge/operations', requireAuth, async (req, res, next) => {
+  try {
+    const [sources, evaluationCases, evaluationRuns] = await Promise.all([
+      listKnowledgeSources(req.businessId),
+      listKnowledgeEvaluationCases(req.businessId),
+      listKnowledgeEvaluationRuns(req.businessId)
+    ]);
+    const [connectorOperations, connectorAlertCenter] = await Promise.all([
+      getKnowledgeConnectorOperations(req.businessId, sources),
+      getConnectorAlertCenter(req.businessId)
+    ]);
+    res.json({ sources, evaluationCases, evaluationRuns, connectorOperations, connectorAlertCenter, googleDriveOAuth:getGoogleDriveOAuthStatus() });
+  } catch (err) { next(err); }
+});
+
+router.post('/knowledge/items', requireRole(['owner', 'admin']), async (req, res, next) => {
+  try { res.status(201).json({ item:await createKnowledgeItem({ ...req.body, businessId:req.businessId, actorUser:req.user }) }); } catch (err) { next(err); }
+});
+
+router.patch('/knowledge/items/:id', requireRole(['owner', 'admin']), async (req, res, next) => {
+  try { res.json({ item:await updateKnowledgeItem({ ...req.body, itemId:req.params.id, businessId:req.businessId, actorUser:req.user }) }); } catch (err) { next(err); }
+});
+
+router.post('/knowledge/imports', requireRole(['owner', 'admin']), async (req, res, next) => {
+  try { res.status(201).json(await importKnowledgeContent({ ...req.body, businessId:req.businessId, actorUser:req.user })); } catch (err) { next(err); }
+});
+
+router.post('/knowledge/connectors', requireRole(['owner', 'admin']), async (req, res, next) => {
+  try {
+    const create = String(req.body.provider || req.body.sourceType || 'api_push') === 'api_push' ? createApiPushConnector : createKnowledgeConnector;
+    res.status(201).json({ source:await create({ ...req.body, businessId:req.businessId, actorUser:req.user }) });
+  } catch (err) { next(err); }
+});
+
+router.get('/knowledge/connectors/google-drive/oauth/status', requireAuth, async (req, res) => {
+  res.json(getGoogleDriveOAuthStatus());
+});
+
+router.post('/knowledge/connectors/google-drive/oauth/start', requireRole(['owner', 'admin']), async (req, res, next) => {
+  try { res.json(await beginGoogleDriveOAuth({ ...req.body, businessId:req.businessId, actorUser:req.user })); } catch (err) { next(err); }
+});
+
+router.patch('/knowledge/connectors/alert-policy', requireRole(['owner', 'admin']), async (req, res, next) => {
+  try { res.json({ policy:await updateConnectorAlertPolicy({ ...req.body, businessId:req.businessId, actorUser:req.user }) }); } catch (err) { next(err); }
+});
+
+router.post('/knowledge/connectors/alerts/:id/acknowledge', requireRole(['owner', 'admin']), async (req, res, next) => {
+  try { res.json({ alert:await acknowledgeConnectorAlert({ alertId:req.params.id, businessId:req.businessId, actorUser:req.user }) }); } catch (err) { next(err); }
+});
+
+router.post('/knowledge/connectors/:id/records', requireRole(['owner', 'admin']), async (req, res, next) => {
+  try { res.json(await ingestApiConnectorRecords({ ...req.body, sourceId:req.params.id, businessId:req.businessId, actorUser:req.user })); } catch (err) { next(err); }
+});
+
+router.patch('/knowledge/sources/:id', requireRole(['owner', 'admin']), async (req, res, next) => {
+  try { res.json({ source:await updateKnowledgeConnector({ ...req.body, sourceId:req.params.id, businessId:req.businessId, actorUser:req.user }) }); } catch (err) { next(err); }
+});
+
+router.post('/knowledge/sources/:id/sync', requireRole(['owner', 'admin']), async (req, res, next) => {
+  try { res.status(202).json({ job:await requestKnowledgeConnectorSync({ sourceId:req.params.id, businessId:req.businessId, actorUser:req.user }) }); } catch (err) { next(err); }
+});
+
+router.delete('/knowledge/sources/:id', requireRole(['owner', 'admin']), async (req, res, next) => {
+  try { res.json(await deleteKnowledgeConnector({ sourceId:req.params.id, businessId:req.businessId, actorUser:req.user })); } catch (err) { next(err); }
+});
+
+router.post('/knowledge/evaluations/cases', requireRole(['owner', 'admin']), async (req, res, next) => {
+  try { res.status(201).json({ evaluationCase:await createKnowledgeEvaluationCase({ ...req.body, businessId:req.businessId, actorUser:req.user }) }); } catch (err) { next(err); }
+});
+
+router.post('/knowledge/evaluations/run', requireRole(['owner', 'admin']), async (req, res, next) => {
+  try { res.status(201).json({ run:await runKnowledgeEvaluations({ businessId:req.businessId, actorUser:req.user }) }); } catch (err) { next(err); }
+});
+
+router.get('/ai/quality', requireAuth, async (req, res, next) => {
+  try { res.json(await getInboxAiDraftMetrics(req.businessId)); } catch (err) { next(err); }
 });
 
 router.get('/inbox/conversations/:id/notes', requireAuth, async (req, res, next) => {
@@ -383,15 +1007,38 @@ router.get('/auth/social/providers', (req, res) => {
   res.json({ providers: listSocialProviders() });
 });
 
-router.get('/auth/social/:provider/start', async (req, res, next) => {
+router.post('/auth/social/facebook/data-deletion', async (req, res, next) => {
   try {
+    res.json(await processFacebookDataDeletion({ signedRequest: req.body.signed_request }));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/auth/social/facebook/deauthorize', async (req, res, next) => {
+  try {
+    await processFacebookDataDeletion({ signedRequest: req.body.signed_request });
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/auth/social/:provider/start', (req, res) => {
+  res.status(405).json({ error: 'Start social sign in from the ChatClan sign-in or registration page.' });
+});
+
+router.post('/auth/social/:provider/start', async (req, res, next) => {
+  try {
+    const purpose = req.body.purpose === 'signin' ? 'signin' : 'signup';
+    await verifyAuthChallenge(req, purpose === 'signin' ? 'social_signin' : 'social_signup');
     const start = await createSocialAuthStart({
       provider: req.params.provider,
-      purpose: req.query.purpose,
-      planCode: req.query.plan,
-      redirectTo: req.query.redirectTo
+      purpose,
+      planCode: req.body.plan,
+      redirectTo: req.body.redirectTo
     });
-    res.redirect(start.authorizationUrl);
+    res.json(start);
   } catch (err) {
     next(err);
   }
@@ -431,26 +1078,33 @@ router.post('/auth/social/:provider/callback', async (req, res, next) => {
   }
 });
 
-router.post('/auth/login', async (req, res) => {
-  const user = await authenticateUser(req.body.email, req.body.password);
-  if (!user) return res.status(401).json({ error: 'Invalid email or password' });
+router.post('/auth/login', async (req, res, next) => {
+  try {
+    await verifyAuthChallenge(req, 'tenant_login');
+    const user = await authenticateUser(req.body.email, req.body.password);
+    if (!user) return res.status(401).json({ error: 'Invalid email or password' });
 
-  const session = await createSession(user, req.get('user-agent'), req.ip);
-  res.setHeader('Set-Cookie', serializeSessionCookie(signSessionId(session.id), session.expiresAt));
-  res.json({
-    user: {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role
-    },
-    businessId: user.businessId
-  });
+    const session = await createSession(user, req.get('user-agent'), req.ip);
+    res.setHeader('Set-Cookie', serializeSessionCookie(signSessionId(session.id), session.expiresAt));
+    res.json({
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      },
+      businessId: user.businessId
+    });
+  } catch (err) {
+    next(err);
+  }
 });
 
 router.post('/auth/register', async (req, res, next) => {
   try {
-    const signup = await registerProspect(req.body);
+    await verifyAuthChallenge(req, 'tenant_signup');
+    const { recaptchaToken, ...registration } = req.body;
+    const signup = await registerProspect(registration);
     const session = await createSession(signup.user, req.get('user-agent'), req.ip);
     res.setHeader('Set-Cookie', serializeSessionCookie(signSessionId(session.id), session.expiresAt));
     res.status(201).json({
@@ -470,7 +1124,9 @@ router.post('/auth/register', async (req, res, next) => {
 
 router.post('/auth/social/complete', async (req, res, next) => {
   try {
-    const signup = await completeSocialSignup(req.body);
+    await verifyAuthChallenge(req, 'social_signup_complete');
+    const { recaptchaToken, ...completion } = req.body;
+    const signup = await completeSocialSignup(completion);
     const session = await createSession(signup.user, req.get('user-agent'), req.ip);
     res.setHeader('Set-Cookie', serializeSessionCookie(signSessionId(session.id), session.expiresAt));
     res.status(201).json({
@@ -496,6 +1152,7 @@ router.post('/auth/logout', async (req, res) => {
 
 router.post('/auth/password-reset/request', async (req, res, next) => {
   try {
+    await verifyAuthChallenge(req, 'password_reset');
     res.json(await requestPasswordReset(req.body.email));
   } catch (err) {
     next(err);
@@ -1291,14 +1948,15 @@ router.get('/campaigns/:id/recipients', requireAuth, async (req, res, next) => {
 
 router.post('/campaigns/:id/dispatch', requireRole(['owner', 'admin']), async (req, res, next) => {
   try {
+    const payload = normalizeCampaignDispatchPayload({
+      businessId: req.businessId,
+      campaignId: req.params.id,
+      limit: req.body.limit
+    });
     const job = await enqueueJob({
       type: 'campaign.dispatch',
-      payload: {
-        businessId: req.businessId,
-        campaignId: req.params.id,
-        limit: req.body.limit
-      },
-      dedupeKey: `campaign.dispatch:${req.businessId}:${req.params.id}`
+      payload,
+      dedupeKey: `campaign.dispatch:${payload.businessId}:${payload.campaignId}`
     });
 
     if (!hasDatabaseConfig()) {
@@ -1319,6 +1977,22 @@ router.post('/contacts', requireRole(['owner', 'admin']), async (req, res, next)
     const contact = await createContact(req.body, req.businessId);
     await markSetupStep({ businessId: req.businessId, stepId: 'contacts', metadata: { source: 'manual' } });
     res.status(201).json(contact);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch('/contacts/:id', requireRole(['owner', 'admin']), async (req, res, next) => {
+  try {
+    res.json(await updateContact({ businessId: req.businessId, contactId: req.params.id, payload: req.body }));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete('/contacts/:id', requireRole(['owner', 'admin']), async (req, res, next) => {
+  try {
+    res.json(await softDeleteContact({ businessId: req.businessId, contactId: req.params.id, actorUserId: req.user.id }));
   } catch (err) {
     next(err);
   }

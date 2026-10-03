@@ -9,6 +9,7 @@ const { brand } = require('./config/app');
 const { closePool, hasDatabaseConfig } = require('./db/pool');
 const { requestId, securityHeaders } = require('./middleware/security');
 const { attachSession } = require('./middleware/auth');
+const { attachPlatformSession } = require('./middleware/platformAuth');
 
 const app = express();
 const port = Number(process.env.PORT || 3000);
@@ -26,9 +27,10 @@ function captureRawBody(req, res, buf) {
 
 app.use(requestId);
 app.use(securityHeaders);
-app.use(express.json({ limit: '2mb', verify: captureRawBody }));
+app.use(express.json({ limit: '8mb', verify: captureRawBody }));
 app.use(express.urlencoded({ extended: true, verify: captureRawBody }));
 app.use(attachSession);
+app.use(attachPlatformSession);
 app.use('/assets', express.static(path.join(__dirname, '..', 'public')));
 
 app.use('/', webRoutes);
@@ -44,8 +46,7 @@ app.use((err, req, res, next) => {
     requestId: req.id,
     error: err.message || err.code || err.name || 'Unknown error',
     code: err.code,
-    details: err.details,
-    stack: err.stack
+    details: err.details
   });
   const status = err.status || 500;
   res.status(status).json({

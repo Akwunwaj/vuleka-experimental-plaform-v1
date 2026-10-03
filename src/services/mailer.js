@@ -100,6 +100,96 @@ async function sendTeamInviteEmail({ to, name, role, temporaryPassword }) {
   });
 }
 
+async function sendConnectorAlertEmail({ to, alert, escalated = false }) {
+  const actionUrl = `${appUrl()}/dashboard#intelligence`;
+  const prefix = escalated ? 'Escalated: ' : '';
+  const subject = `${prefix}${brand.name} connector alert: ${alert.title}`;
+  return sendMail({
+    to,
+    subject,
+    text:[
+      subject, '', alert.detail, '',
+      `Severity: ${String(alert.severity || 'warning').toUpperCase()}`,
+      `Status: ${alert.status || 'open'}`,
+      `Open connector operations: ${actionUrl}`, '',
+      'Acknowledge the alert in ChatClan after an owner has taken responsibility.'
+    ].join('\n'),
+    html:emailShell({
+      title:subject,
+      intro:`${escapeHtml(alert.detail)}<br><br><strong>Severity:</strong> ${escapeHtml(String(alert.severity || 'warning').toUpperCase())}`,
+      actionText:'Open connector operations',
+      actionUrl,
+      footer:'Acknowledge the alert in ChatClan after an owner has taken responsibility. Recovery is recorded automatically.'
+    })
+  });
+}
+
+async function sendPlatformReliabilityAlertEmail({ to, alert, escalated = false }) {
+  const actionUrl = `${appUrl()}/platform`;
+  const prefix = escalated ? 'Escalated: ' : '';
+  const subject = `${prefix}${brand.name} platform alert: ${alert.title}`;
+  return sendMail({
+    to,
+    subject,
+    text:[subject,'',alert.detail,'',`Severity: ${String(alert.severity||'warning').toUpperCase()}`,`Status: ${alert.status||'open'}`,`Open reliability center: ${actionUrl}`,'','Acknowledge the alert after taking operational ownership.'].join('\n'),
+    html:emailShell({
+      title:subject,
+      intro:`${escapeHtml(alert.detail)}<br><br><strong>Severity:</strong> ${escapeHtml(String(alert.severity||'warning').toUpperCase())}`,
+      actionText:'Open reliability center',
+      actionUrl,
+      footer:'Acknowledge the alert after taking operational ownership. Escalations and incident links are retained in the audit trail.'
+    })
+  });
+}
+
+async function sendPublicLeadEmails({ lead }) {
+  const salesTo = process.env.SALES_EMAIL || brand.supportEmail;
+  const actionUrl = `${appUrl()}/platform`;
+  const subject = `${lead.priority === 'high' ? 'High-intent ' : ''}${brand.name} ${lead.leadType} enquiry: ${lead.company}`;
+  const internal = await sendMail({
+    to: salesTo,
+    replyTo: lead.email,
+    subject,
+    text: [
+      subject, '', `Reference: ${lead.reference}`, `Name: ${lead.name}`, `Company: ${lead.company}`,
+      `Email: ${lead.email}`, `Phone: ${lead.phone || 'Not provided'}`, `Route: ${lead.routeKey}`,
+      `Team size: ${lead.teamSize || 'Not provided'}`, `Monthly conversations: ${lead.monthlyConversations || 'Not provided'}`,
+      `Use case: ${lead.useCase || 'Not provided'}`, `Preferred contact: ${lead.preferredContact}`, '', lead.message, '',
+      `Manage enquiries: ${actionUrl}`
+    ].join('\n')
+  });
+  const acknowledgement = await sendMail({
+    to: lead.email,
+    subject: `We received your ${brand.name} enquiry (${lead.reference})`,
+    text: [
+      `Hi ${firstName(lead.name)},`, '', 'Thank you for contacting ChatClan. Our team has received your enquiry.',
+      `Reference: ${lead.reference}`, `Preferred contact: ${lead.preferredContact}`, '',
+      'We will use the details you supplied to respond to this enquiry. Marketing updates are controlled separately.', '',
+      `${brand.name} Team`
+    ].join('\n'),
+    html: emailShell({
+      title: 'Your enquiry is in the right queue',
+      intro: `Hi ${escapeHtml(firstName(lead.name))}, we received your enquiry for <strong>${escapeHtml(lead.company)}</strong>. Your reference is <strong>${escapeHtml(lead.reference)}</strong>.`,
+      actionText: 'Visit ChatClan',
+      actionUrl: appUrl(),
+      footer: 'We will use the details you supplied to respond to this enquiry. Marketing updates are controlled separately.'
+    })
+  });
+  return { internal, acknowledgement };
+}
+
+async function sendPublicLeadSlaEmail({ lead, escalated = false }) {
+  const to = lead.ownerEmail || process.env.SALES_EMAIL || brand.supportEmail;
+  const actionUrl = `${appUrl()}/platform`;
+  const subject = escalated ? `${brand.name} lead SLA breached: ${lead.company}` : `${brand.name} lead response due soon: ${lead.company}`;
+  const detail = escalated ? `The response target for ${lead.name} (${lead.reference}) has passed.` : `The response target for ${lead.name} (${lead.reference}) is approaching.`;
+  return sendMail({
+    to, replyTo:lead.email, subject,
+    text:[subject, '', detail, `Priority: ${lead.priority}`, `Preferred contact: ${lead.preferredContact}`, `Owner: ${lead.ownerName || 'Unassigned'}`, '', `Open lead operations: ${actionUrl}`].join('\n'),
+    html:emailShell({ title:subject, intro:`${escapeHtml(detail)}<br><br><strong>Priority:</strong> ${escapeHtml(lead.priority)}`, actionText:'Open lead operations', actionUrl, footer:'Assign an owner and record the first customer response in ChatClan.' })
+  });
+}
+
 async function verifyMailer() {
   transporter = transporter || createTransporter();
   if (mailMode() !== 'smtp') return { mode: mailMode(), ok: true };
@@ -183,6 +273,10 @@ module.exports = {
   clearMockOutbox,
   getMockOutbox,
   resetMailerForTests,
+  sendConnectorAlertEmail,
+  sendPlatformReliabilityAlertEmail,
+  sendPublicLeadEmails,
+  sendPublicLeadSlaEmail,
   sendMail,
   sendPasswordResetEmail,
   sendTeamInviteEmail,

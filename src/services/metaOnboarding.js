@@ -21,7 +21,6 @@ function getMetaOnboardingConfig({ businessId, origin = null } = {}) {
       override_default_response_type: true,
       extras: {
         setup: {},
-        featureType: 'whatsapp_business_app_onboarding',
         sessionInfoVersion: '3'
       }
     },
@@ -333,7 +332,7 @@ function graphApiVersion() {
 
 function onboardingRedirectUri(origin) {
   const base = origin || process.env.APP_URL || 'http://localhost:3000';
-  return `${base.replace(/\/$/, '')}/dashboard#settings`;
+  return `${base.replace(/\/$/, '')}/dashboard`;
 }
 
 module.exports = {

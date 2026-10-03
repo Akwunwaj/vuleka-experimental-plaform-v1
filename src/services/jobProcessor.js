@@ -3,6 +3,12 @@ const { reconcileOrderPayment, sendPostPurchasePrompt } = require('./commerce');
 const { processMetaEvent } = require('./metaEventProcessor');
 const { processPayFastItn } = require('./billing');
 const { recordWebhookEvent } = require('./webhookEvents');
+const { syncKnowledgeConnector } = require('./knowledgeConnectors');
+const { evaluateConnectorAlerts } = require('./connectorAlerts');
+const { evaluatePlatformReliabilityAlerts } = require('./platformReliabilityAlerts');
+const { deliverPublicLeadToCrm } = require('./publicLeadCrm');
+const { processPublicLeadSla } = require('./publicLeadSla');
+const { syncTenantCrmConnection } = require('./tenantCrm');
 
 async function processJob(job) {
   if (job.type === 'campaign.dispatch') {
@@ -53,6 +59,29 @@ async function processJob(job) {
       templateParameters: payload.templateParameters
     });
   }
+
+  if (job.type === 'knowledge.source.sync') {
+    return syncKnowledgeConnector({ ...job.payload, jobId:job.id, attempt:job.attempts, maxAttempts:job.maxAttempts });
+  }
+
+  if (job.type === 'knowledge.connector.alert.evaluate') {
+    return evaluateConnectorAlerts(job.payload);
+  }
+
+  if (job.type === 'platform.reliability.alert.evaluate') {
+    return evaluatePlatformReliabilityAlerts(job.payload);
+  }
+
+  if (job.type === 'public.lead.crm_deliver') {
+    return deliverPublicLeadToCrm(job.payload);
+  }
+
+  if (job.type === 'tenant.crm.sync') {
+    return syncTenantCrmConnection({ ...job.payload, jobId:job.id, attempt:job.attempts, maxAttempts:job.maxAttempts });
+  }
+
+  if (job.type === 'public.lead.sla_reminder') return processPublicLeadSla(job.payload, { escalated:false });
+  if (job.type === 'public.lead.sla_escalation') return processPublicLeadSla(job.payload, { escalated:true });
 
   const error = new Error(`Unknown job type: ${job.type}`);
   error.status = 400;

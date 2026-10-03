@@ -12,6 +12,7 @@ const deploymentGates = [
   'npm run db:verify',
   'npm run ops:startup-check with STARTUP_BASE_URL=https://your-domain.co.za',
   'npm run ops:vendor-check with VENDOR_CHECKS=smtp,meta,payfast and strict vendor flags',
+  'npm run ops:google-oauth with production OAuth credentials and approval statuses',
   'npm run smoke:beta with SMOKE_BASE_URL, SMOKE_EMAIL, and SMOKE_PASSWORD'
 ];
 

@@ -1,5 +1,20 @@
 # Implementation Log
 
+## 2026-07-22 - Social sign-in and reCAPTCHA
+
+- Added Google and Facebook social sign-in controls to tenant login and workspace registration, shown only when complete provider credentials are configured.
+- Converted OAuth initiation to a reCAPTCHA-protected POST flow while preserving one-time anti-forgery state and exact callback handling.
+- Added invisible reCAPTCHA v3 to tenant login, registration, social-signup completion, password reset, platform-owner login, and social OAuth initiation.
+- Added server-side checks for action, score, hostname, token age, provider availability, and fail-closed production configuration.
+- Added Google verified-email enforcement, configuration-driven Facebook Graph versioning, CSP allowances, deployment preflight gates, responsive UI verification, and regression tests.
+
+## 2026-07-22 - Public legal and compliance pages
+
+- Replaced placeholder footer destinations with detailed Privacy Notice, Terms of Service, POPIA Commitment, Contact, and official WhatsApp policy links.
+- Added structured clause navigation, official-source references, responsive legal layouts, and configuration-backed company and Information Officer details.
+- Added production preflight gates for legal identity, physical contact, dedicated legal/privacy/security addresses, and Information Officer information.
+- Corrected the POPIA security-compromise requirement from an inaccurate fixed 72-hour deadline to "as soon as reasonably possible," consistent with the Act and current Information Regulator guidance.
+
 ## 2026-06-03
 
 - Reviewed the supplied HTML prototype files and `context/claude_text.md`.
@@ -577,9 +592,92 @@
 - Added `docs/backup_restore_runbook.md` with daily backup, 30-day retention, monthly restore drill, restore-test database, and POPIA backup-retention notes.
 - Updated the production deployment checklist to require `npm run db:backup` and a restore drill before launch.
 
+## 2026-07-18 Platform Reliability Alerting And On-Call Operations
+
+- Added durable cross-tenant reliability alerts for stale workers, worker errors, stuck jobs, dead letters, and correlated connector-provider incidents.
+- Added configurable email and in-app notification policies with severity thresholds, owner/operator audiences, additional recipients, on-call assignment, escalation timing, and repeat cadence.
+- Added alert acknowledgement, owner reassignment, incident linking, automatic recovery, notification evidence, and a complete operator timeline.
+- Added worker-scheduled alert evaluation with deduplication so persistent signals update one operational record instead of producing alert noise.
+- Added an uncluttered Platform Owner alert centre with summary metrics, dedicated alert and settings drawers, responsive layouts, and operator-only actions.
+- Added service coverage for delivery, acknowledgement, reassignment, escalation, and automatic resolution.
+
+## 2026-07-18 Campaign Dispatch Dead-Letter Safety
+
+- Traced job `#2` to a historical smoke request whose rejected campaign creation produced the string payload `campaignId: "null"`.
+- Added positive-integer dispatch validation at the API queue boundary and service boundary before SQL, quota, or provider work.
+- Added explicit non-retryable failure handling so malformed jobs do not consume repeated attempts.
+- Added linked-retry validation that refuses malformed historical payloads instead of producing another doomed job.
+- Added owner-only invalid-job discard with required reasoning, preserved payload/error evidence, a durable resolution record, and platform audit evidence.
+- Added queue action history, immediate reliability badge reconciliation, and active-only alert-center results.
+- Discarded historical job `#2` after verifying that no legitimate campaign had been created and confirmed that its reliability alert resolved.
+
+## 2026-07-18 Google Drive OAuth Deployment Gate
+
+- Reviewed the implementation against Google's current OAuth web-server, Drive scope, Picker, verification, and restricted-scope assessment documentation.
+- Retained `drive.readonly` for automatic whole-folder synchronisation because Google does not document equivalent perpetual child-file access after selecting only a folder with `drive.file`.
+- Added fail-closed checks for Google web-client ID format, placeholder secrets, valid sandbox tester addresses, strict read-only scope use, and exact callback equality with `${APP_URL}/auth/google-drive/callback`.
+- Added DirectAdmin deployment, restart, preflight, sandbox evidence, production approval, and rollback instructions without storing credentials or tester identities in source control.
+- Recorded a future Google Picker plus `drive.file` selected-file mode as a separate least-privilege product path.
+- Confirmed the current deployment callback is `https://chatclan.tfpdigital.co.za/auth/google-drive/callback`; live consent remains blocked until a real Google web client, secret, and test user are configured.
+
+## 2026-07-26 HubSpot CRM Service Key and Sandbox Delivery
+
+- Added encrypted, masked Platform Owner CRM configuration with live connection testing and provider audit events.
+- Created and installed an organisation-owned HubSpot Service Key with least-privilege contact and Lead scopes; the initially exposed key was immediately expired and replaced.
+- Confirmed live contact read and upsert access. The sandbox account rejects the optional Leads object despite the selected scopes, so ChatClan now exposes explicit `Contacts only` and `Contacts + Leads` capability modes.
+- Delivered sandbox lead `CCL-20260723-F48ABE00` to HubSpot contact `830951195867` through the durable worker queue and recorded the delivery evidence in the lead timeline.
+- Fixed the CRM and AI provider drawers failing to open after a stored health timestamp by using the shared date formatter.
+- Updated the HubSpot runbook and PRD to Service Keys, six-month rotation ownership, account capability testing, and contacts-only compatibility defaults.
+- Verification: schema 96/96, unit/service tests 152/152, beta smoke 34/34, syntax checks, and whitespace checks passed.
+
 ## Current State
 
+## 2026-07-27 Dashboard CRM And Interaction Polish
+
+- Replaced the dashboard's placeholder notification mark with an activity centre for unread conversations, campaign review, and setup work.
+- Refined the header activity centre so its badge represents live unread conversations only, hides when there are none, and loads actionable inbox/campaign activity when opened.
+- Improved dropdown usability with reliable close behavior (outside click and Escape), accessible state, a scrollable responsive panel, and direct navigation into Inbox or Insights.
+- Added a built-in Subscriber CRM workspace that turns existing opted-in contacts, conversations, campaigns, and orders into an affordable lightweight relationship-management view.
+- Replaced native browser prompts for contact creation with an accessible HTML dialog; successful additions immediately update the Contacts table and CRM list.
+- Consolidated Add product, Share on WhatsApp, Bulk product import, Product collection, Coupon, and Add variant into HTML modal workflows.
+- Added an in-inbox team assignment control and an auto-growing reply composer with a bounded scroll state.
+- Added a template-creation dialog using the existing tenant-scoped template API.
+- Rebuilt campaign performance as a mixed donut, conversion-rate, and layered-series visual instead of a single basic bar chart.
+- Verification: `npm run check`, `npm test` (156 passing), and `git diff --check` passed.
+
+## 2026-07-27 Contact Lifecycle Management
+
+- Added tenant-scoped Contact edit and soft-delete APIs, with database `deleted_at` and `deleted_by_user_id` audit fields.
+- Added Edit and Delete actions to every Contacts table row; edits reuse the HTML contact dialog and update the active row immediately.
+- Added a dedicated HTML confirmation dialog for deletion. Soft-deleted contacts are removed from active lists, plan usage, CRM synchronisation, setup counts, and campaign audiences while their database records remain retained.
+
+## 2026-07-27 Tenant CRM OAuth And Contact Synchronisation
+
+- Added tenant-facing HubSpot, Salesforce, Zoho CRM, and Pipedrive OAuth connection flows with workspace/user-bound one-time state and provider-specific callbacks.
+- Added encrypted offline credentials, masked reads, provider health checks, account endpoints, field mappings, sync cadence, pause/resume, disconnect, and recovery controls.
+- Added durable initial, manual, and scheduled contact synchronisation with idempotent record links, payload hashes, retry evidence, run counts, durations, and consecutive-failure tracking.
+- Added provider-safe default payloads, optional custom fields, Salesforce API v67.0 configuration, and queued schedule replacement when cadence or status changes.
+- Added a spacious tenant Integrations workspace with readiness cards, operational summaries, sync history, and focused connect/manage drawers.
+- Created and deployed the organisation-owned HubSpot `ChatClan CRM` OAuth project using HubSpot platform `2026.03`, minimum contact scopes, permanent support links, and pre-production/future production callbacks.
+- Completed live consent against an isolated HubSpot developer test account and verified encrypted credentials, masked UI, provider health, durable sync evidence, and provider-side external-ID reconciliation.
+- Corrected the live-discovered HubSpot identity defect: standard `phone` cannot be an upsert identifier. Email contacts use upsert; phone-only contacts now use exact lookup with duplicate protection, then update/create and durable record linking.
+- Verified two consecutive live runs at `12 attempted / 12 succeeded / 0 failed`; all 12 linked contacts exist in HubSpot and the repeat run produced no duplicate ChatClan contacts.
+- Deployed HubSpot build `#3` after removing the temporary local-test callback. Salesforce, Zoho CRM, and Pipedrive live acceptance remains pending.
+- Verification: schema 100/100 and service tests 156/156 passed.
+
+## 2026-07-17 Platform Reliability Control Plane
+
+- Added durable worker heartbeats with configurable heartbeat, stale-worker, and stuck-job thresholds.
+- Added a Platform Owner reliability workspace with Overview, Workers, Providers, and Dead Letters sub-navigation.
+- Added cross-tenant Shopify, WooCommerce, and Google Drive reliability aggregation for source health, 24-hour sync outcomes, alerts, affected tenants, and active incidents.
+- Added provider incident correlation and provider-linked incident records.
+- Added owner-only dead-letter recovery that creates a linked job while preserving the original failure, with recovery history and platform audit evidence.
+- Added responsive drawer workflows for incident declaration and dead-letter retry.
+
 The app is now an executable production foundation. It has demo-data fallback for local use, MariaDB-ready tables, authentication/session foundations, tenant-scoped user management, setup/onboarding progress tracking, mock/SMTP password reset and team invite email delivery, tenant-scoped writes, user-facing screens based on the HTML blueprint, reusable vendor integration helpers, encrypted Meta credential storage, POPIA contact import, opt-out audit behavior, and data deletion request handling, queue-backed webhook/campaign processing, rate-limited campaign dispatch, Meta delivery-state updates, PayFast subscription checkout and ITN reconciliation, a 19-industry template library, mock-safe/live-gated Meta template submission and sync, chatbot flow builder and runtime execution, basic analytics, Meta rate-card sync, delivery-cost ledger reconciliation, unified inbox persistence with real-time events, internal notes, SLA metadata, typing indicators, and CSAT, security middleware, health/readiness endpoints, and backend routes for future production behavior.
+
+- Added a public `/data-deletion` page with social-sign-in deletion instructions, identity verification, deletion scope, lawful retention, timing, and provider-disconnection guidance for Meta app review and POPIA transparency.
+- Added Meta-signed Facebook data-deletion and deauthorization callbacks with HMAC verification, session invalidation, social-identity removal, account anonymisation, persistent confirmation tracking, and a public deletion-status page.
 
 ## Known Gaps
 

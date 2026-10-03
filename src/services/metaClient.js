@@ -1,7 +1,10 @@
 const { getMetaCredentials } = require('./metaCredentials');
+const { assertPlatformTenantCanOperate } = require('./platform');
+const { assertPlatformGuardrailAllows } = require('./platformGuardrails');
 const crypto = require('crypto');
 
 async function sendTextMessage({ to, text, businessId = 1 }) {
+  await assertOutboundAllowed(businessId, 'meta_text_send');
   const credentials = await getMetaCredentials(businessId);
   const phoneNumberId = credentials?.phoneNumberId;
   const accessToken = credentials?.accessToken;
@@ -53,6 +56,7 @@ async function sendTextMessage({ to, text, businessId = 1 }) {
 }
 
 async function sendTemplateMessage({ to, templateName, language = 'en_ZA', parameters = [], businessId = 1 }) {
+  await assertOutboundAllowed(businessId, 'meta_template_send');
   const payload = buildTemplateMessagePayload({ to, templateName, language, parameters });
   const credentials = await getMetaCredentials(businessId);
   const phoneNumberId = credentials?.phoneNumberId;
@@ -104,6 +108,7 @@ async function sendTemplateMessage({ to, templateName, language = 'en_ZA', param
 }
 
 async function sendInteractiveMessage({ payload, businessId = 1 }) {
+  await assertOutboundAllowed(businessId, 'meta_interactive_send');
   const credentials = await getMetaCredentials(businessId);
   const phoneNumberId = credentials?.phoneNumberId;
   const accessToken = credentials?.accessToken;
@@ -178,6 +183,11 @@ function buildTemplateMessagePayload({ to, templateName, language = 'en_ZA', par
 
 function mockMessageId() {
   return `mock_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+}
+
+async function assertOutboundAllowed(businessId, operation) {
+  await assertPlatformTenantCanOperate(businessId, operation);
+  await assertPlatformGuardrailAllows('meta_live_sends');
 }
 
 module.exports = { buildTemplateMessagePayload, sendInteractiveMessage, sendTemplateMessage, sendTextMessage };

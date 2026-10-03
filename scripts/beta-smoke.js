@@ -27,6 +27,31 @@ async function main() {
     assert(response.body?.ok === true, '/ready did not return ok=true');
   });
 
+  const publicPages = [
+    ['landing page', '/'],
+    ['team inbox product page', '/product/team-inbox'],
+    ['AI assist product page', '/product/ai-assist'],
+    ['retail solution page', '/solutions/retail'],
+    ['pricing page', '/pricing'],
+    ['contact page', '/contact'],
+    ['demo booking page', '/demo'],
+    ['integrations page', '/integrations'],
+    ['security page', '/security'],
+    ['service-provider register', '/subprocessors'],
+    ['service status page', '/status']
+  ];
+
+  for (const [label, path] of publicPages) {
+    await check(`${label} is readable`, async () => {
+      const response = await request(path, { headers: { accept: 'text/html' } });
+      assertStatus(response, 200);
+      assert(
+        typeof response.body === 'string' && (response.body.includes('<main') || response.body.includes('id="landing"')),
+        `${path} did not return an HTML page`
+      );
+    });
+  }
+
   await check('dashboard rejects anonymous access', async () => {
     const response = await request('/api/dashboard');
     assertStatus(response, 401);
@@ -57,6 +82,11 @@ async function main() {
     ['analytics overview', '/api/analytics/overview'],
     ['Meta cost report', '/api/analytics/costs'],
     ['inbox conversations', '/api/inbox/conversations'],
+    ['knowledge overview', '/api/knowledge/overview'],
+    ['knowledge operations', '/api/knowledge/operations'],
+    ['CRM integration operations', '/api/crm/operations'],
+    ['Google Drive OAuth status', '/api/knowledge/connectors/google-drive/oauth/status'],
+    ['AI quality overview', '/api/ai/quality'],
     ['consent audit', '/api/consent/events'],
     ['Meta integration status', '/api/integrations/meta'],
     ['deletion request list', '/api/compliance/deletion-requests']
@@ -119,6 +149,7 @@ async function runWriteChecks(cookie) {
   });
 
   await check('can prepare opted-in campaign recipients', async () => {
+    assert(campaignId, 'campaign creation did not produce an id; skipping recipient preparation');
     const response = await request(`/api/campaigns/${campaignId}/recipients/prepare`, {
       method: 'POST',
       cookie,
@@ -132,6 +163,7 @@ async function runWriteChecks(cookie) {
   });
 
   await check('can queue campaign dispatch in mock/live-gated path', async () => {
+    assert(campaignId, 'campaign creation did not produce an id; skipping campaign dispatch');
     const response = await request(`/api/campaigns/${campaignId}/dispatch`, {
       method: 'POST',
       cookie,

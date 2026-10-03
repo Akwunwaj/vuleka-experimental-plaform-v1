@@ -9,6 +9,7 @@ const {
   normalizeInboxPhone,
   recordOutboundReply
 } = require('./inbox');
+const { getPlatformGuardrail } = require('./platformGuardrails');
 
 const botActor = { id: null, name: 'ChatClan Bot' };
 const demoSessions = new Map();
@@ -22,6 +23,18 @@ async function processChatbotInbound({ businessId, event, inbox }) {
   const input = String(event.text || '').trim();
   if (!input || String(event.messageType || 'text').toLowerCase() !== 'text') {
     return null;
+  }
+
+  const aiGuardrail = await getPlatformGuardrail('ai_auto_replies');
+  if (aiGuardrail.enabled) {
+    return {
+      matched: false,
+      reason: 'ai_auto_replies_paused',
+      guardrail: {
+        key: aiGuardrail.key,
+        reason: aiGuardrail.reason
+      }
+    };
   }
 
   const customerPhone = normalizeInboxPhone(event.from);

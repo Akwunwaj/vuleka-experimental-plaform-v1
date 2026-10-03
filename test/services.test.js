@@ -24,6 +24,12 @@ const {
   createSocialSignupVerification,
   listSocialProviders
 } = require('../src/services/socialAuth');
+const { getRecaptchaClientConfig, verifyRecaptcha } = require('../src/services/recaptcha');
+const {
+  getSocialDataDeletionStatus,
+  parseFacebookSignedRequest,
+  processFacebookDataDeletion
+} = require('../src/services/socialDataDeletion');
 const repository = require('../src/services/repository');
 const { processJob } = require('../src/services/jobProcessor');
 const {
@@ -33,6 +39,7 @@ const {
 } = require('../src/services/metaWebhook');
 const { requestId, securityHeaders } = require('../src/middleware/security');
 const { requireAuth, requireRole } = require('../src/middleware/auth');
+const { requirePlatformAuth, requirePlatformRole } = require('../src/middleware/platformAuth');
 const {
   hashPassword,
   authenticateUser,
@@ -40,6 +47,48 @@ const {
   unsignSessionId,
   verifyPassword
 } = require('../src/services/auth');
+const {
+  authenticatePlatformUser,
+  createPlatformSession,
+  destroyPlatformSession,
+  getPlatformSession,
+  signPlatformSessionId,
+  unsignPlatformSessionId
+} = require('../src/services/platformAuth');
+const {
+  calculateMrrCents,
+  getPlatformOverview,
+  getPlatformTenant,
+  listPlatformAuditEvents,
+  listPlatformTenantNotes,
+  listPlatformTenants,
+  recordPlatformAuditEvent,
+  updatePlatformTenantStatus,
+  createPlatformTenantNote
+} = require('../src/services/platform');
+const {
+  assertPlatformGuardrailAllows,
+  listPlatformGuardrails,
+  updatePlatformGuardrail
+} = require('../src/services/platformGuardrails');
+const {
+  createPlatformIncident,
+  createPlatformIncidentEvent,
+  getPlatformIncident,
+  listPlatformIncidents,
+  updatePlatformIncident
+} = require('../src/services/platformIncidents');
+const {
+  checkAiProviderHealth,
+  getAiOperationsOverview,
+  getBusinessAiPolicy,
+  listAiProviders,
+  listAiUsage,
+  orchestrateAiText,
+  saveAiProviderConfig,
+  saveBusinessAiPolicy
+} = require('../src/services/aiControlPlane');
+const { callAiProvider } = require('../src/services/aiProviderAdapters');
 const { decryptSecret, encryptSecret, maskSecret } = require('../src/services/encryption');
 const {
   findBusinessIdByMetaPhoneNumberId,
@@ -75,8 +124,26 @@ const {
 } = require('../src/services/campaignRecipients');
 const { dispatchCampaign } = require('../src/services/broadcastDispatch');
 const { resetDispatchRateLimiterForTests } = require('../src/services/dispatchRateLimiter');
-const { enqueueJob, listJobs } = require('../src/services/jobQueue');
+const { enqueueJob, failJob, listJobs } = require('../src/services/jobQueue');
 const { runOnce } = require('../src/worker');
+const {
+  buildReliabilityOverview,
+  discardDeadLetterJob,
+  getPlatformReliabilityOverview,
+  recordWorkerHeartbeat,
+  resetPlatformReliabilityForTests,
+  retryDeadLetterJob,
+  summarizeProviderReliability
+} = require('../src/services/platformReliability');
+const {
+  acknowledgePlatformReliabilityAlert,
+  assignPlatformReliabilityAlert,
+  buildPlatformReliabilitySignals,
+  evaluatePlatformReliabilityAlerts,
+  getPlatformReliabilityAlertCenter,
+  resetPlatformReliabilityAlertsForTests,
+  updatePlatformReliabilityAlertPolicy
+} = require('../src/services/platformReliabilityAlerts');
 const {
   createBusinessUser,
   deactivateBusinessUser,
@@ -85,7 +152,7 @@ const {
   resetPassword,
   updateBusinessUserRole
 } = require('../src/services/users');
-const { getMockOutbox, resetMailerForTests, verifyMailer } = require('../src/services/mailer');
+const { getMockOutbox, resetMailerForTests, sendPublicLeadEmails, verifyMailer } = require('../src/services/mailer');
 const {
   createTemplate,
   getTemplateById,
@@ -134,6 +201,67 @@ const {
   recordTypingIndicator,
   updateConversation
 } = require('../src/services/inbox');
+const {
+  evaluateDraftSafety,
+  generateInboxAiDraft,
+  getInboxAiDraftMetrics,
+  markInboxAiDraftOutcome,
+  redactConversationText,
+  validateInboxAiDraftForUse
+} = require('../src/services/inboxAiDrafts');
+const {
+  createKnowledgeItem,
+  getKnowledgeOverview,
+  retrieveTenantKnowledge,
+  updateKnowledgeItem
+} = require('../src/services/tenantKnowledge');
+const {
+  archiveKnowledgeSource,
+  createApiPushConnector,
+  importKnowledgeContent,
+  ingestApiConnectorRecords,
+  listKnowledgeSources,
+  parseImportRecords
+} = require('../src/services/knowledgeIngestion');
+const { extractDocumentText } = require('../src/services/documentExtraction');
+const {
+  createKnowledgeConnector,
+  deleteKnowledgeConnector,
+  fetchGoogleDriveRecords,
+  fetchShopifyRecords,
+  fetchWooCommerceRecords
+} = require('../src/services/knowledgeConnectors');
+const {
+  beginGoogleDriveOAuth,
+  completeGoogleDriveOAuth,
+  getGoogleDriveOAuthStatus,
+  revokeGoogleDriveCredentials
+} = require('../src/services/googleDriveOAuth');
+const {
+  beginTenantCrmOAuth,
+  completeTenantCrmOAuth,
+  getTenantCrmProviderStatus,
+  providerProperties,
+  PROVIDER_MAPPINGS
+} = require('../src/services/tenantCrm');
+const {
+  beginConnectorSyncRun,
+  completeConnectorSyncRun,
+  getKnowledgeConnectorOperations,
+  listConnectorSyncRuns
+} = require('../src/services/knowledgeConnectorOperations');
+const {
+  acknowledgeConnectorAlert,
+  evaluateConnectorAlerts,
+  getConnectorAlertCenter,
+  updateConnectorAlertPolicy
+} = require('../src/services/connectorAlerts');
+const {
+  createKnowledgeEvaluationCase,
+  listKnowledgeEvaluationRuns,
+  runKnowledgeEvaluations,
+  unsupportedClaimRisk
+} = require('../src/services/knowledgeEvaluations');
 const { subscribeInboxEvents } = require('../src/services/inboxEvents');
 const {
   getSetupWizardProgress,
@@ -201,7 +329,24 @@ const {
   updateReturnRequest,
   updateOrderStatus
 } = require('../src/services/commerce');
-const { renderLoginPage, renderPage, renderPasswordResetPage, renderSignupPage, renderSocialSignupCompletionPage } = require('../src/views');
+const {
+  renderLoginPage,
+  renderPage,
+  renderPasswordResetPage,
+  renderPublicInformationPage,
+  renderPublicLeadPage,
+  renderMarketingPage,
+  renderPlatformDashboardPage,
+  renderPlatformLoginPage,
+  renderSignupPage,
+  renderSocialSignupCompletionPage
+} = require('../src/views');
+const { publicInformationPages } = require('../src/data/publicPolicies');
+const { publicMarketingPages } = require('../src/data/publicSite');
+const { addPublicLeadEvent, createPublicLead, exportPublicLeadsCsv, getPublicLead, getPublicLeadSummary, listPublicLeadEvents, listPublicLeads, updatePublicLead } = require('../src/services/publicLeads');
+const { crmLeadPayload, deliverPublicLeadToHubSpot, deliverPublicLeadWebhook, getPublicLeadCrmStatus } = require('../src/services/publicLeadCrm');
+const { processPublicLeadSla, queuePublicLeadSlaChecks } = require('../src/services/publicLeadSla');
+const { getCrmConfiguration, saveCrmConfiguration, testCrmConfiguration } = require('../src/services/crmConfiguration');
 
 test('PayFast signature verification accepts matching signatures', () => {
   const data = {
@@ -398,6 +543,120 @@ test('security middleware sets request id and core hardening headers', () => {
   assert.equal(headers['x-request-id'], 'req_test');
   assert.equal(headers['x-frame-options'], 'DENY');
   assert.match(headers['content-security-policy'], /default-src 'self'/);
+  assert.match(headers['content-security-policy'], /google\.com\/recaptcha/);
+  assert.match(headers['content-security-policy'], /frame-src/);
+  assert.match(headers['content-security-policy'], /script-src 'self' 'nonce-/);
+});
+
+test('reCAPTCHA validates action, score, hostname, and token age', async () => {
+  const keys = ['RECAPTCHA_MODE', 'RECAPTCHA_SITE_KEY', 'RECAPTCHA_SECRET_KEY', 'RECAPTCHA_MIN_SCORE', 'RECAPTCHA_ALLOWED_HOSTNAMES'];
+  const original = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
+  const now = Date.now();
+  process.env.RECAPTCHA_MODE = 'enforced';
+  process.env.RECAPTCHA_SITE_KEY = 'site-key';
+  process.env.RECAPTCHA_SECRET_KEY = 'secret-key';
+  process.env.RECAPTCHA_MIN_SCORE = '0.5';
+  process.env.RECAPTCHA_ALLOWED_HOSTNAMES = 'chatclan.example,localhost';
+  const assessment = {
+    success: true,
+    score: 0.9,
+    action: 'tenant_login',
+    challenge_ts: new Date(now - 20_000).toISOString(),
+    hostname: 'chatclan.example'
+  };
+  const fetchAssessment = (overrides = {}) => async (url, options) => {
+    assert.equal(url, 'https://www.google.com/recaptcha/api/siteverify');
+    assert.match(String(options.body), /secret=secret-key/);
+    return { ok: true, json: async () => ({ ...assessment, ...overrides }) };
+  };
+
+  try {
+    assert.deepEqual(getRecaptchaClientConfig(), { enabled: true, siteKey: 'site-key' });
+    const verified = await verifyRecaptcha({ token: 'valid-token', expectedAction: 'tenant_login', remoteIp: '127.0.0.1', fetchImpl: fetchAssessment(), now });
+    assert.equal(verified.ok, true);
+    assert.equal(verified.score, 0.9);
+
+    for (const overrides of [
+      { action: 'tenant_signup' },
+      { score: 0.2 },
+      { hostname: 'attacker.example' },
+      { challenge_ts: new Date(now - 180_000).toISOString() }
+    ]) {
+      await assert.rejects(
+        verifyRecaptcha({ token: 'invalid-token', expectedAction: 'tenant_login', fetchImpl: fetchAssessment(overrides), now }),
+        (error) => error.code === 'RECAPTCHA_FAILED' && error.status === 403
+      );
+    }
+  } finally {
+    for (const key of keys) {
+      if (original[key] === undefined) delete process.env[key];
+      else process.env[key] = original[key];
+    }
+  }
+});
+
+test('all account entry forms render action-specific reCAPTCHA and protected social starts', () => {
+  const recaptcha = { enabled: true, siteKey: 'public-site-key' };
+  const socialProviders = [
+    { id: 'google', name: 'Google', configured: true },
+    { id: 'facebook', name: 'Facebook', configured: true }
+  ];
+  const login = renderLoginPage({ socialProviders, recaptcha });
+  const signup = renderSignupPage({ socialProviders, recaptcha });
+  const reset = renderPasswordResetPage({ recaptcha });
+  const platform = renderPlatformLoginPage({ recaptcha });
+  const socialCompletion = renderSocialSignupCompletionPage({
+    recaptcha,
+    token: 'social-token',
+    verification: { providerName: 'Google', email: 'owner@example.co.za', name: 'Owner', planCode: 'starter' }
+  });
+
+  assert.match(login, /data-recaptcha-action="tenant_login"/);
+  assert.match(signup, /data-recaptcha-action="tenant_signup"/);
+  assert.match(signup, /data-plan-code="starter"/);
+  assert.match(signup, /data-plan-code="growth"/);
+  assert.match(signup, /data-plan-code="pro"/);
+  assert.match(signup, /aria-pressed="true"/);
+  assert.match(reset, /data-recaptcha-action="password_reset"/);
+  assert.match(platform, /data-recaptcha-action="platform_login"/);
+  assert.match(socialCompletion, /data-recaptcha-action="social_signup_complete"/);
+  assert.match(login, /api\.js\?render=public-site-key/);
+  assert.match(login, /data-provider="google"/);
+  assert.match(login, /data-provider="facebook"/);
+  assert.match(login, /data-purpose="signin"/);
+  assert.doesNotMatch(login, /auth\/social\/google\/start\?/);
+});
+
+test('Facebook data deletion verifies signed requests and returns a traceable completion', async () => {
+  const originalSecret = process.env.SOCIAL_FACEBOOK_CLIENT_SECRET;
+  process.env.SOCIAL_FACEBOOK_CLIENT_SECRET = 'facebook-test-secret';
+  try {
+    const payload = Buffer.from(JSON.stringify({
+      algorithm: 'HMAC-SHA256',
+      issued_at: Math.floor(Date.now() / 1000),
+      user_id: `facebook-delete-${Date.now()}`
+    })).toString('base64url');
+    const signature = crypto
+      .createHmac('sha256', process.env.SOCIAL_FACEBOOK_CLIENT_SECRET)
+      .update(payload)
+      .digest('base64url');
+    const signedRequest = `${signature}.${payload}`;
+
+    assert.equal(parseFacebookSignedRequest(signedRequest).user_id.startsWith('facebook-delete-'), true);
+    assert.throws(
+      () => parseFacebookSignedRequest(`tampered.${payload}`),
+      (error) => error.code === 'INVALID_FACEBOOK_SIGNED_REQUEST' && error.status === 400
+    );
+
+    const response = await processFacebookDataDeletion({ signedRequest });
+    assert.match(response.confirmation_code, /^[a-f0-9]{24}$/);
+    assert.match(response.url, /\/data-deletion\/status\?code=/);
+    const status = await getSocialDataDeletionStatus(response.confirmation_code);
+    assert.equal(status.status, 'completed');
+  } finally {
+    if (originalSecret === undefined) delete process.env.SOCIAL_FACEBOOK_CLIENT_SECRET;
+    else process.env.SOCIAL_FACEBOOK_CLIENT_SECRET = originalSecret;
+  }
 });
 
 test('auth middleware blocks anonymous users and non-admin write roles', () => {
@@ -442,6 +701,40 @@ test('auth middleware reports database outage separately from anonymous access',
   assert.equal(unavailable.body.error, 'Database unavailable at localhost:3306: connect ECONNREFUSED');
 });
 
+test('platform auth uses a separate session and middleware boundary', async () => {
+  const user = await authenticatePlatformUser('owner@chatclan.co.za', process.env.PLATFORM_OWNER_PASSWORD || process.env.DEMO_ADMIN_PASSWORD || 'ChangeMe123!');
+  assert.equal(user.email, 'owner@chatclan.co.za');
+  assert.equal(user.role, 'owner');
+
+  const session = await createPlatformSession(user, 'node-test', '127.0.0.1');
+  const signed = signPlatformSessionId(session.id);
+  assert.equal(unsignPlatformSessionId(signed), session.id);
+
+  const stored = await getPlatformSession(session.id);
+  assert.equal(stored.user.email, user.email);
+
+  const anonymous = mockResponse();
+  requirePlatformAuth({ id: 'platform_anon', platformUser: null }, anonymous.res, () => {
+    throw new Error('anonymous platform request should not pass');
+  });
+
+  const forbidden = mockResponse();
+  requirePlatformRole(['owner'])({ id: 'platform_role', platformUser: { role: 'operator' } }, forbidden.res, () => {
+    throw new Error('operator should not pass owner-only gate');
+  });
+
+  let ownerPassed = false;
+  requirePlatformRole(['owner'])({ id: 'platform_owner', platformUser: user }, mockResponse().res, () => {
+    ownerPassed = true;
+  });
+
+  await destroyPlatformSession(session.id);
+  assert.equal(await getPlatformSession(session.id), null);
+  assert.equal(anonymous.statusCode, 401);
+  assert.equal(forbidden.statusCode, 403);
+  assert.equal(ownerPassed, true);
+});
+
 test('landing CTAs route prospects to signup and auth pages do not render dashboard shell', () => {
   const publicPage = renderPage(repository.getPublicPreviewData(), { authenticated: false });
   const socialProviders = listSocialProviders();
@@ -451,27 +744,619 @@ test('landing CTAs route prospects to signup and auth pages do not render dashbo
 
   assert.match(publicPage, /class="btn-hero" href="\/signup"/);
   assert.match(publicPage, /class="nav-trial" href="\/signup"/);
+  assert.match(publicPage, /class="main-nav" aria-label="Primary navigation"/);
+  assert.match(publicPage, /data-landing-nav-toggle/);
+  assert.match(publicPage, /class="journey-band"/);
+  assert.match(publicPage, /Move every conversation forward/);
   assert.match(publicPage, /class="btn-hero-outline" href="\/login"/);
   assert.match(publicPage, /href="\/signup\?plan=growth"/);
   assert.doesNotMatch(publicPage, /data-open-app/);
   assert.doesNotMatch(publicPage, /<main class="app"/);
   assert.match(loginPage, /Continue to dashboard/);
   assert.match(loginPage, /href="\/password-reset"/);
-  assert.match(loginPage, /Continue with/);
   assert.match(loginPage, /password-toggle/);
-  assert.match(loginPage, /aria-label="LinkedIn"/);
-  assert.match(loginPage, /social-linkedin/);
-  assert.match(loginPage, /<svg viewBox="0 0 24 24" aria-hidden="true">/);
+  assert.doesNotMatch(loginPage, /ChangeMe123!/);
+  assert.doesNotMatch(loginPage, /social-button disabled/);
   assert.doesNotMatch(loginPage, /id="passwordResetRequestForm"/);
   assert.doesNotMatch(loginPage, /<main class="app"/);
   assert.match(signupPage, /id="signupForm"/);
   assert.match(signupPage, /value="growth" selected/);
-  assert.match(signupPage, /\/api\/auth\/social\/google\/start/);
-  assert.match(signupPage, /\/api\/auth\/social\/linkedin\/start/);
   assert.match(signupPage, /password-toggle/);
   assert.doesNotMatch(signupPage, /<main class="app"/);
+  assert.doesNotMatch(publicPage, /1,200\+/);
+  assert.doesNotMatch(publicPage, /4\.9\/5/);
+  assert.doesNotMatch(publicPage, /Cloud API v21\.0/);
+  assert.doesNotMatch(publicPage, /href="#"/);
+  assert.match(publicPage, /href="\/privacy"/);
+  assert.match(publicPage, /href="\/terms"/);
+  assert.match(publicPage, /href="\/popia"/);
+  assert.match(publicPage, /href="https:\/\/whatsappbusiness\.com\/policy\/"/);
+  assert.match(publicPage, /href="\/contact"/);
   assert.match(resetPage, /id="passwordResetRequestForm"/);
   assert.match(resetPage, /Back to sign in/);
+});
+
+test('public marketing catalogue renders product, solution, pricing, and trust pages honestly', () => {
+  const expectedPaths = [
+    '/product/team-inbox',
+    '/product/campaigns',
+    '/product/automation',
+    '/product/ai-assist',
+    '/product/commerce',
+    '/product/analytics',
+    '/solutions/retail',
+    '/solutions/services',
+    '/solutions/agencies',
+    '/solutions/customer-support',
+    '/pricing',
+    '/integrations',
+    '/security',
+    '/subprocessors'
+  ];
+
+  expectedPaths.forEach((path) => {
+    const page = publicMarketingPages[path];
+    assert.ok(page, `missing public marketing page for ${path}`);
+    const html = renderMarketingPage({ ...page, path });
+    assert.match(html, /class="main-nav" aria-label="Primary navigation"/);
+    assert.match(html, /class="availability-label/);
+    assert.match(html, /class="footer public-footer"/);
+    assert.doesNotMatch(html, /href="#"/);
+  });
+
+  const aiPage = renderMarketingPage({ ...publicMarketingPages['/product/ai-assist'], path: '/product/ai-assist' });
+  assert.match(aiPage, /OpenAI, Google, Anthropic, DeepSeek, or xAI/);
+  assert.match(aiPage, /ChatClan owns the workflow; providers supply models/);
+  assert.match(aiPage, /availability-label beta/);
+
+  const agencyPage = renderMarketingPage({ ...publicMarketingPages['/solutions/agencies'], path: '/solutions/agencies' });
+  assert.match(agencyPage, /availability-label planned/);
+  assert.match(agencyPage, /white-label controls remain roadmap items/);
+
+  const pricingPage = renderMarketingPage({ ...publicMarketingPages['/pricing'], path: '/pricing' });
+  assert.match(pricingPage, /R 299/);
+  assert.match(pricingPage, /R 799/);
+  assert.match(pricingPage, /R 1(?:&nbsp;|\u00a0)999/);
+  assert.match(pricingPage, /Meta message charges are separate/);
+  assert.match(pricingPage, /Optional services/);
+  assert.doesNotMatch(pricingPage, /White-label option|Dedicated account manager/);
+
+  const securityPage = renderMarketingPage({ ...publicMarketingPages['/security'], path: '/security' });
+  assert.match(securityPage, /does not currently claim ISO 27001, SOC 2, PCI DSS/);
+  assert.doesNotMatch(securityPage, /ISO 27001 certified|official Meta partner/);
+});
+
+test('public conversion pages render protected forms, SEO evidence, and separate consent choices', () => {
+  const page = renderPublicLeadPage({
+    leadType: 'demo',
+    nonce: 'test-csp-nonce',
+    recaptcha: { enabled: true, siteKey: 'public-site-key' }
+  });
+
+  assert.match(page, /id="publicLeadForm"/);
+  assert.match(page, /data-recaptcha-action="public_lead"/);
+  assert.match(page, /name="consentToContact"/);
+  assert.match(page, /name="marketingOptIn"/);
+  assert.match(page, /Submitting this form does not create a WhatsApp marketing opt-in/);
+  assert.match(page, /rel="canonical"/);
+  assert.match(page, /application\/ld\+json" nonce="test-csp-nonce"/);
+  assert.match(page, /id="publicConsentBanner"/);
+  assert.match(page, /Optional analytics stays off unless you allow it/);
+});
+
+test('public leads validate consent, route high intent, deduplicate, notify, and progress', async () => {
+  const email = `lead-${Date.now()}@example.co.za`;
+  await assert.rejects(
+    createPublicLead({ leadType: 'sales', name: 'No Consent', workEmail: email, company: 'Example', message: 'Please contact me.' }),
+    /allow ChatClan to respond/
+  );
+
+  const lead = await createPublicLead({
+    leadType: 'demo',
+    name: 'Lerato Nkosi',
+    workEmail: email,
+    company: 'Nkosi Retail',
+    roleTitle: 'Operations Director',
+    phone: '+27821234567',
+    preferredContact: 'whatsapp',
+    teamSize: '21-50',
+    monthlyConversations: '10000+',
+    useCase: 'commerce',
+    message: 'We need governed commerce and support workflows.',
+    consentToContact: true,
+    marketingOptIn: false,
+    sourcePath: '/demo?utm_source=partner',
+    utmSource: 'partner'
+  }, { ipAddress: '127.0.0.1', userAgent: 'node-test' });
+
+  assert.equal(lead.priority, 'high');
+  assert.equal(lead.routeKey, 'sales_growth');
+  assert.equal(lead.marketingOptIn, false);
+  assert.equal(lead.responseDueAt > lead.createdAt, true);
+  assert.match(lead.reference, /^CCL-\d{8}-[A-F0-9]{8}$/);
+  assert.match(lead.ipHash, /^[a-f0-9]{64}$/);
+
+  const duplicate = await createPublicLead({
+    leadType: 'demo', name: 'Lerato Nkosi', workEmail: email, company: 'Nkosi Retail',
+    message: 'Adding another workflow detail.', consentToContact: true
+  });
+  assert.equal(duplicate.duplicate, true);
+  assert.equal(duplicate.reference, lead.reference);
+
+  resetMailerForTests();
+  await sendPublicLeadEmails({ lead });
+  const outbox = getMockOutbox();
+  assert.equal(outbox.length, 2);
+  assert.match(outbox[0].message.subject, /High-intent ChatClan demo enquiry/);
+  assert.match(outbox[1].message.subject, new RegExp(lead.reference));
+
+  const followUpAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  const updated = await updatePublicLead({ leadId: lead.id, status: 'contacted', nextFollowUpAt:followUpAt });
+  assert.equal(updated.status, 'contacted');
+  assert.equal(updated.slaStatus, 'met');
+  assert.equal(new Date(updated.nextFollowUpAt).toISOString(), followUpAt);
+  assert.equal(updated.followUpStatus, 'scheduled');
+  await addPublicLeadEvent({ leadId:lead.id, platformUser:{ id:1, name:'Platform Owner', email:'owner@chatclan.co.za' }, note:'Discovery call booked.' });
+  const detail = await getPublicLead(lead.id);
+  assert.equal(detail.reference, lead.reference);
+  const events = await listPublicLeadEvents(lead.id);
+  assert.equal(events.some((event) => event.note === 'Discovery call booked.'), true);
+  await assert.rejects(updatePublicLead({ leadId:lead.id, status:'disqualified', disqualificationReason:'' }), /disqualification reason/);
+  const leads = await listPublicLeads({ limit: 250 });
+  assert.equal(leads.some((item) => item.reference === lead.reference), true);
+  const summary = await getPublicLeadSummary();
+  assert.equal(summary.demoRequests >= 1, true);
+  assert.match(await exportPublicLeadsCsv(), /"Reference","Type","Status","Priority","SLA"/);
+});
+
+test('public lead CRM delivery signs a privacy-scoped payload and records delivery', async () => {
+  const previous = { provider:process.env.CRM_LEAD_PROVIDER, enabled:process.env.CRM_LEAD_WEBHOOK_ENABLED, url:process.env.CRM_LEAD_WEBHOOK_URL, secret:process.env.CRM_LEAD_WEBHOOK_SECRET };
+  process.env.CRM_LEAD_PROVIDER = 'webhook';
+  process.env.CRM_LEAD_WEBHOOK_ENABLED = 'true';
+  process.env.CRM_LEAD_WEBHOOK_URL = 'https://crm.example.test/chatclan-leads';
+  process.env.CRM_LEAD_WEBHOOK_SECRET = 'test-webhook-secret';
+  try {
+    const lead = await createPublicLead({ leadType:'sales', name:'CRM Prospect', workEmail:`crm-${Date.now()}@example.co.za`, company:'CRM Test', message:'Connect this request.', consentToContact:true });
+    assert.deepEqual(getPublicLeadCrmStatus(), { configured:true, destination:'crm.example.test', provider:'webhook' });
+    const payload = crmLeadPayload(lead);
+    assert.equal(payload.prospect.workEmail, lead.email);
+    assert.equal('ipHash' in payload, false);
+    let request;
+    const result = await deliverPublicLeadWebhook({ leadId:lead.id }, { fetchImpl:async (url, options) => { request = { url, options }; return new Response('', { status:202 }); } });
+    assert.equal(result.delivered, true);
+    assert.equal(request.url, process.env.CRM_LEAD_WEBHOOK_URL);
+    assert.match(request.options.headers['X-ChatClan-Signature'], /^sha256=[a-f0-9]{64}$/);
+    const stored = await getPublicLead(lead.id);
+    assert.equal(stored.crmDeliveryStatus, 'delivered');
+  } finally {
+    if (previous.provider === undefined) delete process.env.CRM_LEAD_PROVIDER; else process.env.CRM_LEAD_PROVIDER = previous.provider;
+    if (previous.enabled === undefined) delete process.env.CRM_LEAD_WEBHOOK_ENABLED; else process.env.CRM_LEAD_WEBHOOK_ENABLED = previous.enabled;
+    if (previous.url === undefined) delete process.env.CRM_LEAD_WEBHOOK_URL; else process.env.CRM_LEAD_WEBHOOK_URL = previous.url;
+    if (previous.secret === undefined) delete process.env.CRM_LEAD_WEBHOOK_SECRET; else process.env.CRM_LEAD_WEBHOOK_SECRET = previous.secret;
+  }
+});
+
+test('HubSpot CRM delivery upserts a contact and creates one associated lead', async () => {
+  const previous = { provider:process.env.CRM_LEAD_PROVIDER, token:process.env.CRM_HUBSPOT_ACCESS_TOKEN, mode:process.env.CRM_HUBSPOT_DELIVERY_MODE };
+  process.env.CRM_LEAD_PROVIDER = 'hubspot';
+  process.env.CRM_HUBSPOT_ACCESS_TOKEN = 'private-test-token';
+  process.env.CRM_HUBSPOT_DELIVERY_MODE = 'contacts_and_leads';
+  try {
+    const lead = await createPublicLead({ leadType:'demo', name:'Nandi Molefe', workEmail:`hubspot-${Date.now()}@example.co.za`, company:'Molefe Foods', roleTitle:'Director', phone:'+27821234567', message:'We need a CRM handover.', consentToContact:true });
+    const requests = [];
+    const responses = [{ results:[{ id:'contact-101' }] }, { results:[] }, { id:'lead-202' }];
+    const result = await deliverPublicLeadToHubSpot({ leadId:lead.id }, { fetchImpl:async (url, options) => {
+      requests.push({ url, options, body:JSON.parse(options.body) });
+      return new Response(JSON.stringify(responses.shift()), { status:200, headers:{ 'Content-Type':'application/json' } });
+    } });
+    assert.equal(result.delivered, true);
+    assert.equal(result.contactId, 'contact-101');
+    assert.equal(result.hubspotLeadId, 'lead-202');
+    assert.equal(requests[0].body.inputs[0].idProperty, 'email');
+    assert.equal(requests[2].body.associations[0].types[0].associationTypeId, 578);
+    assert.equal(requests[2].body.properties.hs_lead_name, `ChatClan ${lead.reference}`);
+    assert.equal(requests.every((request) => request.options.headers.Authorization === 'Bearer private-test-token'), true);
+  } finally {
+    if (previous.provider === undefined) delete process.env.CRM_LEAD_PROVIDER; else process.env.CRM_LEAD_PROVIDER = previous.provider;
+    if (previous.token === undefined) delete process.env.CRM_HUBSPOT_ACCESS_TOKEN; else process.env.CRM_HUBSPOT_ACCESS_TOKEN = previous.token;
+    if (previous.mode === undefined) delete process.env.CRM_HUBSPOT_DELIVERY_MODE; else process.env.CRM_HUBSPOT_DELIVERY_MODE = previous.mode;
+  }
+});
+
+test('HubSpot CRM delivery supports contacts-only accounts', async () => {
+  const lead = await createPublicLead({ leadType:'sales', name:'Contact Only', workEmail:`hubspot-contact-${Date.now()}@example.co.za`, company:'Contact CRM', message:'Sync this contact.', consentToContact:true });
+  const requests = [];
+  const result = await deliverPublicLeadToHubSpot({ leadId:lead.id }, {
+    runtimeConfig:{ configured:true, provider:'hubspot', hubspotDeliveryMode:'contacts_only', accessToken:'service-key' },
+    fetchImpl:async (url, options) => {
+      requests.push({ url, options });
+      return new Response(JSON.stringify({ results:[{ id:'contact-only-101' }] }), { status:200, headers:{ 'Content-Type':'application/json' } });
+    }
+  });
+  assert.equal(result.delivered, true);
+  assert.equal(result.mode, 'contacts_only');
+  assert.equal(result.contactId, 'contact-only-101');
+  assert.equal(requests.length, 1);
+});
+
+test('lead SLA jobs notify once and preserve the in-app activity record', async () => {
+  const lead = await createPublicLead({ leadType:'sales', name:'SLA Prospect', workEmail:`sla-${Date.now()}@example.co.za`, company:'SLA Test', message:'Please respond.', consentToContact:true });
+  const queued = await queuePublicLeadSlaChecks(lead);
+  assert.equal(queued.queued, true);
+  resetMailerForTests();
+  const first = await processPublicLeadSla({ leadId:lead.id });
+  const second = await processPublicLeadSla({ leadId:lead.id });
+  assert.equal(first.notified, true);
+  assert.equal(second.reason, 'already_notified');
+  assert.equal(getMockOutbox().length, 1);
+  const events = await listPublicLeadEvents(lead.id);
+  assert.equal(events.some((event) => event.eventType === 'sla_reminder'), true);
+});
+
+test('Platform Owner CRM configuration encrypts service keys, masks reads, and tests HubSpot access', async () => {
+  const saved = await saveCrmConfiguration({ providerKey:'hubspot', hubspotDeliveryMode:'contacts_and_leads', enabled:true, accessToken:'hubspot-secret-token', timeoutMs:5000, platformUser:{ id:1 } });
+  assert.equal(saved.configured, true);
+  assert.equal(saved.providerKey, 'hubspot');
+  assert.equal(saved.hubspotDeliveryMode, 'contacts_and_leads');
+  assert.match(saved.accessTokenMasked, /oken$/);
+  assert.equal('accessToken' in saved, false);
+  const runtime = await getCrmConfiguration({ includeSecrets:true });
+  assert.equal(runtime.accessToken, 'hubspot-secret-token');
+  let authorization;
+  const health = await testCrmConfiguration({ fetchImpl:async (_url, options) => { authorization=options.headers.Authorization; return new Response(JSON.stringify({ results:[] }), { status:200, headers:{'Content-Type':'application/json'} }); } });
+  assert.equal(authorization, 'Bearer hubspot-secret-token');
+  assert.equal(health.status, 'healthy');
+});
+
+test('public information pages escape copy and render the configured support link', () => {
+  const page = renderPublicInformationPage({
+    title: 'Privacy <Notice>',
+    label: 'Policy',
+    introduction: 'A clear notice.',
+    sections: [{ title: 'Contact', paragraphs: ['Email {{supportEmail}} about <private> data.'] }]
+  });
+
+  assert.match(page, /Privacy &lt;Notice&gt;/);
+  assert.match(page, /mailto:support@chatclan\.co\.za/);
+  assert.match(page, /about &lt;private&gt; data/);
+  assert.doesNotMatch(page, /<private>/);
+});
+
+test('public policies contain detailed South African, Meta, and platform-specific obligations', () => {
+  const privacy = renderPublicInformationPage({ ...publicInformationPages['/privacy'], path: '/privacy' });
+  const terms = renderPublicInformationPage({ ...publicInformationPages['/terms'], path: '/terms' });
+  const popia = renderPublicInformationPage({ ...publicInformationPages['/popia'], path: '/popia' });
+  const contact = renderPublicInformationPage({ ...publicInformationPages['/contact'], path: '/contact' });
+
+  assert.match(privacy, /AI-assisted workflows/);
+  assert.match(privacy, /Cross-border processing/);
+  assert.match(privacy, /Customer WhatsApp content is not used by ChatClan to train a general-purpose AI model/);
+  assert.match(terms, /Acceptable use/);
+  assert.match(terms, /Consumer Protection Act/);
+  assert.match(terms, /WhatsApp Business Terms of Service/);
+  assert.match(popia, /The eight POPIA conditions/);
+  assert.match(popia, /POPIA section 72/);
+  assert.match(popia, /does not prescribe a general 72-hour threshold/);
+  assert.doesNotMatch(popia, /within 72 hours/);
+  assert.match(contact, /Registration number/);
+  assert.match(contact, /Information Officer/);
+  assert.doesNotMatch(`${privacy}${terms}${popia}${contact}`, /\{\{[a-zA-Z]+\}\}/);
+});
+
+test('platform pages render owner login and operational dashboard', async () => {
+  await recordPlatformAuditEvent({
+    platformUser: { id: 1, email: 'owner@chatclan.co.za' },
+    action: 'platform.test.event',
+    targetType: 'tenant',
+    targetId: '1',
+    reason: 'test coverage'
+  });
+  const overview = await getPlatformOverview();
+  const loginPage = renderPlatformLoginPage({ authenticated: false });
+  const dashboard = renderPlatformDashboardPage({ overview, user: { name: 'Platform Owner' } });
+
+  assert.equal(overview.summary.tenants >= 1, true);
+  assert.match(loginPage, /id="platformLoginForm"/);
+  assert.match(loginPage, /\/api\/platform\/auth\/login/);
+  assert.match(dashboard, /Platform control plane/);
+  assert.match(dashboard, /Tenant Health/);
+  assert.match(dashboard, /Vendor & Dependency Health/);
+  assert.match(dashboard, /Recent Platform Audit/);
+});
+
+test('platform MRR excludes trials and non-paying subscriptions', () => {
+  const tenants = [
+    { billing: { status: 'active', recurringAmountCents: 79900 } },
+    { billing: { status: 'trialing', recurringAmountCents: 29900 } },
+    { billing: { status: 'pending', recurringAmountCents: 29900 } },
+    { billing: { status: 'canceled', recurringAmountCents: 199900 } }
+  ];
+
+  assert.equal(calculateMrrCents(tenants), 79900);
+});
+
+test('platform service exposes tenant and audit read models', async () => {
+  const tenants = await listPlatformTenants({ search: 'demo' });
+  assert.equal(tenants.length >= 1, true);
+  assert.equal(tenants[0].name, 'ChatClan Demo Store');
+  assert.equal(tenants[0].billing.status, 'active');
+  assert.equal(Array.isArray(tenants[0].health.checks), true);
+
+  const event = await recordPlatformAuditEvent({
+    platformUser: { id: 1, email: 'owner@chatclan.co.za' },
+    action: 'platform.tenant.view',
+    targetType: 'tenant',
+    targetId: tenants[0].id
+  });
+  const events = await listPlatformAuditEvents({ limit: 10 });
+  assert.equal(events.some((item) => item.id === event.id && item.action === 'platform.tenant.view'), true);
+});
+
+test('platform owner can update tenant status and create support notes with audit trail', async () => {
+  const platformUser = { id: 1, email: 'owner@chatclan.co.za', role: 'owner' };
+  const suspended = await updatePlatformTenantStatus({
+    tenantId: 1,
+    status: 'suspended',
+    reason: 'Compliance review during test',
+    platformUser
+  });
+  assert.equal(suspended.platform.status, 'suspended');
+  assert.equal(suspended.health.overall, 'blocked');
+
+  const note = await createPlatformTenantNote({
+    tenantId: 1,
+    note: 'Customer needs help completing Meta verification.',
+    category: 'onboarding',
+    platformUser
+  });
+  assert.equal(note.category, 'onboarding');
+
+  const detail = await getPlatformTenant(1);
+  const notes = await listPlatformTenantNotes(1);
+  const events = await listPlatformAuditEvents({ limit: 20 });
+  assert.equal(detail.notes.some((item) => item.id === note.id), true);
+  assert.equal(notes.some((item) => item.note.includes('Meta verification')), true);
+  assert.equal(events.some((item) => item.action === 'platform.tenant.status.update' && item.targetId === '1'), true);
+  assert.equal(events.some((item) => item.action === 'platform.tenant.note.create' && item.targetId === '1'), true);
+
+  await updatePlatformTenantStatus({
+    tenantId: 1,
+    status: 'active',
+    reason: 'Test cleanup',
+    platformUser
+  });
+});
+
+test('platform guardrails can pause campaign dispatch and Meta outbound sends', async () => {
+  const platformUser = { id: 1, email: 'owner@chatclan.co.za', role: 'owner' };
+  const guardrails = await listPlatformGuardrails();
+  assert.equal(guardrails.some((guardrail) => guardrail.key === 'campaign_dispatch'), true);
+
+  try {
+    const pausedCampaigns = await updatePlatformGuardrail({
+      key: 'campaign_dispatch',
+      enabled: true,
+      reason: 'Smoke pause during test',
+      platformUser
+    });
+    assert.equal(pausedCampaigns.enabled, true);
+    await assert.rejects(
+      () => assertPlatformGuardrailAllows('campaign_dispatch'),
+      /Campaign dispatch is paused/
+    );
+    await assert.rejects(
+      () => dispatchCampaign({ businessId: 1, campaignId: 1, limit: 1 }),
+      /Campaign dispatch is paused/
+    );
+
+    await updatePlatformGuardrail({
+      key: 'meta_live_sends',
+      enabled: true,
+      reason: 'Outbound freeze during test',
+      platformUser
+    });
+    await assert.rejects(
+      () => sendTextMessage({ businessId: 1, to: '27821234567', text: 'Guardrail smoke' }),
+      /Meta outbound sends is paused/
+    );
+  } finally {
+    await updatePlatformGuardrail({
+      key: 'campaign_dispatch',
+      enabled: false,
+      reason: 'Test cleanup',
+      platformUser
+    });
+    await updatePlatformGuardrail({
+      key: 'meta_live_sends',
+      enabled: false,
+      reason: 'Test cleanup',
+      platformUser
+    });
+  }
+});
+
+test('platform incidents preserve ownership, timeline, guardrail context, and resolution evidence', async () => {
+  const platformUser = { id: 1, name: 'Platform Owner', email: 'owner@chatclan.co.za', role: 'owner' };
+  const incident = await createPlatformIncident({
+    title: 'Meta delivery latency',
+    summary: 'Outbound delivery acknowledgements are delayed.',
+    customerImpact: 'Some customer messages remain queued longer than expected.',
+    severity: 'sev2',
+    linkedGuardrailKey: 'meta_live_sends',
+    platformUser
+  });
+  assert.equal(incident.status, 'open');
+  assert.equal(incident.ownerEmail, platformUser.email);
+  assert.equal(incident.events.some((event) => event.eventType === 'created'), true);
+
+  await createPlatformIncidentEvent({
+    incidentId: incident.id,
+    note: 'Meta status and queue depth reviewed.',
+    platformUser
+  });
+  const monitoring = await updatePlatformIncident({
+    incidentId: incident.id,
+    status: 'monitoring',
+    severity: 'sev2',
+    linkedGuardrailKey: 'meta_live_sends',
+    platformUser
+  });
+  assert.equal(monitoring.status, 'monitoring');
+  assert.equal(monitoring.events.some((event) => event.note.includes('Meta status')), true);
+  await assert.rejects(
+    () => updatePlatformIncident({ incidentId: incident.id, status: 'resolved', platformUser }),
+    /resolutionNote is required/
+  );
+
+  const resolved = await updatePlatformIncident({
+    incidentId: incident.id,
+    status: 'resolved',
+    resolutionNote: 'Queue depth returned to baseline and delivery acknowledgements recovered.',
+    platformUser
+  });
+  assert.equal(resolved.status, 'resolved');
+  assert.match(resolved.resolutionNote, /returned to baseline/);
+  assert.equal((await getPlatformIncident(incident.id)).events.length >= 4, true);
+  assert.equal((await listPlatformIncidents()).some((item) => item.id === incident.id), true);
+});
+
+test('AI control plane encrypts provider keys and exposes only masked configuration', async () => {
+  const platformUser = { id:1, name:'Platform Owner', email:'owner@chatclan.co.za', role:'owner' };
+  const provider = await saveAiProviderConfig({
+    providerKey:'openai', enabled:true, apiKey:'sk-test-control-plane-secret',
+    baseUrl:'https://api.openai.com/v1', defaultModel:'test-model', timeoutMs:25000, platformUser
+  });
+  assert.equal(provider.enabled, true);
+  assert.equal(provider.defaultModel, 'test-model');
+  assert.match(provider.apiKeyMasked, /cret$/);
+  assert.equal(JSON.stringify(await listAiProviders()).includes('sk-test-control-plane-secret'), false);
+
+  const rotatedWithoutPlaintext = await saveAiProviderConfig({
+    providerKey:'openai', enabled:true, baseUrl:'https://api.openai.com/v1', defaultModel:'test-model-2', timeoutMs:25000, platformUser
+  });
+  assert.equal(rotatedWithoutPlaintext.apiKeyMasked, provider.apiKeyMasked);
+});
+
+test('tenant AI policy governs fallback, limits, mock inference, telemetry, and guardrails', async () => {
+  const platformUser = { id:1, name:'Platform Owner', email:'owner@chatclan.co.za', role:'owner' };
+  const policy = await saveBusinessAiPolicy({
+    businessId:1, enabled:true, autonomyMode:'draft', providerChain:['openai','google'],
+    monthlyBudgetCents:5000, monthlyTokenLimit:10000, maxResponseTokens:600,
+    humanHandoffEnabled:true, platformUser
+  });
+  assert.deepEqual(policy.providerChain, ['openai','google']);
+  assert.equal((await getBusinessAiPolicy(1)).autonomyMode, 'draft');
+
+  const result = await orchestrateAiText({ businessId:1, prompt:'Help the customer track an order.', workflowKey:'inbox_assist' });
+  assert.equal(result.mode, 'mock');
+  assert.equal(result.provider, 'openai');
+  assert.equal(result.autonomyMode, 'draft');
+  const usage = await listAiUsage({ businessId:1 });
+  assert.equal(usage.some((item) => item.workflowKey === 'inbox_assist' && item.status === 'succeeded'), true);
+  assert.equal((await getAiOperationsOverview()).summary.configuredProviders >= 1, true);
+
+  try {
+    await updatePlatformGuardrail({ key:'ai_auto_replies', enabled:true, reason:'AI safety pause test', platformUser });
+    await assert.rejects(() => orchestrateAiText({ businessId:1, prompt:'Blocked request' }), /AI and bot auto-replies is paused/);
+  } finally {
+    await updatePlatformGuardrail({ key:'ai_auto_replies', enabled:false, reason:'Test cleanup', platformUser });
+  }
+});
+
+test('live AI adapters normalize OpenAI, Anthropic, Gemini, and OpenAI-compatible responses', async () => {
+  const requests = [];
+  const fixtures = {
+    openai_responses: { id:'resp_1', output:[{ content:[{ type:'output_text', text:'OpenAI ready' }] }], usage:{ input_tokens:11, output_tokens:4 } },
+    anthropic_messages: { id:'msg_1', content:[{ type:'text', text:'Anthropic ready' }], usage:{ input_tokens:12, output_tokens:5 } },
+    google_generate_content: { candidates:[{ content:{ parts:[{ text:'Gemini ready' }] } }], usageMetadata:{ promptTokenCount:13, candidatesTokenCount:6 } },
+    openai_compatible: { id:'chatcmpl_1', choices:[{ message:{ content:'Compatible ready' } }], usage:{ prompt_tokens:14, completion_tokens:7 } }
+  };
+  const providers = [
+    { key:'openai', label:'OpenAI', protocol:'openai_responses', baseUrl:'https://api.openai.com/v1', defaultModel:'test-openai', apiKey:'secret', timeoutMs:1000 },
+    { key:'anthropic', label:'Anthropic', protocol:'anthropic_messages', baseUrl:'https://api.anthropic.com/v1', defaultModel:'test-anthropic', apiKey:'secret', timeoutMs:1000 },
+    { key:'google', label:'Google Gemini', protocol:'google_generate_content', baseUrl:'https://generativelanguage.googleapis.com/v1beta', defaultModel:'test-gemini', apiKey:'secret', timeoutMs:1000 },
+    { key:'deepseek', label:'DeepSeek', protocol:'openai_compatible', baseUrl:'https://example.ai/v1', defaultModel:'test-compatible', apiKey:'secret', timeoutMs:1000 }
+  ];
+  for (const provider of providers) {
+    const result = await callAiProvider(provider, {
+      prompt:'Connection test', systemPrompt:'Be concise', maxOutputTokens:20,
+      fetchImpl:async (url, options) => {
+        requests.push({ provider:provider.key, url, options });
+        return new Response(JSON.stringify(fixtures[provider.protocol]), { status:200, headers:{ 'content-type':'application/json', 'x-request-id':`${provider.key}-request` } });
+      }
+    });
+    assert.match(result.text, /ready/i);
+    assert.equal(result.providerRequestId, `${provider.key}-request`);
+    assert.equal(result.inputTokens > 0, true);
+    assert.equal(result.outputTokens > 0, true);
+  }
+  assert.match(requests.find((item) => item.provider === 'openai').url, /\/responses$/);
+  assert.match(requests.find((item) => item.provider === 'anthropic').url, /\/messages$/);
+  assert.match(requests.find((item) => item.provider === 'google').url, /models\/test-gemini:generateContent$/);
+  assert.match(requests.find((item) => item.provider === 'deepseek').url, /\/chat\/completions$/);
+  assert.equal(requests.some((item) => String(item.options.body).includes('secret')), false);
+});
+
+test('live AI orchestration falls back, records each attempt, and preserves provider health', async () => {
+  const platformUser = { id:1, name:'Platform Owner', email:'owner@chatclan.co.za', role:'owner' };
+  await saveAiProviderConfig({ providerKey:'google', enabled:true, apiKey:'gemini-test-secret', baseUrl:'https://generativelanguage.googleapis.com/v1beta', defaultModel:'test-gemini', timeoutMs:1000, platformUser });
+  await saveBusinessAiPolicy({ businessId:1, enabled:true, autonomyMode:'draft', providerChain:['openai','google'], monthlyBudgetCents:5000, monthlyTokenLimit:10000, maxResponseTokens:400, humanHandoffEnabled:true, platformUser });
+  const previousMode = process.env.AI_MODE;
+  process.env.AI_MODE = 'live';
+  try {
+    const result = await orchestrateAiText({
+      businessId:1, prompt:'Help with an order', workflowKey:'live_fallback_test',
+      fetchImpl:async (url) => {
+        if (url.endsWith('/responses')) return new Response(JSON.stringify({ error:{ type:'rate_limit_error' } }), { status:429, headers:{ 'content-type':'application/json' } });
+        return new Response(JSON.stringify({ candidates:[{ content:{ parts:[{ text:'Your order is being checked.' }] } }], usageMetadata:{ promptTokenCount:8, candidatesTokenCount:7 } }), { status:200, headers:{ 'content-type':'application/json' } });
+      }
+    });
+    assert.equal(result.provider, 'google');
+    assert.equal(result.mode, 'live');
+    const attempts = (await listAiUsage({ businessId:1 })).filter((item) => item.workflowKey === 'live_fallback_test');
+    assert.equal(attempts.some((item) => item.providerKey === 'openai' && item.status === 'failed'), true);
+    assert.equal(attempts.some((item) => item.providerKey === 'google' && item.status === 'succeeded'), true);
+
+    const healthy = await checkAiProviderHealth({
+      providerKey:'openai', platformUser,
+      fetchImpl:async () => new Response(JSON.stringify({ id:'resp_health', output:[{ content:[{ type:'output_text', text:'OK' }] }], usage:{ input_tokens:5, output_tokens:1 } }), { status:200, headers:{ 'content-type':'application/json' } })
+    });
+    assert.equal(healthy.status, 'healthy');
+    await assert.rejects(() => checkAiProviderHealth({
+      providerKey:'openai', platformUser,
+      fetchImpl:async () => new Response(JSON.stringify({ error:{ type:'authentication_error' } }), { status:401, headers:{ 'content-type':'application/json' } })
+    }), /connection check failed/i);
+    const openai = (await listAiProviders()).find((item) => item.key === 'openai');
+    assert.equal(openai.enabled, true);
+    assert.equal(openai.status, 'degraded');
+    assert.equal(openai.lastHealthStatus, 'unhealthy');
+  } finally {
+    if (previousMode === undefined) delete process.env.AI_MODE;
+    else process.env.AI_MODE = previousMode;
+  }
+});
+
+test('platform tenant suspension blocks outbound Meta sends', async () => {
+  const platformUser = { id: 1, email: 'owner@chatclan.co.za', role: 'owner' };
+  try {
+    await updatePlatformTenantStatus({
+      tenantId: 1,
+      status: 'suspended',
+      reason: 'Suspension guardrail test',
+      platformUser
+    });
+    await assert.rejects(
+      () => sendTextMessage({ businessId: 1, to: '27821234567', text: 'Suspension smoke' }),
+      /Tenant is suspended by Platform Owner/
+    );
+  } finally {
+    await updatePlatformTenantStatus({
+      tenantId: 1,
+      status: 'active',
+      reason: 'Test cleanup',
+      platformUser
+    });
+  }
 });
 
 test('authenticated dashboard escapes tenant-controlled server-rendered content', () => {
@@ -712,8 +1597,9 @@ test('social signup completion collects business details after provider verifica
 });
 
 test('social auth start exposes configured provider authorization URLs', async () => {
-  const previous = process.env.SOCIAL_GOOGLE_CLIENT_ID;
+  const previous = [process.env.SOCIAL_GOOGLE_CLIENT_ID, process.env.SOCIAL_GOOGLE_CLIENT_SECRET];
   process.env.SOCIAL_GOOGLE_CLIENT_ID = 'google-client-id';
+  process.env.SOCIAL_GOOGLE_CLIENT_SECRET = 'google-client-secret';
   try {
     const start = await createSocialAuthStart({ provider: 'google', purpose: 'signup', planCode: 'starter' });
 
@@ -722,14 +1608,17 @@ test('social auth start exposes configured provider authorization URLs', async (
     assert.match(start.authorizationUrl, /client_id=google-client-id/);
     assert.match(start.authorizationUrl, /state=/);
   } finally {
-    if (previous === undefined) delete process.env.SOCIAL_GOOGLE_CLIENT_ID;
-    else process.env.SOCIAL_GOOGLE_CLIENT_ID = previous;
+    if (previous[0] === undefined) delete process.env.SOCIAL_GOOGLE_CLIENT_ID;
+    else process.env.SOCIAL_GOOGLE_CLIENT_ID = previous[0];
+    if (previous[1] === undefined) delete process.env.SOCIAL_GOOGLE_CLIENT_SECRET;
+    else process.env.SOCIAL_GOOGLE_CLIENT_SECRET = previous[1];
   }
 });
 
 test('LinkedIn social auth start exposes OpenID authorization URL', async () => {
-  const previous = process.env.SOCIAL_LINKEDIN_CLIENT_ID;
+  const previous = [process.env.SOCIAL_LINKEDIN_CLIENT_ID, process.env.SOCIAL_LINKEDIN_CLIENT_SECRET];
   process.env.SOCIAL_LINKEDIN_CLIENT_ID = 'linkedin-client-id';
+  process.env.SOCIAL_LINKEDIN_CLIENT_SECRET = 'linkedin-client-secret';
   try {
     const start = await createSocialAuthStart({ provider: 'linkedin', purpose: 'signup', planCode: 'growth' });
 
@@ -738,8 +1627,10 @@ test('LinkedIn social auth start exposes OpenID authorization URL', async () => 
     assert.match(start.authorizationUrl, /client_id=linkedin-client-id/);
     assert.match(start.authorizationUrl, /scope=openid\+profile\+email/);
   } finally {
-    if (previous === undefined) delete process.env.SOCIAL_LINKEDIN_CLIENT_ID;
-    else process.env.SOCIAL_LINKEDIN_CLIENT_ID = previous;
+    if (previous[0] === undefined) delete process.env.SOCIAL_LINKEDIN_CLIENT_ID;
+    else process.env.SOCIAL_LINKEDIN_CLIENT_ID = previous[0];
+    if (previous[1] === undefined) delete process.env.SOCIAL_LINKEDIN_CLIENT_SECRET;
+    else process.env.SOCIAL_LINKEDIN_CLIENT_SECRET = previous[1];
   }
 });
 
@@ -916,7 +1807,7 @@ test('Meta onboarding exposes Embedded Signup config and saves completed signup 
 
   assert.equal(config.configured, true);
   assert.equal(config.launchParams.response_type, 'code');
-  assert.equal(config.launchParams.extras.featureType, 'whatsapp_business_app_onboarding');
+  assert.equal(config.launchParams.extras.featureType, undefined);
   assert.equal(completed.mode, 'mock');
   assert.equal(completed.credentials.connected, true);
   assert.equal(status.credentials.wabaId, 'waba_onboard');
@@ -1169,6 +2060,13 @@ test('campaign dispatch sends only prepared queued recipients in mock mode', asy
   assert.equal(summary.remainingQueued, 0);
   assert.equal(recipients.every((recipient) => recipient.status === 'sent'), true);
   assert.equal(recipients.some((recipient) => recipient.contactId === 4), false);
+});
+
+test('campaign dispatch rejects malformed identifiers before queue or SQL work', async () => {
+  await assert.rejects(
+    () => dispatchCampaign({ businessId:1, campaignId:'null', limit:1 }),
+    (error) => error.status === 400 && error.retryable === false && /campaignId must be a positive integer/.test(error.message)
+  );
 });
 
 test('campaign dispatch respects tenant and phone rate limits', async () => {
@@ -3213,6 +4111,546 @@ test('created campaigns preserve template category for reporting', async () => {
   assert.equal(campaign.category, 'UTILITY');
 });
 
+test('inbox AI drafting redacts identifiers and blocks sensitive authentication requests', () => {
+  const redacted = redactConversationText('Call 082 123 4567 or mail person@example.co.za. ID 9001015009087 card 4111 1111 1111 1111.');
+  assert.doesNotMatch(redacted, /082 123 4567|person@example\.co\.za|9001015009087|4111 1111/);
+  const assessment = evaluateDraftSafety({
+    body:'Please send your password and OTP so I can help.',
+    context:[{ direction:'inbound', body:'I cannot access my account.' }],
+    mode:'live',
+    humanHandoffEnabled:true
+  });
+  assert.equal(assessment.canUse, false);
+  assert.equal(assessment.confidence, 0.2);
+  assert.equal(assessment.flags.includes('requests_sensitive_auth'), true);
+});
+
+test('tenant knowledge approval gates retrieval and keeps customer orders scoped', async () => {
+  const businessId = 910;
+  const actorUser = { id:91, name:'Knowledge Manager', email:'knowledge@example.test', role:'admin' };
+  const draftItem = await createKnowledgeItem({
+    businessId,
+    actorUser,
+    itemType:'policy',
+    title:'Returns policy',
+    content:'Unused products may be returned within 14 days with proof of purchase.',
+    keywords:'returns, refunds',
+    status:'draft'
+  });
+  const beforeApproval = await retrieveTenantKnowledge({ businessId, queryText:'What is your returns policy?', customerPhone:'0821234000' });
+  assert.equal(beforeApproval.sources.some((source) => source.ref.startsWith(`knowledge:${draftItem.id}:`)), false);
+
+  const approvedItem = await updateKnowledgeItem({ businessId, itemId:draftItem.id, actorUser, status:'approved' });
+  const product = await createProduct(businessId, {
+    name:'Cape Town Weekender Bag',
+    sku:'ct-weekender',
+    description:'A durable locally made travel bag.',
+    price:799,
+    inventoryCount:6
+  });
+  const matchingOrder = await createOrder(businessId, {
+    customerName:'Knowledge Customer',
+    customerPhone:'+27821234000',
+    items:[{ productId:product.id, quantity:1 }]
+  });
+  const otherOrder = await createOrder(businessId, {
+    customerName:'Other Customer',
+    customerPhone:'+27829999999',
+    items:[{ productId:product.id, quantity:1 }]
+  });
+  const retrieval = await retrieveTenantKnowledge({
+    businessId,
+    queryText:'What is the Weekender Bag price and can you track my order delivery or return it?',
+    customerPhone:'082 123 4000'
+  });
+  const overview = await getKnowledgeOverview(businessId);
+  const otherTenant = await retrieveTenantKnowledge({ businessId:911, queryText:'returns policy', customerPhone:'0821234000' });
+
+  assert.equal(approvedItem.version, 2);
+  assert.equal(approvedItem.approvedByUserId, actorUser.id);
+  assert.equal(overview.summary.approved, 1);
+  assert.equal(retrieval.sources.some((source) => source.ref === `knowledge:${approvedItem.id}:v2`), true);
+  assert.equal(retrieval.sources.some((source) => source.ref === `product:${product.id}`), true);
+  assert.equal(retrieval.sources.some((source) => source.ref === `order:${matchingOrder.id}`), true);
+  assert.equal(retrieval.sources.some((source) => source.ref === `order:${otherOrder.id}`), false);
+  assert.equal(otherTenant.sources.some((source) => source.ref.startsWith('knowledge:')), false);
+});
+
+test('knowledge imports and API connectors preserve provenance and deduplicate records', async () => {
+  const businessId = 912;
+  const actorUser = { id:92, name:'Source Manager', email:'sources@example.test', role:'admin' };
+  const csv = [
+    'title,content,type,keywords,external_ref',
+    'Collection times,Collections are available Monday to Friday from 09:00 to 16:00,faq,"collection,hours",collection-hours',
+    'Returns policy,Unused products may be returned within 14 days with proof of purchase,policy,"returns,refunds",returns-policy'
+  ].join('\n');
+  const preview = parseImportRecords({ content:csv, filename:'support.csv', formatType:'csv' });
+  const imported = await importKnowledgeContent({ businessId, actorUser, filename:'support.csv', formatType:'csv', content:csv, defaultStatus:'approved' });
+  const connector = await createApiPushConnector({ businessId, actorUser, name:'Commerce knowledge feed', defaultStatus:'draft' });
+  const firstPush = await ingestApiConnectorRecords({
+    businessId, actorUser, sourceId:connector.id, defaultStatus:'approved',
+    records:[{ externalRef:'delivery-policy', itemType:'policy', title:'Delivery policy', content:'Delivery takes 2 to 4 business days.', keywords:['delivery'] }]
+  });
+  const secondPush = await ingestApiConnectorRecords({
+    businessId, actorUser, sourceId:connector.id, defaultStatus:'approved',
+    records:[{ externalRef:'delivery-policy', itemType:'policy', title:'Delivery policy', content:'Delivery takes 2 to 3 business days.', keywords:['delivery'] }]
+  });
+  const sources = await listKnowledgeSources(businessId);
+  const items = await getKnowledgeOverview(businessId);
+  const delivery = items.items.find((item) => item.externalRef === 'delivery-policy');
+
+  assert.equal(preview.length, 2);
+  assert.equal(imported.created, 2);
+  assert.equal(imported.source.itemCount, 2);
+  assert.equal(firstPush.created, 1);
+  assert.equal(secondPush.updated, 1);
+  assert.equal(delivery.version, 2);
+  assert.equal(delivery.sourceId, connector.id);
+  assert.equal(delivery.contentHash.length, 64);
+  assert.equal(sources.length, 2);
+});
+
+test('DOCX imports extract readable text into source-owned knowledge records', async () => {
+  const businessId = 913;
+  const actorUser = { id:93, name:'Document Manager', email:'documents@example.test', role:'admin' };
+  const buffer = fs.readFileSync('node_modules/mammoth/test/test-data/single-paragraph.docx');
+  const text = await extractDocumentText({ buffer, formatType:'docx' });
+  const imported = await importKnowledgeContent({
+    businessId, actorUser, filename:'single-paragraph.docx', mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    contentBase64:buffer.toString('base64'), defaultStatus:'draft'
+  });
+
+  assert.match(text, /Walking on imported air/);
+  assert.equal(imported.created, 1);
+  assert.equal(imported.source.formatType, 'docx');
+  assert.match(imported.items[0].content, /Walking on imported air/);
+});
+
+test('live connectors expose masked credentials, schedule sync, and archive records on deletion', async () => {
+  const businessId = 914;
+  const actorUser = { id:94, name:'Connector Manager', email:'connectors@example.test', role:'admin' };
+  const source = await createKnowledgeConnector({
+    businessId, actorUser, provider:'shopify', name:'Store products', shopDomain:'example-store.myshopify.com',
+    accessToken:'shpat_secret-token-value', syncIntervalMinutes:60, defaultStatus:'approved'
+  });
+  const sources = await listKnowledgeSources(businessId);
+  const visible = sources.find((candidate) => candidate.id === source.id);
+  const pushed = await importKnowledgeContent({ businessId, actorUser, filename:'temporary.txt', content:'Temporary connector-adjacent knowledge', defaultStatus:'approved' });
+  await archiveKnowledgeSource({ businessId, actorUser, sourceId:pushed.source.id });
+  const deleted = await deleteKnowledgeConnector({ businessId, actorUser, sourceId:source.id });
+
+  assert.equal(visible.sourceType, 'shopify');
+  assert.match(visible.credentialsMasked.accessToken, /\*+alue$/);
+  assert.equal('credentialsEncrypted' in visible, false);
+  assert.equal(visible.syncIntervalMinutes, 60);
+  assert.equal(Boolean(visible.nextSyncAt), true);
+  assert.equal(deleted.deleted, true);
+  assert.equal((await listKnowledgeSources(businessId)).some((candidate) => candidate.id === source.id), false);
+});
+
+test('Shopify and WooCommerce adapters authenticate and normalize product knowledge', async () => {
+  const calls = [];
+  const shopifyFetch = async (url, options) => {
+    calls.push({ url, options });
+    return new Response(JSON.stringify({ data:{ products:{ nodes:[{ id:'gid://shopify/Product/1', title:'Cape Tote', handle:'cape-tote', status:'ACTIVE', descriptionHtml:'<p>Locally made.</p>', variants:{ nodes:[{ title:'Default', sku:'CAPE-1', price:'249.00', inventoryQuantity:8 }] } }] } } }), { status:200, headers:{ 'Content-Type':'application/json' } });
+  };
+  const wooFetch = async (url, options) => {
+    calls.push({ url, options });
+    return new Response(JSON.stringify([{ id:2, name:'Jozi Mug', description:'<p>Stoneware mug.</p>', price:'129.00', stock_quantity:12, sku:'JHB-MUG', permalink:'https://shop.example.co.za/product/jozi-mug' }]), { status:200, headers:{ 'Content-Type':'application/json' } });
+  };
+  const shopify = await fetchShopifyRecords({ shopDomain:'example.myshopify.com' }, { accessToken:'shpat_test' }, shopifyFetch);
+  const woo = await fetchWooCommerceRecords({ storeUrl:'https://shop.example.co.za' }, { consumerKey:'ck_test', consumerSecret:'cs_test' }, wooFetch);
+
+  assert.equal(calls[0].url, 'https://example.myshopify.com/admin/api/2026-07/graphql.json');
+  assert.equal(calls[0].options.headers['X-Shopify-Access-Token'], 'shpat_test');
+  assert.match(shopify[0].content, /CAPE-1/);
+  assert.match(calls[1].options.headers.Authorization, /^Basic /);
+  assert.match(calls[1].url, /\/wp-json\/wc\/v3\/products/);
+  assert.equal(woo[0].externalRef, 'woocommerce:product:2');
+  assert.match(woo[0].content, /Stoneware mug/);
+});
+
+test('Google Drive adapter scopes file listing and downloads supported knowledge files', async () => {
+  const calls = [];
+  const fetchImpl = async (url, options) => {
+    calls.push({ url, options });
+    if (url.includes('/drive/v3/files?')) {
+      return new Response(JSON.stringify({ files:[{ id:'drive-file-1', name:'Returns policy.txt', mimeType:'text/plain', capabilities:{ canDownload:true } }] }), { status:200, headers:{ 'Content-Type':'application/json' } });
+    }
+    return new Response('Returns are accepted within 14 days with proof of purchase.', { status:200, headers:{ 'Content-Type':'text/plain' } });
+  };
+  const result = await fetchGoogleDriveRecords({ folderId:'folder-123' }, { accessToken:'google-access-token' }, fetchImpl);
+
+  const listUrl = new URL(calls[0].url);
+  assert.match(listUrl.searchParams.get('q'), /'folder-123' in parents/);
+  assert.equal(calls[0].options.headers.Authorization, 'Bearer google-access-token');
+  assert.match(calls[1].url, /drive-file-1\?alt=media/);
+  assert.equal(result.records[0].externalRef, 'google-drive:drive-file-1');
+  assert.match(result.records[0].content, /14 days/);
+});
+
+test('Google Drive OAuth uses offline consent, tenant-bound one-time state, exchange, and revocation', async () => {
+  const previous = {
+    appUrl:process.env.APP_URL,
+    clientId:process.env.GOOGLE_DRIVE_OAUTH_CLIENT_ID,
+    clientSecret:process.env.GOOGLE_DRIVE_OAUTH_CLIENT_SECRET,
+    redirectUri:process.env.GOOGLE_DRIVE_OAUTH_REDIRECT_URI,
+    testUsers:process.env.GOOGLE_DRIVE_OAUTH_TEST_USERS,
+    verification:process.env.GOOGLE_DRIVE_OAUTH_VERIFICATION_STATUS,
+    assessment:process.env.GOOGLE_DRIVE_OAUTH_SECURITY_ASSESSMENT_STATUS
+  };
+  process.env.APP_URL = 'https://app.example.test';
+  process.env.GOOGLE_DRIVE_OAUTH_CLIENT_ID = '123456789-example.apps.googleusercontent.com';
+  process.env.GOOGLE_DRIVE_OAUTH_CLIENT_SECRET = 'GOCSPX-production-shaped-test-secret';
+  process.env.GOOGLE_DRIVE_OAUTH_REDIRECT_URI = 'https://app.example.test/auth/google-drive/callback';
+  process.env.GOOGLE_DRIVE_OAUTH_TEST_USERS = 'qa@example.test';
+  process.env.GOOGLE_DRIVE_OAUTH_VERIFICATION_STATUS = 'approved';
+  process.env.GOOGLE_DRIVE_OAUTH_SECURITY_ASSESSMENT_STATUS = 'approved';
+  const actorUser = { id:95, businessId:915, role:'owner' };
+  try {
+    const started = await beginGoogleDriveOAuth({ businessId:915, actorUser, name:'Policies Drive', folderId:'folder-1', syncIntervalMinutes:60 });
+    const authorization = new URL(started.authorizationUrl);
+    const state = authorization.searchParams.get('state');
+    const requests = [];
+    const fetchImpl = async (url, options) => {
+      requests.push({ url, options });
+      if (url.includes('/token')) return new Response(JSON.stringify({ access_token:'access-1', refresh_token:'refresh-1', expires_in:3600, token_type:'Bearer', scope:'https://www.googleapis.com/auth/drive.readonly' }), { status:200, headers:{ 'Content-Type':'application/json' } });
+      return new Response('', { status:200 });
+    };
+    const completed = await completeGoogleDriveOAuth({ businessId:915, actorUser, code:'authorization-code', state }, fetchImpl);
+    const revoked = await revokeGoogleDriveCredentials(completed.credentials, fetchImpl);
+
+    assert.equal(authorization.searchParams.get('access_type'), 'offline');
+    assert.equal(authorization.searchParams.get('prompt'), 'consent');
+    assert.equal(authorization.searchParams.get('include_granted_scopes'), 'true');
+    assert.match(authorization.searchParams.get('scope'), /drive\.readonly/);
+    assert.equal(completed.payload.folderId, 'folder-1');
+    assert.equal(completed.credentials.refreshToken, 'refresh-1');
+    assert.equal(getGoogleDriveOAuthStatus().verificationRequired, true);
+    assert.equal(getGoogleDriveOAuthStatus().checks.redirectMatchesAppUrl, true);
+    assert.equal(getGoogleDriveOAuthStatus().sandboxReady, true);
+    assert.equal(getGoogleDriveOAuthStatus().productionReady, true);
+    assert.match(requests[0].options.body, /grant_type=authorization_code/);
+    assert.equal(revoked.revoked, true);
+    await assert.rejects(() => completeGoogleDriveOAuth({ businessId:915, actorUser, code:'another-code', state }, fetchImpl), /already used/);
+  } finally {
+    if (previous.appUrl === undefined) delete process.env.APP_URL; else process.env.APP_URL = previous.appUrl;
+    if (previous.clientId === undefined) delete process.env.GOOGLE_DRIVE_OAUTH_CLIENT_ID; else process.env.GOOGLE_DRIVE_OAUTH_CLIENT_ID = previous.clientId;
+    if (previous.clientSecret === undefined) delete process.env.GOOGLE_DRIVE_OAUTH_CLIENT_SECRET; else process.env.GOOGLE_DRIVE_OAUTH_CLIENT_SECRET = previous.clientSecret;
+    if (previous.redirectUri === undefined) delete process.env.GOOGLE_DRIVE_OAUTH_REDIRECT_URI; else process.env.GOOGLE_DRIVE_OAUTH_REDIRECT_URI = previous.redirectUri;
+    if (previous.testUsers === undefined) delete process.env.GOOGLE_DRIVE_OAUTH_TEST_USERS; else process.env.GOOGLE_DRIVE_OAUTH_TEST_USERS = previous.testUsers;
+    if (previous.verification === undefined) delete process.env.GOOGLE_DRIVE_OAUTH_VERIFICATION_STATUS; else process.env.GOOGLE_DRIVE_OAUTH_VERIFICATION_STATUS = previous.verification;
+    if (previous.assessment === undefined) delete process.env.GOOGLE_DRIVE_OAUTH_SECURITY_ASSESSMENT_STATUS; else process.env.GOOGLE_DRIVE_OAUTH_SECURITY_ASSESSMENT_STATUS = previous.assessment;
+  }
+});
+
+test('Google Drive OAuth readiness rejects placeholders and callback drift', () => {
+  const keys = ['APP_URL', 'GOOGLE_DRIVE_OAUTH_CLIENT_ID', 'GOOGLE_DRIVE_OAUTH_CLIENT_SECRET', 'GOOGLE_DRIVE_OAUTH_REDIRECT_URI', 'GOOGLE_DRIVE_OAUTH_SCOPES', 'GOOGLE_DRIVE_OAUTH_TEST_USERS'];
+  const previous = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
+  try {
+    process.env.APP_URL = 'https://app.chatclan.co.za';
+    process.env.GOOGLE_DRIVE_OAUTH_CLIENT_ID = 'example-client-id';
+    process.env.GOOGLE_DRIVE_OAUTH_CLIENT_SECRET = 'replace-with-client-secret';
+    process.env.GOOGLE_DRIVE_OAUTH_REDIRECT_URI = 'https://other.example/auth/google-drive/callback';
+    process.env.GOOGLE_DRIVE_OAUTH_SCOPES = 'https://www.googleapis.com/auth/drive.readonly';
+    process.env.GOOGLE_DRIVE_OAUTH_TEST_USERS = 'not-an-email';
+    const status = getGoogleDriveOAuthStatus();
+    assert.equal(status.checks.clientIdFormat, false);
+    assert.equal(status.checks.clientSecretSafety, false);
+    assert.equal(status.checks.redirectMatchesAppUrl, false);
+    assert.equal(status.checks.testUsers, false);
+    assert.equal(status.sandboxReady, false);
+  } finally {
+    for (const key of keys) {
+      if (previous[key] === undefined) delete process.env[key]; else process.env[key] = previous[key];
+    }
+  }
+});
+
+test('tenant CRM OAuth builds provider-specific consent requests and workspace-bound callbacks', async () => {
+  const providers = ['hubspot', 'salesforce', 'zoho', 'pipedrive'];
+  const keys = ['APP_URL', ...providers.flatMap((provider) => [`CRM_${provider.toUpperCase()}_OAUTH_CLIENT_ID`, `CRM_${provider.toUpperCase()}_OAUTH_CLIENT_SECRET`])];
+  const previous = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
+  process.env.APP_URL = 'https://app.example.test';
+  for (const provider of providers) {
+    process.env[`CRM_${provider.toUpperCase()}_OAUTH_CLIENT_ID`] = `${provider}-client-id`;
+    process.env[`CRM_${provider.toUpperCase()}_OAUTH_CLIENT_SECRET`] = `${provider}-client-secret`;
+  }
+  try {
+    const statuses = getTenantCrmProviderStatus();
+    assert.equal(statuses.every((provider) => provider.configured), true);
+    for (const provider of providers) {
+      const started = await beginTenantCrmOAuth({ businessId:921, actorUser:{ id:101, businessId:921, role:'owner' }, provider, syncIntervalMinutes:60 });
+      const authorization = new URL(started.authorizationUrl);
+      assert.equal(authorization.searchParams.get('client_id'), `${provider}-client-id`);
+      assert.equal(authorization.searchParams.get('redirect_uri'), `https://app.example.test/auth/crm/${provider}/callback`);
+      assert.ok(authorization.searchParams.get('state'));
+      if (provider === 'salesforce') assert.match(authorization.searchParams.get('scope'), /refresh_token/);
+      if (provider === 'zoho') {
+        assert.equal(authorization.searchParams.get('access_type'), 'offline');
+        assert.equal(authorization.searchParams.get('prompt'), 'consent');
+      }
+    }
+  } finally {
+    for (const key of keys) {
+      if (previous[key] === undefined) delete process.env[key]; else process.env[key] = previous[key];
+    }
+  }
+});
+
+test('tenant CRM OAuth reports a provider token network failure without exposing raw fetch errors', async () => {
+  const keys = ['CRM_PIPEDRIVE_OAUTH_CLIENT_ID','CRM_PIPEDRIVE_OAUTH_CLIENT_SECRET'];
+  const previous = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
+  process.env.CRM_PIPEDRIVE_OAUTH_CLIENT_ID = 'pipedrive-client-id';
+  process.env.CRM_PIPEDRIVE_OAUTH_CLIENT_SECRET = 'pipedrive-client-secret';
+  try {
+    const started = await beginTenantCrmOAuth({ businessId:922, actorUser:{ id:102, businessId:922, role:'owner' }, provider:'pipedrive', syncIntervalMinutes:60 });
+    const state = new URL(started.authorizationUrl).searchParams.get('state');
+    await assert.rejects(
+      completeTenantCrmOAuth({ businessId:922, actorUser:{ id:102, businessId:922, role:'owner' }, provider:'pipedrive', code:'test-code', state }, async () => { throw new TypeError('fetch failed'); }),
+      (error) => error.status === 502 && /could not reach oauth\.pipedrive\.com/.test(error.message) && !/fetch failed/.test(error.message)
+    );
+  } finally {
+    for (const key of keys) {
+      if (previous[key] === undefined) delete process.env[key]; else process.env[key] = previous[key];
+    }
+  }
+});
+
+test('tenant HubSpot sync uses email upsert and phone lookup instead of invalid phone upsert', async () => {
+  const { syncHubSpotContact } = require('../src/services/tenantCrm');
+  const requests = [];
+  const responses = [
+    { results:[{ id:'email-contact' }] },
+    { results:[] },
+    { id:'phone-contact' },
+    { results:[{ id:'phone-contact' }] },
+    { id:'phone-contact' }
+  ];
+  const fetchImpl=async (url,options)=>{requests.push({url,options,body:JSON.parse(options.body)});return new Response(JSON.stringify(responses.shift()),{status:200,headers:{'Content-Type':'application/json'}});};
+  const common={fetchImpl,base:'https://api.hubapi.com',credentials:{accessToken:'access-token'},properties:{firstname:'Naledi'}};
+  const emailResult=await syncHubSpotContact({...common,contact:{email:'naledi@example.test',phone:'+27821234567'}});
+  const createdResult=await syncHubSpotContact({...common,contact:{email:null,phone:'+27821234567'}});
+  const updatedResult=await syncHubSpotContact({...common,contact:{email:null,phone:'+27821234567'}});
+  assert.equal(emailResult.id,'email-contact');
+  assert.equal(createdResult.id,'phone-contact');
+  assert.equal(updatedResult.id,'phone-contact');
+  assert.match(requests[0].url,/batch\/upsert$/);
+  assert.equal(requests[0].body.inputs[0].idProperty,'email');
+  assert.match(requests[1].url,/contacts\/search$/);
+  assert.equal(requests[1].body.filterGroups[0].filters[0].propertyName,'phone');
+  assert.equal(requests[2].options.method,'POST');
+  assert.match(requests[2].url,/crm\/v3\/objects\/contacts$/);
+  assert.equal(requests[4].options.method,'PATCH');
+  assert.match(requests[4].url,/contacts\/phone-contact$/);
+});
+
+test('tenant HubSpot sync rejects ambiguous phone matches without creating a duplicate', async () => {
+  const { syncHubSpotContact } = require('../src/services/tenantCrm');
+  const requests=[];
+  await assert.rejects(
+    syncHubSpotContact({
+      fetchImpl:async (url,options)=>{requests.push({url,options});return new Response(JSON.stringify({results:[{id:'one'},{id:'two'}]}),{status:200,headers:{'Content-Type':'application/json'}});},
+      base:'https://api.hubapi.com',
+      credentials:{accessToken:'access-token'},
+      contact:{email:null,phone:'+27821234567'},
+      properties:{firstname:'Naledi'}
+    }),
+    (error)=>error.status===409&&/multiple contacts/.test(error.message)
+  );
+  assert.equal(requests.length,1);
+  assert.match(requests[0].url,/contacts\/search$/);
+});
+
+test('tenant Pipedrive sync searches exact identity before create and updates existing people', async () => {
+  const { syncPipedrivePerson } = require('../src/services/tenantCrm');
+  const requests=[];
+  const responses=[
+    {success:true,data:{items:[]}},
+    {success:true,data:{id:301}},
+    {success:true,data:{items:[{item:{id:301}}]}},
+    {success:true,data:{id:301}}
+  ];
+  const fetchImpl=async (url,options={})=>{requests.push({url,options,body:options.body?JSON.parse(options.body):null});return new Response(JSON.stringify(responses.shift()),{status:200,headers:{'Content-Type':'application/json'}});};
+  const common={fetchImpl,base:'https://sandbox.pipedrive.com',credentials:{accessToken:'access-token'},contact:{email:null,phone:'+27821234567'},properties:{name:'Naledi',phones:[{value:'+27821234567',primary:true}]}};
+  const created=await syncPipedrivePerson(common);
+  const updated=await syncPipedrivePerson(common);
+  assert.equal(created.data.id,301);
+  assert.equal(updated.data.id,301);
+  const search=new URL(requests[0].url);
+  assert.equal(search.pathname,'/api/v2/persons/search');
+  assert.equal(search.searchParams.get('term'),'+27821234567');
+  assert.equal(search.searchParams.get('fields'),'phone');
+  assert.equal(search.searchParams.get('exact_match'),'true');
+  assert.equal(requests[1].options.method,'POST');
+  assert.equal(requests[3].options.method,'PATCH');
+  assert.match(requests[3].url,/persons\/301$/);
+});
+
+test('tenant Pipedrive sync rejects ambiguous exact identity matches', async () => {
+  const { syncPipedrivePerson } = require('../src/services/tenantCrm');
+  await assert.rejects(
+    syncPipedrivePerson({
+      fetchImpl:async ()=>new Response(JSON.stringify({success:true,data:{items:[{item:{id:1}},{item:{id:2}}]}}),{status:200,headers:{'Content-Type':'application/json'}}),
+      base:'https://sandbox.pipedrive.com',
+      credentials:{accessToken:'access-token'},
+      contact:{email:'duplicate@example.test',phone:null},
+      properties:{name:'Duplicate'}
+    }),
+    (error)=>error.status===409&&/multiple people/.test(error.message)
+  );
+});
+
+test('tenant CRM field mappings produce provider-safe contact payloads', () => {
+  const contact = { name:'Naledi Dlamini', email:'naledi@example.test', phone:'+27821234567', segment:'VIP', optedIn:true };
+  assert.deepEqual(providerProperties('hubspot', contact, PROVIDER_MAPPINGS.hubspot), { firstname:'Naledi', lastname:'Dlamini', email:'naledi@example.test', phone:'+27821234567' });
+  assert.deepEqual(providerProperties('salesforce', contact, PROVIDER_MAPPINGS.salesforce), { FirstName:'Naledi', LastName:'Dlamini', Email:'naledi@example.test', Phone:'+27821234567' });
+  assert.deepEqual(providerProperties('zoho', contact, PROVIDER_MAPPINGS.zoho), { First_Name:'Naledi', Last_Name:'Dlamini', Email:'naledi@example.test', Phone:'+27821234567' });
+  assert.deepEqual(providerProperties('pipedrive', contact, PROVIDER_MAPPINGS.pipedrive), { name:'Naledi Dlamini', emails:[{value:'naledi@example.test',primary:true}], phones:[{value:'+27821234567',primary:true}] });
+  assert.deepEqual(providerProperties('hubspot', contact, { ...PROVIDER_MAPPINGS.hubspot, segment:'customer_segment', optedIn:'whatsapp_opt_in' }), { firstname:'Naledi', lastname:'Dlamini', email:'naledi@example.test', phone:'+27821234567', customer_segment:'VIP', whatsapp_opt_in:true });
+});
+
+test('tenant CRM mapping validation accepts Pipedrive defaults and identifies malformed fields', () => {
+  const { validateFieldMapping } = require('../src/services/tenantCrm');
+  assert.deepEqual(validateFieldMapping(PROVIDER_MAPPINGS.pipedrive, 'pipedrive'), PROVIDER_MAPPINGS.pipedrive);
+  assert.deepEqual(
+    validateFieldMapping({ ...PROVIDER_MAPPINGS.pipedrive, name:'Contact name', email:'Email address', phone:'Phone number' }, 'pipedrive'),
+    PROVIDER_MAPPINGS.pipedrive
+  );
+  assert.throws(
+    () => validateFieldMapping({ ...PROVIDER_MAPPINGS.pipedrive, segment:'customer segment' }, 'pipedrive'),
+    (error) => error.status === 400 && /invalid target for segment/.test(error.message)
+  );
+  assert.throws(
+    () => validateFieldMapping({ ...PROVIDER_MAPPINGS.pipedrive, optedIn:'opt-in?' }, 'pipedrive'),
+    (error) => error.status === 400 && /invalid target for optedIn/.test(error.message)
+  );
+});
+
+test('connector operations report attempts, durations, failures, freshness, and alerts', async () => {
+  const businessId = 916;
+  const actorUser = { id:96, businessId, role:'admin' };
+  const source = await createKnowledgeConnector({ businessId, actorUser, provider:'shopify', name:'Operations Store', shopDomain:'operations.myshopify.com', accessToken:'shpat_operations', syncIntervalMinutes:60 });
+  const failed = await beginConnectorSyncRun({ businessId, sourceId:source.id, provider:'shopify', jobId:100, triggerType:'manual', attempt:1, maxAttempts:4 });
+  await completeConnectorSyncRun(failed, { status:'failed', errorMessage:'Provider unavailable' });
+  const succeeded = await beginConnectorSyncRun({ businessId, sourceId:source.id, provider:'shopify', jobId:100, triggerType:'manual', attempt:2, maxAttempts:4 });
+  await completeConnectorSyncRun(succeeded, { status:'succeeded', fetchedCount:3, createdCount:2, updatedCount:1 });
+  const operations = await getKnowledgeConnectorOperations(businessId);
+  const runs = await listConnectorSyncRuns(businessId);
+
+  assert.equal(operations.summary.total, 1);
+  assert.equal(operations.summary.healthy, 1);
+  assert.equal(operations.summary.failed24h, 1);
+  assert.equal(operations.sources[0].successRate, 0.5);
+  assert.equal(operations.sources[0].lastRun.status, 'succeeded');
+  assert.equal(runs[0].attempt, 2);
+  assert.equal(runs[1].errorMessage, 'Provider unavailable');
+});
+
+test('connector alerts deliver, acknowledge, preserve history, and auto-resolve on recovery', async () => {
+  const businessId = 918;
+  const actorUser = { id:98, businessId, role:'owner' };
+  const source = await createKnowledgeConnector({ businessId, actorUser, provider:'shopify', name:'Alert Store', shopDomain:'alerts.myshopify.com', accessToken:'shpat_alerts', syncIntervalMinutes:60 });
+  await updateConnectorAlertPolicy({ businessId, actorUser, emailEnabled:true, minimumEmailSeverity:'info', notifyRoles:['owner'], additionalEmails:'ops@example.test', escalationMinutes:15 });
+  const deliveries = [];
+  await evaluateConnectorAlerts({ businessId, sourceId:source.id }, {
+    skipSchedule:true,
+    resolveRecipients:async () => ['ops@example.test'],
+    sendEmail:async (message) => { deliveries.push(message); return { messageId:'alert-mail-1' }; }
+  });
+  let center = await getConnectorAlertCenter(businessId);
+  assert.equal(center.summary.open, 1);
+  assert.equal(center.alerts[0].alertKey, 'never_synced');
+  assert.equal(center.alerts[0].notificationCount, 1);
+  assert.equal(deliveries.length, 1);
+
+  await acknowledgeConnectorAlert({ businessId, alertId:center.alerts[0].id, actorUser });
+  center = await getConnectorAlertCenter(businessId);
+  assert.equal(center.summary.acknowledged, 1);
+  assert.equal(center.alerts[0].events[0].eventType, 'acknowledged');
+
+  const recovered = await beginConnectorSyncRun({ businessId, sourceId:source.id, provider:'shopify', triggerType:'manual' });
+  await completeConnectorSyncRun(recovered, { status:'succeeded', fetchedCount:1, createdCount:1 });
+  await evaluateConnectorAlerts({ businessId, sourceId:source.id }, { skipSchedule:true });
+  center = await getConnectorAlertCenter(businessId);
+  assert.equal(center.alerts[0].status, 'resolved');
+  assert.equal(center.alerts[0].events[0].eventType, 'resolved');
+});
+
+test('knowledge evaluations score retrieval, completeness, isolation, and unsupported claim risk', async () => {
+  const businessId = 912;
+  const actorUser = { id:92, name:'Source Manager', email:'sources@example.test', role:'admin' };
+  const overview = await getKnowledgeOverview(businessId);
+  const returns = overview.items.find((item) => item.externalRef === 'returns-policy');
+  await createKnowledgeEvaluationCase({
+    businessId,
+    actorUser,
+    name:'Returns answer is grounded',
+    queryText:'How many days do I have to return an unused product?',
+    expectedSourceRefs:[`knowledge:${returns.id}:v${returns.version}`],
+    requiredTerms:['14 days','proof of purchase'],
+    forbiddenSourceRefs:['order:999999'],
+    candidateAnswer:'Unused products may be returned within 14 days with proof of purchase.'
+  });
+  const run = await runKnowledgeEvaluations({ businessId, actorUser });
+  const runs = await listKnowledgeEvaluationRuns(businessId);
+
+  assert.equal(run.caseCount, 1);
+  assert.equal(run.sourceRecall, 1);
+  assert.equal(run.completeness, 1);
+  assert.equal(run.isolationPassRate, 1);
+  assert.equal(run.unsupportedClaimRisk, 0);
+  assert.equal(run.results[0].returnedRefs.includes(`knowledge:${returns.id}:v${returns.version}`), true);
+  assert.equal(runs[0].id, run.id);
+  assert.equal(unsupportedClaimRisk('Your refund is R999 today.', 'Returns require proof of purchase.'), 1);
+});
+
+test('inbox AI drafts remain human-reviewed and track agent edits without sending', async () => {
+  const platformUser = { id:1, name:'Platform Owner', email:'owner@chatclan.co.za', role:'owner' };
+  const agent = { id:91, name:'Draft Reviewer', email:'reviewer@example.test', role:'agent' };
+  await saveAiProviderConfig({ providerKey:'openai', enabled:true, apiKey:'draft-test-secret', baseUrl:'https://api.openai.com/v1', defaultModel:'draft-test-model', timeoutMs:1000, platformUser });
+  await saveBusinessAiPolicy({ businessId:993, enabled:true, autonomyMode:'draft', providerChain:['openai'], monthlyBudgetCents:5000, monthlyTokenLimit:10000, maxResponseTokens:300, humanHandoffEnabled:true, platformUser });
+  await createKnowledgeItem({
+    businessId:993,
+    actorUser:agent,
+    itemType:'faq',
+    title:'Order tracking',
+    content:'Agents can confirm that the fulfilment team will check the latest tracking event.',
+    keywords:'order, tracking, delivery',
+    status:'approved'
+  });
+  const inbound = await recordInboundMessage({
+    businessId:993,
+    event:{ type:'message.received', from:'27821234455', messageId:'wamid.inbox.ai.draft.1', messageType:'text', text:'Can you track my order? Email me at buyer@example.co.za.' }
+  });
+  const before = await getConversation(993, inbound.conversation.id);
+  const draft = await generateInboxAiDraft({ businessId:993, conversationId:inbound.conversation.id, actorUser:agent });
+  const after = await getConversation(993, inbound.conversation.id);
+  assert.equal(draft.status, 'generated');
+  assert.equal(draft.canUse, true);
+  assert.equal(draft.autonomyMode, 'draft');
+  assert.equal(draft.knowledgeSourceCount > 0, true);
+  assert.equal(draft.knowledgeRefs.some((source) => source.type === 'faq'), true);
+  assert.doesNotMatch(draft.body, /buyer@example\.co\.za/);
+  assert.equal(after.messages.length, before.messages.length);
+  assert.equal((await validateInboxAiDraftForUse({ businessId:993, conversationId:inbound.conversation.id, draftId:draft.id })).id, draft.id);
+  const outcome = await markInboxAiDraftOutcome({
+    businessId:993, conversationId:inbound.conversation.id, draftId:draft.id,
+    outcome:'used', finalBody:`${draft.body} Thank you.`, actorUser:agent
+  });
+  assert.equal(outcome.status, 'used');
+  assert.equal(outcome.wasEdited, true);
+  const metrics = await getInboxAiDraftMetrics(993);
+  assert.equal(metrics.summary.totalDrafts >= 1, true);
+  assert.equal(metrics.summary.groundedRate > 0, true);
+  assert.equal(metrics.recent.some((item) => item.id === draft.id), true);
+  assert.equal(Object.hasOwn(metrics.recent[0], 'body'), false);
+  await assert.rejects(
+    () => validateInboxAiDraftForUse({ businessId:993, conversationId:inbound.conversation.id, draftId:draft.id }),
+    /blocked, expired, or already completed/
+  );
+});
+
 test('Meta inbound messages are persisted into the unassigned inbox', async () => {
   await saveMetaCredentials(996, {
     wabaId: 'waba_inbox',
@@ -3408,6 +4846,135 @@ test('public preview data remains available without tenant context', () => {
 
   assert.equal(preview.business.name, 'ChatClan Demo Store');
   assert.ok(preview.campaigns.length > 0);
+});
+
+test('platform reliability classifies stale workers, stuck jobs, and dead letters', () => {
+  const now = new Date('2026-07-17T10:00:00.000Z');
+  const overview = buildReliabilityOverview({
+    now,
+    staleSeconds: 45,
+    stuckSeconds: 300,
+    heartbeats: [
+      { workerId:'worker-live', role:'job-worker', status:'idle', lastSeenAt:'2026-07-17T09:59:45.000Z' },
+      { workerId:'worker-stale', role:'job-worker', status:'working', lastSeenAt:'2026-07-17T09:55:00.000Z' }
+    ],
+    jobs: [
+      { id:1, type:'knowledge.source.sync', status:'running', attempts:1, maxAttempts:3, updatedAt:'2026-07-17T09:50:00.000Z' },
+      { id:2, type:'knowledge.source.sync', status:'failed', attempts:3, maxAttempts:3, updatedAt:'2026-07-17T09:58:00.000Z' }
+    ],
+    sources: [], runs: [], alerts: [], incidents: [], recoveryEvents: []
+  });
+  assert.equal(overview.summary.healthyWorkers, 1);
+  assert.equal(overview.summary.staleWorkers, 1);
+  assert.equal(overview.summary.stuckJobs, 1);
+  assert.equal(overview.summary.deadLetters, 1);
+  assert.equal(overview.summary.status, 'attention');
+});
+
+test('connector reliability correlates provider failures across tenants', () => {
+  const providers = summarizeProviderReliability({
+    sources: [
+      { id:11, businessId:1, provider:'shopify', status:'error', consecutiveFailures:2 },
+      { id:12, businessId:2, provider:'shopify', status:'ready', consecutiveFailures:0 }
+    ],
+    runs: [
+      { sourceId:11, businessId:1, provider:'shopify', status:'failed' },
+      { sourceId:12, businessId:2, provider:'shopify', status:'failed' },
+      { sourceId:12, businessId:2, provider:'shopify', status:'succeeded', durationMs:1200 }
+    ],
+    alerts: [{ sourceId:12, businessId:2, severity:'critical', status:'open' }],
+    incidents: []
+  });
+  const shopify = providers.find((provider) => provider.key === 'shopify');
+  assert.equal(shopify.affectedTenants, 2);
+  assert.equal(shopify.incidentCandidate, true);
+  assert.equal(shopify.successRate, 33);
+  assert.equal(shopify.health, 'attention');
+});
+
+test('dead-letter recovery creates a linked job and keeps the failed job intact', async () => {
+  resetPlatformReliabilityForTests();
+  const queued = await enqueueJob({ type:'test.reliability.failure', payload:{ testId:crypto.randomUUID() }, maxAttempts:1 });
+  await failJob({ id:queued.jobId, attempts:1, maxAttempts:1 }, new Error('Synthetic exhausted failure'));
+  const failed = (await listJobs({ status:'failed', limit:1000 })).find((job) => Number(job.id) === Number(queued.jobId));
+  assert.ok(failed);
+  const recovery = await retryDeadLetterJob({
+    jobId:queued.jobId,
+    reason:'Dependency configuration corrected; retry under observation.',
+    platformUser:{ id:1, email:'owner@chatclan.co.za', role:'owner' }
+  });
+  const allJobs = await listJobs({ limit:1000 });
+  assert.equal(allJobs.find((job) => Number(job.id) === Number(queued.jobId)).status, 'failed');
+  assert.equal(allJobs.find((job) => Number(job.id) === Number(recovery.recoveryJobId)).status, 'queued');
+  const overview = await getPlatformReliabilityOverview();
+  assert.equal(overview.recoveryEvents[0].originalJobId, queued.jobId);
+});
+
+test('invalid campaign dead letters cannot be retried and can be discarded with audit evidence', async () => {
+  resetPlatformReliabilityForTests();
+  const queued = await enqueueJob({ type:'campaign.dispatch', payload:{ businessId:1, campaignId:'null', limit:1 }, maxAttempts:1 });
+  const invalid = new Error('campaignId must be a positive integer');
+  invalid.retryable = false;
+  await failJob({ id:queued.jobId, attempts:1, maxAttempts:1 }, invalid);
+  await assert.rejects(
+    () => retryDeadLetterJob({ jobId:queued.jobId, reason:'Retry malformed historical payload.', platformUser:{id:1,email:'owner@chatclan.co.za',role:'owner'} }),
+    /cannot be retried/
+  );
+  const resolution = await discardDeadLetterJob({
+    jobId:queued.jobId,
+    reason:'Historical smoke request had no campaign; preserve evidence and discard invalid work.',
+    platformUser:{id:1,email:'owner@chatclan.co.za',role:'owner'}
+  });
+  const overview = await getPlatformReliabilityOverview();
+  assert.equal(resolution.action,'discarded');
+  assert.equal(overview.deadLetters.some((job)=>job.id===queued.jobId),false);
+  assert.equal(overview.resolutionEvents[0].jobId,queued.jobId);
+});
+
+test('worker heartbeat exposes healthy liveness before the stale threshold', async () => {
+  resetPlatformReliabilityForTests();
+  const now = new Date('2026-07-17T10:00:00.000Z');
+  await recordWorkerHeartbeat({ workerId:'worker-test', status:'idle', jobsProcessed:4, now, force:true });
+  const overview = await getPlatformReliabilityOverview({ now:new Date('2026-07-17T10:00:20.000Z') });
+  const worker = overview.workers.find((item) => item.workerId === 'worker-test');
+  assert.equal(worker.health, 'healthy');
+  assert.equal(worker.jobsProcessed, 4);
+});
+
+test('platform reliability alerts deliver, acknowledge, assign, and auto-resolve', async () => {
+  resetPlatformReliabilityAlertsForTests();
+  const platformUser={id:1,name:'Platform Owner',email:'owner@chatclan.co.za',role:'owner'};
+  await updatePlatformReliabilityAlertPolicy({emailEnabled:true,inAppEnabled:true,minimumEmailSeverity:'warning',notifyRoles:['owner'],additionalEmails:'oncall@example.test',onCallPlatformUserId:1,escalationMinutes:15,repeatMinutes:30,platformUser});
+  const deliveries=[];
+  const failingOverview={workers:[],stuckJobs:[],deadLetters:[{id:44,type:'knowledge.source.sync',attempts:3,maxAttempts:3,lastError:'Provider unavailable'}],providers:[]};
+  await evaluatePlatformReliabilityAlerts({}, {overview:failingOverview,skipSchedule:true,resolveRecipients:async()=>['oncall@example.test'],sendEmail:async(message)=>{deliveries.push(message);return{messageId:'platform-alert-1'};},now:new Date('2026-07-18T08:00:00Z')});
+  let center=await getPlatformReliabilityAlertCenter();
+  assert.equal(center.summary.open,1);
+  assert.equal(center.alerts[0].notificationCount,1);
+  assert.equal(deliveries.length,1);
+  await acknowledgePlatformReliabilityAlert({alertId:center.alerts[0].id,platformUser});
+  await assignPlatformReliabilityAlert({alertId:center.alerts[0].id,ownerPlatformUserId:1,platformUser});
+  center=await getPlatformReliabilityAlertCenter();
+  assert.equal(center.summary.acknowledged,1);
+  assert.equal(center.alerts[0].events.some((event)=>event.eventType==='assigned'),true);
+  await evaluatePlatformReliabilityAlerts({}, {overview:{workers:[],stuckJobs:[],deadLetters:[],providers:[]},skipSchedule:true,now:new Date('2026-07-18T08:20:00Z')});
+  center=await getPlatformReliabilityAlertCenter();
+  assert.equal(center.summary.open,0);
+  assert.equal(center.alerts.length,0);
+});
+
+test('platform reliability alerts escalate unresolved signals on policy cadence', async () => {
+  resetPlatformReliabilityAlertsForTests();
+  const platformUser={id:1,email:'owner@chatclan.co.za',role:'owner'};
+  await updatePlatformReliabilityAlertPolicy({emailEnabled:true,inAppEnabled:true,minimumEmailSeverity:'warning',notifyRoles:['owner'],onCallPlatformUserId:1,escalationMinutes:15,repeatMinutes:30,platformUser});
+  const overview={workers:[{workerId:'worker-stale',role:'job-worker',health:'stale',status:'idle',secondsSinceSeen:400}],stuckJobs:[],deadLetters:[],providers:[]};
+  const deliveries=[];const dependencies={overview,skipSchedule:true,resolveRecipients:async()=>['owner@example.test'],sendEmail:async(message)=>{deliveries.push(message);return{};}};
+  await evaluatePlatformReliabilityAlerts({}, {...dependencies,now:new Date('2026-07-18T08:00:00Z')});
+  await evaluatePlatformReliabilityAlerts({}, {...dependencies,now:new Date('2026-07-18T08:16:00Z')});
+  const center=await getPlatformReliabilityAlertCenter();
+  assert.equal(center.summary.escalated,1);
+  assert.equal(deliveries.length,2);
+  assert.equal(buildPlatformReliabilitySignals(overview)[0].severity,'warning');
 });
 
 function mockResponse() {

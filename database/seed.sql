@@ -1,6 +1,6 @@
 insert into businesses (id, name, plan, meta_waba_id, meta_phone_number_id)
 values (1, 'ChatClan Demo Store', 'Growth', null, null)
-on duplicate key update name = values(name), plan = values(plan);
+on duplicate key update name = values(name), plan = values(plan), platform_status = 'active';
 
 insert into users (id, name, email, password_hash, status)
 values
@@ -10,6 +10,18 @@ on duplicate key update name = values(name), password_hash = values(password_has
 insert into business_memberships (business_id, user_id, role)
 values (1, 1, 'owner')
 on duplicate key update role = values(role);
+
+insert into platform_users (id, name, email, password_hash, role, status)
+values
+(1, 'Platform Owner', 'owner@chatclan.co.za', 'scrypt:c00174b877af4d4053fba0560a1d21dc:b873d38a3787a468d1930c165ef32f9a4bb5b0ee4fa86ed90881ac90a2a2cfa49d33be887c8bce3890d010396ff806afd528e224772da631159500ce6e6fc7ae', 'owner', 'active')
+on duplicate key update name = values(name), password_hash = values(password_hash), role = values(role), status = values(status);
+
+insert into platform_guardrails (guardrail_key, enabled, reason, updated_by_platform_user_id)
+values
+('campaign_dispatch', 0, 'Default: campaign dispatch is available.', 1),
+('meta_live_sends', 0, 'Default: Meta sends follow environment mode and tenant controls.', 1),
+('ai_auto_replies', 0, 'Default: chatbot auto replies are available.', 1)
+on duplicate key update guardrail_key = values(guardrail_key);
 
 insert into contacts (business_id, name, phone, segment, opted_in, last_seen) values
 (1, 'Nomsa Mkhize', '+27 82 123 4567', 'VIP', 1, 'Today'),

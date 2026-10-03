@@ -5,16 +5,16 @@ const {
 } = require('./campaignRecipients');
 const { consumeDispatchQuota } = require('./dispatchRateLimiter');
 const { sendTextMessage } = require('./metaClient');
+const { assertPlatformGuardrailAllows } = require('./platformGuardrails');
+const { assertPlatformTenantCanOperate } = require('./platform');
 const { getSubscriptionEntitlements } = require('./subscriptionPolicy');
 
-async function dispatchCampaign({ businessId, campaignId, limit = 100 }) {
-  if (!campaignId) {
-    const error = new Error('campaignId is required');
-    error.status = 400;
-    throw error;
-  }
+async function dispatchCampaign(input) {
+  const { businessId, campaignId, limit } = normalizeCampaignDispatchPayload(input);
 
-  const batchLimit = normalizeLimit(limit);
+  const batchLimit = limit;
+  await assertPlatformTenantCanOperate(businessId, 'campaign_dispatch');
+  await assertPlatformGuardrailAllows('campaign_dispatch');
   const entitlements = await getSubscriptionEntitlements(businessId);
   const quota = await consumeDispatchQuota({
     businessId,
@@ -89,4 +89,23 @@ function normalizeLimit(limit) {
   return Math.min(Math.floor(parsed), 1000);
 }
 
-module.exports = { dispatchCampaign };
+function normalizeCampaignDispatchPayload(input = {}) {
+  return {
+    businessId: normalizeRequiredId(input.businessId, 'businessId'),
+    campaignId: normalizeRequiredId(input.campaignId, 'campaignId'),
+    limit: normalizeLimit(input.limit)
+  };
+}
+
+function normalizeRequiredId(value, field) {
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < 1 || String(value).trim() === '') {
+    const error = new Error(`${field} must be a positive integer`);
+    error.status = 400;
+    error.retryable = false;
+    throw error;
+  }
+  return parsed;
+}
+
+module.exports = { dispatchCampaign, normalizeCampaignDispatchPayload };

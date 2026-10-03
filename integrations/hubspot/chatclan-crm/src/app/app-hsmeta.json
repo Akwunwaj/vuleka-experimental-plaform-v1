@@ -1,0 +1,35 @@
+{
+  "uid": "ChatClanCRM_app",
+  "type": "app",
+  "config": {
+    "description": "Securely synchronise consent-aware ChatClan contacts with HubSpot.",
+    "name": "ChatClan CRM",
+    "distribution": "marketplace",
+    "auth": {
+      "type": "oauth",
+      "redirectUrls": [
+        "https://chatclan.tfpdigital.co.za/auth/crm/hubspot/callback",
+        "https://app.chatclan.co.za/auth/crm/hubspot/callback"
+      ],
+      "requiredScopes": [
+        "oauth",
+        "crm.objects.contacts.read",
+        "crm.objects.contacts.write"
+      ],
+      "optionalScopes": [],
+      "conditionallyRequiredScopes": []
+    },
+    "permittedUrls": {
+      "fetch": [
+        "https://api.hubapi.com"
+      ],
+      "iframe": [],
+      "img": []
+    },
+    "support": {
+      "supportEmail": "support@chatclan.co.za",
+      "documentationUrl": "https://chatclan.tfpdigital.co.za/docs",
+      "supportUrl": "https://chatclan.tfpdigital.co.za/contact"
+    }
+  }
+}

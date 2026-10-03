@@ -10,13 +10,36 @@ const checks = [];
 function main() {
   checkNodeVersion();
   checkCoreApp();
+  checkIdentityProtection();
   checkDatabase();
   checkMail();
   checkMeta();
   checkPayFast();
+  checkGoogleDriveOAuth();
   checkWorkerAndQuotas();
   checkCostRates();
   report();
+}
+
+function checkIdentityProtection() {
+  for (const key of [
+    'SOCIAL_GOOGLE_CLIENT_ID',
+    'SOCIAL_GOOGLE_CLIENT_SECRET',
+    'SOCIAL_FACEBOOK_CLIENT_ID',
+    'SOCIAL_FACEBOOK_CLIENT_SECRET',
+    'SOCIAL_FACEBOOK_GRAPH_VERSION',
+    'RECAPTCHA_SITE_KEY',
+    'RECAPTCHA_SECRET_KEY',
+    'RECAPTCHA_ALLOWED_HOSTNAMES'
+  ]) requireValue(key);
+  requireExact('RECAPTCHA_MODE', 'enforced');
+  requireNumber('RECAPTCHA_MIN_SCORE', { min: 0, max: 1 });
+
+  const appUrl = env('APP_URL').replace(/\/+$/, '');
+  if (appUrl) {
+    pass('Google sign-in callback is known', `${appUrl}/api/auth/social/google/callback`);
+    pass('Facebook sign-in callback is known', `${appUrl}/api/auth/social/facebook/callback`);
+  }
 }
 
 function checkNodeVersion() {
@@ -34,6 +57,20 @@ function checkCoreApp() {
   requireStrongSecret('SESSION_SECRET', 32);
   requireBase64Bytes('CREDENTIAL_ENCRYPTION_KEY', 32);
   requireValue('SUPPORT_EMAIL');
+  for (const key of [
+    'BILLING_EMAIL',
+    'PRIVACY_EMAIL',
+    'SECURITY_EMAIL',
+    'LEGAL_EMAIL',
+    'COMPANY_LEGAL_NAME',
+    'COMPANY_REGISTRATION_NUMBER',
+    'COMPANY_PLACE_OF_REGISTRATION',
+    'COMPANY_OFFICE_BEARERS',
+    'COMPANY_PHYSICAL_ADDRESS',
+    'COMPANY_TELEPHONE',
+    'INFORMATION_OFFICER_NAME',
+    'INFORMATION_OFFICER_EMAIL'
+  ]) requireValue(key);
 
   const demoPassword = env('DEMO_ADMIN_PASSWORD');
   if (!demoPassword) {
@@ -77,6 +114,20 @@ function checkPayFast() {
   requireValue('PAYFAST_MERCHANT_KEY');
   requireValue('PAYFAST_PASSPHRASE');
   requireExact('PAYFAST_CONFIRM_SERVER', 'true');
+}
+
+function checkGoogleDriveOAuth() {
+  const required = env('GOOGLE_DRIVE_OAUTH_REQUIRED') === 'true';
+  if (!required) {
+    fail('Google Drive OAuth production gate is enabled', 'Set GOOGLE_DRIVE_OAUTH_REQUIRED=true before offering Google Drive connections.', WARNING);
+    return;
+  }
+  const { getGoogleDriveOAuthStatus } = require('../src/services/googleDriveOAuth');
+  const status = getGoogleDriveOAuthStatus();
+  for (const [key, ok] of Object.entries(status.checks)) {
+    if (ok) pass(`Google Drive OAuth ${key} check passes`);
+    else fail(`Google Drive OAuth ${key} check passes`, 'Complete the Google Drive OAuth rollout runbook.', REQUIRED);
+  }
 }
 
 function checkWorkerAndQuotas() {

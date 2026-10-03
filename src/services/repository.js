@@ -53,9 +53,10 @@ function getPublicPreviewData() {
 
 async function byBusiness(tableName, fallback, businessId, orderBy = 'id') {
   if (!hasDatabaseConfig()) {
-    return fallback.filter((item) => Number(item.businessId || item.business_id || 1) === Number(businessId));
+    return fallback.filter((item) => Number(item.businessId || item.business_id || 1) === Number(businessId) && !item.deletedAt && !item.deleted_at);
   }
-  return query(`select * from ${tableName} where business_id = :businessId order by ${orderBy}`, {
+  const activeWhere = tableName === 'contacts' ? ' and deleted_at is null' : '';
+  return query(`select * from ${tableName} where business_id = :businessId${activeWhere} order by ${orderBy}`, {
     businessId
   });
 }
@@ -88,7 +89,7 @@ async function getBusinessProfile(businessId) {
     `select b.id, b.name, b.plan,
             count(c.id) as contactsUsed
      from businesses b
-     left join contacts c on c.business_id = b.id
+     left join contacts c on c.business_id = b.id and c.deleted_at is null
      where b.id = :businessId
      group by b.id, b.name, b.plan
      limit 1`,
@@ -194,16 +195,70 @@ async function createContact(payload, businessId = 1) {
   };
 
   if (hasDatabaseConfig()) {
-    await query(
+    const result = await query(
       `insert into contacts (business_id, name, phone, segment, opted_in)
        values (:businessId, :name, :phone, :segment, :optedIn)`,
       { ...contact, businessId }
     );
+    contact.id = result.insertId;
   } else {
     demo.contacts.push(contact);
   }
 
   return contact;
+}
+
+async function updateContact({ businessId, contactId, payload }) {
+  const contact = normalizeContactPayload(payload);
+  if (!hasDatabaseConfig()) {
+    const stored = demo.contacts.find((item) => Number(item.id) === Number(contactId) && Number(item.businessId || 1) === Number(businessId) && !item.deletedAt);
+    if (!stored) throw contactNotFound();
+    Object.assign(stored, contact);
+    return normalizeContact(stored);
+  }
+  const result = await query(
+    `update contacts set name = :name, phone = :phone, segment = :segment, opted_in = :optedIn
+     where id = :contactId and business_id = :businessId and deleted_at is null`,
+    { ...contact, businessId, contactId }
+  );
+  if (!result.affectedRows) throw contactNotFound();
+  return normalizeContact((await query(
+    'select * from contacts where id = :contactId and business_id = :businessId limit 1', { contactId, businessId }
+  ))[0]);
+}
+
+async function softDeleteContact({ businessId, contactId, actorUserId = null }) {
+  if (!hasDatabaseConfig()) {
+    const stored = demo.contacts.find((item) => Number(item.id) === Number(contactId) && Number(item.businessId || 1) === Number(businessId) && !item.deletedAt);
+    if (!stored) throw contactNotFound();
+    stored.deletedAt = new Date().toISOString();
+    stored.deletedByUserId = actorUserId;
+    return { id: Number(contactId), deletedAt: stored.deletedAt };
+  }
+  const result = await query(
+    `update contacts set deleted_at = current_timestamp, deleted_by_user_id = :actorUserId
+     where id = :contactId and business_id = :businessId and deleted_at is null`,
+    { contactId, businessId, actorUserId }
+  );
+  if (!result.affectedRows) throw contactNotFound();
+  return { id: Number(contactId), deletedAt: new Date().toISOString() };
+}
+
+function normalizeContactPayload(payload) {
+  const name = String(payload.name || '').trim();
+  const phone = String(payload.phone || '').trim();
+  if (!name || !phone) {
+    const error = new Error('name and phone are required');
+    error.status = 400;
+    throw error;
+  }
+  return { name, phone, segment: String(payload.segment || 'Imported').trim() || 'Imported', optedIn: payload.optedIn !== false };
+}
+
+function contactNotFound() {
+  const error = new Error('Contact not found');
+  error.status = 404;
+  return error;
 }
 
 function normalizeCampaignCategory(category) {
@@ -212,4 +267,4 @@ function normalizeCampaignCategory(category) {
   return 'MARKETING';
 }
 
-module.exports = { getDashboardData, getPublicPreviewData, createCampaign, createContact };
+module.exports = { getDashboardData, getPublicPreviewData, createCampaign, createContact, updateContact, softDeleteContact };

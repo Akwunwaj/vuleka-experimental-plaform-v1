@@ -50,6 +50,7 @@ async function transaction(callback) {
     return result;
   } catch (err) {
     await connection.rollback();
+    if (Number(err?.status) >= 400 && Number(err?.status) < 500) throw err;
     throw normalizeDatabaseError(err);
   } finally {
     connection.release();

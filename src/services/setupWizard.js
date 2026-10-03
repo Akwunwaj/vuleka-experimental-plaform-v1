@@ -175,7 +175,7 @@ async function templateCount(businessId) {
 
 async function contactCount(businessId) {
   if (!hasDatabaseConfig()) return demo.contacts.filter((contact) => Number(contact.businessId || 1) === Number(businessId)).length;
-  const rows = await query('select count(*) as total from contacts where business_id = :businessId', { businessId });
+  const rows = await query('select count(*) as total from contacts where business_id = :businessId and deleted_at is null', { businessId });
   return Number(rows?.[0]?.total || 0);
 }
 
