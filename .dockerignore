@@ -1,0 +1,14 @@
+node_modules
+.env
+.env.*
+!.env.example
+.git
+.gitignore
+logs
+backups
+tmp
+test
+docs
+html_interface
+integrations
+*.log
